@@ -929,7 +929,9 @@ async function cargarLog() {
 function renderLog(registros) {
   const el = document.getElementById('log-list');
   if (!registros.length) { el.innerHTML = '<div class="empty-log">Sin registros aun</div>'; return; }
-  el.innerHTML = registros.slice(0,5).map(r => `
+  console.log('Log registros:', JSON.stringify(registros.slice(0,3)));
+  const slice = registros.slice(0,5);
+  el.innerHTML = slice.map(r => `
     <div class="log-item">
       <div class="log-left">
         <div class="log-cat">${r.categoria}</div>
@@ -939,16 +941,23 @@ function renderLog(registros) {
         <div class="log-monto">${fmtMXN(r.monto)}</div>
         <div class="log-fecha">${r.fecha}</div>
       </div>
-      <button class="log-delete" onclick="pedirEliminar(${r.id}, '${r.categoria}', ${r.monto})" title="Eliminar">✕</button>
+      <button class="log-delete" data-id="${r.id}" data-cat="${r.categoria}" data-monto="${r.monto}" title="Eliminar">✕</button>
     </div>
   `).join('');
+  // Attach delete listeners after render
+  el.querySelectorAll('.log-delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+      pedirEliminar(parseInt(this.dataset.id), this.dataset.cat, parseFloat(this.dataset.monto));
+    });
+  });
 }
 
 // ============================================================
 // ELIMINAR REGISTRO
 // ============================================================
 function pedirEliminar(id, cat, monto) {
-  pendingDeleteId = id;
+  pendingDeleteId = parseInt(id);
+  console.log('Eliminar id:', pendingDeleteId, 'cat:', cat, 'monto:', monto);
   pendingDeleteInfo = `${cat} — ${fmtMXN(monto)}`;
   document.getElementById('delete-msg').textContent = `¿Eliminar el registro de ${pendingDeleteInfo}? Esta accion no se puede deshacer.`;
   document.getElementById('modal-delete').classList.add('open');
