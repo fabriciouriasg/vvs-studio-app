@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="VV Studio" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#e8ddd0" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Vanessa Velasco Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --beige-light: #f5f0ea;
+      --beige-mid: #e8ddd0;
+      --beige-dark: #d4c4b0;
+      --beige-deeper: #c4ae96;
+      --brown-soft: #8b7355;
+      --brown-dark: #5c4a32;
+      --black: #1a1410;
+      --black-soft: #2d2520;
+      --text-main: #1a1410;
+      --text-muted: #7a6a58;
+      --white: #fdfaf7;
+      --success: #5a7a5a;
+      --error: #8b4a4a;
+      --warning: #8b7a3a;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 2px 12px rgba(90,70,45,0.10);
+      --shadow-md: 0 4px 24px rgba(90,70,45,0.14);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Jost', sans-serif;
+      background: var(--beige-light);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--beige-mid);
+      border-bottom: 1px solid var(--beige-dark);
+      padding: 16px 20px 14px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: var(--black);
+    }
+    .header-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* MAIN CONTAINER */
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    /* SECTION LABELS */
+    .section-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      margin-top: 24px;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* MONTO INPUT */
+    .monto-wrapper {
+      background: var(--white);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius);
+      padding: 20px 20px 16px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      margin-bottom: 4px;
+    }
+    .monto-prefix {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px;
+      font-weight: 300;
+      color: var(--text-muted);
+    }
+    .monto-input-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    #monto {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 52px;
+      font-weight: 400;
+      color: var(--black);
+      border: none;
+      outline: none;
+      background: transparent;
+      text-align: center;
+      width: 100%;
+      max-width: 280px;
+      line-height: 1;
+      padding: 0;
+    }
+    #monto::placeholder { color: var(--beige-deeper); }
+    #monto-display {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      min-height: 18px;
+    }
+
+    /* CATEGORIAS GRID */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .cat-btn {
+      background: var(--white);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius);
+      padding: 14px 12px 12px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.18s ease;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .cat-btn:active { transform: scale(0.97); }
+    .cat-btn.selected {
+      background: var(--beige-mid);
+      border-color: var(--brown-soft);
+      box-shadow: var(--shadow-md);
+    }
+    .cat-btn-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--black-soft);
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+    .cat-btn-acum {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 300;
+    }
+    .cat-btn-acum span {
+      font-weight: 500;
+      color: var(--brown-soft);
+    }
+    .cat-btn.selected .cat-btn-name { color: var(--black); }
+    .cat-indicator {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brown-soft);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .cat-btn.selected .cat-indicator { opacity: 1; }
+
+    /* SUBCATEGORIAS */
+    .subcats-wrapper {
+      display: none;
+      margin-top: 12px;
+    }
+    .subcats-wrapper.visible { display: block; }
+    .subcat-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .subcats-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .subcat-group-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--brown-dark);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 6px;
+      margin-bottom: 4px;
+    }
+    .subcat-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .subcat-pill {
+      background: var(--white);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-family: 'Jost', sans-serif;
+      font-weight: 400;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+    .subcat-pill:active { transform: scale(0.96); }
+    .subcat-pill.selected {
+      background: var(--brown-soft);
+      border-color: var(--brown-soft);
+      color: var(--white);
+    }
+    .subcat-pill .pill-name { font-size: 12px; }
+    .subcat-pill .pill-price { font-size: 10px; opacity: 0.75; }
+    .subcat-pill.selected .pill-price { opacity: 0.9; }
+
+    /* TAGS */
+    .tags-wrapper {
+      display: none;
+      margin-top: 12px;
+    }
+    .tags-wrapper.visible { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-chip {
+      background: var(--beige-mid);
+      border: 1px solid var(--beige-dark);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tag-chip.selected {
+      background: var(--brown-dark);
+      color: var(--white);
+      border-color: var(--brown-dark);
+    }
+    .tag-chip:active { transform: scale(0.96); }
+
+    /* FECHA */
+    .fecha-input {
+      width: 100%;
+      background: var(--white);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-family: 'Jost', sans-serif;
+      font-size: 15px;
+      color: var(--text-main);
+      outline: none;
+      box-shadow: var(--shadow);
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .fecha-input:focus { border-color: var(--brown-soft); }
+
+    /* NOTA */
+    .nota-input {
+      width: 100%;
+      background: var(--white);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-family: 'Jost', sans-serif;
+      font-size: 14px;
+      color: var(--text-main);
+      outline: none;
+      resize: none;
+      box-shadow: var(--shadow);
+      min-height: 80px;
+    }
+    .nota-input:focus { border-color: var(--brown-soft); }
+    .nota-input::placeholder { color: var(--beige-deeper); }
+
+    /* SUBMIT BUTTON */
+    .btn-registrar {
+      width: 100%;
+      background: var(--black);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      padding: 18px;
+      font-family: 'Jost', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      margin-top: 8px;
+      box-shadow: var(--shadow-md);
+    }
+    .btn-registrar:active { transform: scale(0.98); }
+    .btn-registrar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* FEEDBACK BANNER */
+    #feedback {
+      display: none;
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 400;
+      margin-top: 12px;
+      text-align: center;
+    }
+    #feedback.success { display: block; background: #edf5ed; border: 1px solid #b8d4b8; color: var(--success); }
+    #feedback.error   { display: block; background: #f5edec; border: 1px solid #d4b8b8; color: var(--error); }
+    #feedback.loading { display: block; background: var(--beige-mid); border: 1px solid var(--beige-dark); color: var(--text-muted); }
+
+    /* LOG */
+    .log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .log-item {
+      background: var(--white);
+      border: 1px solid var(--beige-dark);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      box-shadow: var(--shadow);
+    }
+    .log-left .log-cat {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--black-soft);
+    }
+    .log-left .log-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .log-right {
+      text-align: right;
+    }
+    .log-right .log-monto {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--black);
+    }
+    .log-right .log-fecha {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* NEW INCOME BANNER */
+    #nuevo-banner {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: var(--brown-soft);
+      color: var(--white);
+      text-align: center;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 999;
+      animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+    /* SETTINGS BTN */
+    #btn-settings {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      background: var(--beige-mid);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      z-index: 200;
+    }
+
+    /* SETTINGS MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26,20,16,0.5);
+      z-index: 300;
+      align-items: flex-end;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--white);
+      border-radius: 20px 20px 0 0;
+      padding: 28px 20px 40px;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .modal-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: var(--black);
+    }
+    .modal-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .modal-input {
+      width: 100%;
+      background: var(--beige-light);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-family: 'Jost', sans-serif;
+      font-size: 13px;
+      color: var(--text-main);
+      outline: none;
+      margin-bottom: 16px;
+    }
+    .modal-input:focus { border-color: var(--brown-soft); }
+    .modal-actions { display: flex; gap: 10px; }
+    .btn-modal-save {
+      flex: 1;
+      background: var(--black);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: 'Jost', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .btn-modal-cancel {
+      flex: 1;
+      background: var(--beige-mid);
+      color: var(--text-main);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: 'Jost', sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      cursor: pointer;
+    }
+
+    /* DIVIDER */
+    .divider {
+      height: 1px;
+      background: var(--beige-dark);
+      margin: 24px 0;
+    }
+
+    .empty-log {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 20px 0;
+      font-style: italic;
+    }
+
+    /* Extra hora badge */
+    .extra-hora-row {
+      margin-top: 10px;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--white);
+      border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      cursor: pointer;
+    }
+    .checkbox-row input[type=checkbox] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brown-soft);
+      cursor: pointer;
+    }
+    .checkbox-label {
+      font-size: 14px;
+      color: var(--text-main);
+      flex: 1;
+    }
+    .checkbox-price {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- NUEVO INGRESO BANNER -->
+<div id="nuevo-banner">📸 Nuevo ingreso registrado</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-title">Vanessa Velasco Studio</div>
+  <div class="header-sub">Captura de ingresos</div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- MONTO -->
+  <div class="section-label">Monto a registrar</div>
+  <div class="monto-wrapper">
+    <div class="monto-input-row">
+      <span class="monto-prefix">$</span>
+      <input id="monto" type="number" inputmode="decimal" placeholder="0" step="0.01" min="0" />
+    </div>
+    <div id="monto-display"></div>
+  </div>
+
+  <!-- CATEGORIAS -->
+  <div class="section-label" style="margin-top:20px;">Categoría</div>
+  <div class="cat-grid" id="cat-grid"></div>
+
+  <!-- SUBCATEGORIAS -->
+  <div class="subcats-wrapper" id="subcats-wrapper">
+    <div class="subcat-label">Selecciona paquete</div>
+    <div class="subcats-grid" id="subcats-grid"></div>
+  </div>
+
+  <!-- HORA EXTRA (condicional) -->
+  <div class="extra-hora-row" id="extra-hora-row" style="display:none;">
+    <label class="checkbox-row">
+      <input type="checkbox" id="extra-hora-check" onchange="toggleExtraHora()" />
+      <span class="checkbox-label">+ Hora extra</span>
+      <span class="checkbox-price" id="extra-hora-price"></span>
+    </label>
+  </div>
+
+  <!-- TAGS NOTA RAPIDA -->
+  <div class="tags-wrapper" id="tags-wrapper"></div>
+
+  <!-- FECHA -->
+  <div class="section-label">Fecha</div>
+  <input type="date" id="fecha" class="fecha-input" />
+
+  <!-- NOTA -->
+  <div class="section-label">Nota (opcional)</div>
+  <textarea id="nota" class="nota-input" placeholder="Cliente, detalles del servicio..."></textarea>
+
+  <!-- BOTON -->
+  <button class="btn-registrar" id="btn-registrar" onclick="registrar()">
+    Registrar ingreso
+  </button>
+
+  <!-- FEEDBACK -->
+  <div id="feedback"></div>
+
+  <div class="divider"></div>
+
+  <!-- LOG -->
+  <div class="section-label">Últimos registros</div>
+  <div class="log-list" id="log-list">
+    <div class="empty-log">Cargando registros...</div>
+  </div>
+
+</div>
+
+<!-- SETTINGS BUTTON -->
+<button id="btn-settings" onclick="openSettings()">⚙️</button>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeSettingsOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Configuración</div>
+    <div class="modal-label">URL del Apps Script</div>
+    <input type="url" id="script-url-input" class="modal-input" placeholder="https://script.google.com/macros/s/.../exec" />
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeSettings()">Cancelar</button>
+      <button class="btn-modal-save" onclick="saveSettings()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// CONFIGURACION
+// ==========================================
+const SECRET_TOKEN = 'Negocio2026$';
+let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
+
+// ==========================================
+// DEFINICION DE CATEGORIAS
+// ==========================================
+const CATEGORIAS = {
+  eventos: {
+    nombre: 'Eventos',
+    fila: 4,
+    subcats: [
+      {
+        grupo: 'Fiesta Infantil',
+        extraHora: 1500,
+        paquetes: [
+          { nombre: 'Basico',   precio: 4500 },
+          { nombre: 'Completo', precio: 7000 },
+          { nombre: 'Plus',     precio: 9500 },
+        ]
+      },
+      {
+        grupo: 'Bautizo',
+        extraHora: 1500,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3500 },
+          { nombre: 'Completo', precio: 5000 },
+          { nombre: 'Plus',     precio: 9900 },
+        ]
+      },
+      {
+        grupo: 'Primera Comunion',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3600 },
+          { nombre: 'Completo', precio: 5000 },
+          { nombre: 'Plus',     precio: 9900 },
+        ]
+      },
+      {
+        grupo: 'Gender Reveal',
+        extraHora: 1500,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3000 },
+          { nombre: 'Completo', precio: 5500 },
+          { nombre: 'Plus',     precio: 6900 },
+        ]
+      },
+      {
+        grupo: 'Baby Shower',
+        extraHora: 1500,
+        paquetes: [
+          { nombre: 'Basico',   precio: 2900 },
+          { nombre: 'Completo', precio: 5000 },
+          { nombre: 'Plus',     precio: 5900 },
+        ]
+      },
+      {
+        grupo: 'Boda Civil',
+        extraHora: 2000,
+        paquetes: [
+          { nombre: 'Basico',   precio: 4500 },
+          { nombre: 'Completo', precio: 6000 },
+          { nombre: 'Plus',     precio: 9950 },
+        ]
+      },
+    ],
+    tags: ['Efectivo', 'Transferencia', 'Tarjeta'],
+  },
+  sesiones: {
+    nombre: 'Sesiones',
+    fila: 5,
+    subcats: [
+      {
+        grupo: 'Parejas',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3200 },
+          { nombre: 'Completo', precio: 4500 },
+          { nombre: 'Plus',     precio: 5000 },
+        ]
+      },
+      {
+        grupo: 'Infantil',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3500 },
+          { nombre: 'Completo', precio: 5000 },
+          { nombre: 'Plus',     precio: 6000 },
+        ]
+      },
+      {
+        grupo: 'Cake Smash White',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3900 },
+          { nombre: 'Completo', precio: 5300 },
+          { nombre: 'Plus',     precio: 6700 },
+        ]
+      },
+      {
+        grupo: 'Cake Smash Tematico',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Basico',   precio: 5300 },
+          { nombre: 'Completo', precio: 6700 },
+          { nombre: 'Plus',     precio: 8200 },
+        ]
+      },
+      {
+        grupo: 'Perfil Profesional',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Paquete 1', precio: 2400 },
+          { nombre: 'Paquete 2', precio: 4000 },
+        ]
+      },
+      {
+        grupo: 'Maternidad',
+        extraHora: null,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3000 },
+          { nombre: 'Completo', precio: 4500 },
+          { nombre: 'Plus',     precio: 6000 },
+        ]
+      },
+      {
+        grupo: 'Familiar 3 personas',
+        extraHora: null,
+        personaExtra: 300,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3000 },
+          { nombre: 'Completo', precio: 4500 },
+          { nombre: 'Plus',     precio: 6000 },
+        ]
+      },
+      {
+        grupo: 'Familiar +3 personas',
+        extraHora: null,
+        personaExtra: 300,
+        paquetes: [
+          { nombre: 'Basico',   precio: 3500 },
+          { nombre: 'Completo', precio: 5000 },
+          { nombre: 'Plus',     precio: 6500 },
+        ]
+      },
+    ],
+    tags: ['Efectivo', 'Transferencia', 'Tarjeta'],
+  },
+  anticipos: {
+    nombre: 'Anticipos',
+    fila: 6,
+    subcats: [],
+    tags: ['Evento', 'Sesion', 'Pedido especial'],
+  },
+  otros: {
+    nombre: 'Otros',
+    fila: 7,
+    subcats: [],
+    tags: ['Varios', 'Reimpresion', 'USB', 'Impresion'],
+  },
+};
+
+// ==========================================
+// ESTADO
+// ==========================================
+let selectedCat = null;
+let selectedSubcat = null;    // { grupo, paquete, precio }
+let selectedTags = [];
+let acumulados = {};
+let lastIngresoId = null;
+let extraHoraActiva = false;
+let extraHoraPrecio = 0;
+let personasExtra = 0;
+
+// ==========================================
+// INIT
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  setDefaultFecha();
+  renderCatGrid();
+  cargarLog();
+  cargarAcumulados();
+  setTimeout(startPolling, 5000);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
+});
+
+function setDefaultFecha() {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth()+1).padStart(2,'0');
+  const d = String(today.getDate()).padStart(2,'0');
+  document.getElementById('fecha').value = `${y}-${m}-${d}`;
+}
+
+// ==========================================
+// FORMATO DINERO
+// ==========================================
+function fmtMXN(n) {
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n);
+}
+
+// Al escribir en el monto, mostrar en texto
+document.getElementById('monto').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  const disp = document.getElementById('monto-display');
+  if (!isNaN(v) && v > 0) {
+    disp.textContent = fmtMXN(v);
+    disp.style.color = 'var(--brown-soft)';
+  } else {
+    disp.textContent = '';
+  }
+});
+
+// ==========================================
+// RENDER CATEGORIAS
+// ==========================================
+function renderCatGrid() {
+  const grid = document.getElementById('cat-grid');
+  grid.innerHTML = '';
+  for (const [key, cat] of Object.entries(CATEGORIAS)) {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.dataset.key = key;
+    const acum = acumulados[key] || 0;
+    btn.innerHTML = `
+      <div class="cat-indicator"></div>
+      <div class="cat-btn-name">${cat.nombre}</div>
+      <div class="cat-btn-acum">Este mes: <span>${fmtMXN(acum)}</span></div>
+    `;
+    btn.onclick = () => selectCat(key);
+    grid.appendChild(btn);
+  }
+}
+
+function updateAcumInGrid() {
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    const key = btn.dataset.key;
+    const acum = acumulados[key] || 0;
+    const span = btn.querySelector('.cat-btn-acum span');
+    if (span) span.textContent = fmtMXN(acum);
+  });
+}
+
+// ==========================================
+// SELECCION DE CATEGORIA
+// ==========================================
+function selectCat(key) {
+  selectedCat = key;
+  selectedSubcat = null;
+  selectedTags = [];
+  extraHoraActiva = false;
+  personasExtra = 0;
+
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector(`.cat-btn[data-key="${key}"]`).classList.add('selected');
+
+  renderSubcats(key);
+  renderTags(key);
+
+  document.getElementById('extra-hora-row').style.display = 'none';
+  document.getElementById('extra-hora-check').checked = false;
+}
+
+// ==========================================
+// RENDER SUBCATEGORIAS
+// ==========================================
+function renderSubcats(key) {
+  const cat = CATEGORIAS[key];
+  const wrapper = document.getElementById('subcats-wrapper');
+  const grid = document.getElementById('subcats-grid');
+  grid.innerHTML = '';
+
+  if (!cat.subcats || cat.subcats.length === 0) {
+    wrapper.classList.remove('visible');
+    return;
+  }
+
+  cat.subcats.forEach(group => {
+    const groupEl = document.createElement('div');
+
+    const gName = document.createElement('div');
+    gName.className = 'subcat-group-name';
+    gName.textContent = group.grupo;
+    groupEl.appendChild(gName);
+
+    const row = document.createElement('div');
+    row.className = 'subcat-row';
+
+    group.paquetes.forEach(paq => {
+      const pill = document.createElement('button');
+      pill.className = 'subcat-pill';
+      pill.dataset.grupo = group.grupo;
+      pill.dataset.paquete = paq.nombre;
+      pill.dataset.precio = paq.precio;
+      pill.dataset.extraHora = group.extraHora || 0;
+      pill.dataset.personaExtra = group.personaExtra || 0;
+      pill.innerHTML = `<span class="pill-name">${paq.nombre}</span><span class="pill-price">${fmtMXN(paq.precio)}</span>`;
+      pill.onclick = () => selectSubcat(pill, group, paq);
+      row.appendChild(pill);
+    });
+
+    groupEl.appendChild(row);
+    grid.appendChild(groupEl);
+  });
+
+  wrapper.classList.add('visible');
+}
+
+function selectSubcat(pillEl, group, paq) {
+  document.querySelectorAll('.subcat-pill').forEach(p => p.classList.remove('selected'));
+  pillEl.classList.add('selected');
+
+  selectedSubcat = { grupo: group.grupo, paquete: paq.nombre, precio: paq.precio };
+  extraHoraActiva = false;
+  personasExtra = 0;
+
+  // Establecer monto base
+  let totalMonto = paq.precio;
+  document.getElementById('monto').value = totalMonto;
+  document.getElementById('monto-display').textContent = fmtMXN(totalMonto);
+  document.getElementById('monto-display').style.color = 'var(--brown-soft)';
+
+  // Extra hora
+  const extraHoraRow = document.getElementById('extra-hora-row');
+  const extraHoraCheck = document.getElementById('extra-hora-check');
+  extraHoraCheck.checked = false;
+  extraHoraPrecio = group.extraHora || 0;
+
+  if (group.extraHora) {
+    document.getElementById('extra-hora-price').textContent = `+ ${fmtMXN(group.extraHora)}`;
+    extraHoraRow.style.display = 'block';
+  } else {
+    extraHoraRow.style.display = 'none';
+  }
+
+  // Persona extra (Familiar)
+  if (group.personaExtra) {
+    // Simple note in nota
+    const notaEl = document.getElementById('nota');
+    if (!notaEl.value) notaEl.placeholder = `Persona extra: +${fmtMXN(group.personaExtra)} c/u`;
+  }
+}
+
+function toggleExtraHora() {
+  const check = document.getElementById('extra-hora-check');
+  extraHoraActiva = check.checked;
+  if (selectedSubcat) {
+    const base = selectedSubcat.precio;
+    const total = base + (extraHoraActiva ? extraHoraPrecio : 0);
+    document.getElementById('monto').value = total;
+    document.getElementById('monto-display').textContent = fmtMXN(total);
+  }
+}
+
+// ==========================================
+// RENDER TAGS
+// ==========================================
+function renderTags(key) {
+  const cat = CATEGORIAS[key];
+  const wrapper = document.getElementById('tags-wrapper');
+  wrapper.innerHTML = '';
+  if (!cat.tags || cat.tags.length === 0) {
+    wrapper.classList.remove('visible');
+    return;
+  }
+  cat.tags.forEach(tag => {
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.textContent = tag;
+    chip.onclick = () => toggleTag(chip, tag);
+    wrapper.appendChild(chip);
+  });
+  wrapper.classList.add('visible');
+}
+
+function toggleTag(el, tag) {
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) {
+    selectedTags.push(tag);
+  } else {
+    selectedTags = selectedTags.filter(t => t !== tag);
+  }
+}
+
+// ==========================================
+// REGISTRAR
+// ==========================================
+async function registrar() {
+  const montoRaw = document.getElementById('monto').value;
+  const fecha = document.getElementById('fecha').value;
+  const nota = document.getElementById('nota').value.trim();
+
+  if (!montoRaw || parseFloat(montoRaw) <= 0) {
+    mostrarFeedback('Ingresa un monto valido', 'error');
+    return;
+  }
+  if (!selectedCat) {
+    mostrarFeedback('Selecciona una categoria', 'error');
+    return;
+  }
+  if (!fecha) {
+    mostrarFeedback('Selecciona una fecha', 'error');
+    return;
+  }
+  if (!SCRIPT_URL) {
+    mostrarFeedback('Configura la URL del script primero (boton ⚙️)', 'error');
+    return;
+  }
+
+  const monto = Math.round(parseFloat(montoRaw) * 100) / 100;
+  const cat = CATEGORIAS[selectedCat];
+  const subcatLabel = selectedSubcat
+    ? `${selectedSubcat.grupo} - ${selectedSubcat.paquete}${extraHoraActiva ? ' + Hora extra' : ''}`
+    : '';
+  const notaFinal = [subcatLabel, nota, selectedTags.join(', ')].filter(Boolean).join(' | ');
+
+  const payload = {
+    token: SECRET_TOKEN,
+    monto,
+    categoria: cat.nombre,
+    subcategoria: subcatLabel,
+    fecha,
+    nota: notaFinal,
+    quien: 'Vanessa',
+  };
+
+  const btn = document.getElementById('btn-registrar');
+  btn.disabled = true;
+  mostrarFeedback('Registrando...', 'loading');
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      mostrarFeedback(`✓ Registrado: ${fmtMXN(monto)} en ${cat.nombre}`, 'success');
+      resetForm();
+      cargarLog();
+      cargarAcumulados();
+    } else {
+      mostrarFeedback(`Error: ${data.error || 'Intenta de nuevo'}`, 'error');
+    }
+  } catch (e) {
+    mostrarFeedback('Sin conexion. Verifica tu internet e intenta de nuevo.', 'error');
+  }
+
+  btn.disabled = false;
+}
+
+function resetForm() {
+  document.getElementById('monto').value = '';
+  document.getElementById('monto-display').textContent = '';
+  document.getElementById('nota').value = '';
+  document.getElementById('nota').placeholder = 'Cliente, detalles del servicio...';
+  selectedCat = null;
+  selectedSubcat = null;
+  selectedTags = [];
+  extraHoraActiva = false;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.subcat-pill').forEach(p => p.classList.remove('selected'));
+  document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('subcats-wrapper').classList.remove('visible');
+  document.getElementById('tags-wrapper').classList.remove('visible');
+  document.getElementById('extra-hora-row').style.display = 'none';
+  setDefaultFecha();
+}
+
+// ==========================================
+// FEEDBACK
+// ==========================================
+function mostrarFeedback(msg, tipo) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg;
+  el.className = tipo;
+  if (tipo === 'success' || tipo === 'error') {
+    setTimeout(() => { el.className = ''; el.textContent = ''; }, 4000);
+  }
+}
+
+// ==========================================
+// LOG
+// ==========================================
+async function cargarLog() {
+  if (!SCRIPT_URL) {
+    document.getElementById('log-list').innerHTML = '<div class="empty-log">Configura el script en ⚙️</div>';
+    return;
+  }
+  try {
+    const url = `${SCRIPT_URL}?action=getLog&token=${encodeURIComponent(SECRET_TOKEN)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    renderLog(data.registros || []);
+  } catch(e) {
+    document.getElementById('log-list').innerHTML = '<div class="empty-log">Sin conexion</div>';
+  }
+}
+
+function renderLog(registros) {
+  const el = document.getElementById('log-list');
+  if (!registros.length) {
+    el.innerHTML = '<div class="empty-log">Sin registros aun</div>';
+    return;
+  }
+  el.innerHTML = registros.slice(0,5).map(r => `
+    <div class="log-item">
+      <div class="log-left">
+        <div class="log-cat">${r.categoria}</div>
+        <div class="log-sub">${r.subcategoria || r.nota || ''}</div>
+      </div>
+      <div class="log-right">
+        <div class="log-monto">${fmtMXN(r.monto)}</div>
+        <div class="log-fecha">${r.fecha}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==========================================
+// ACUMULADOS
+// ==========================================
+async function cargarAcumulados() {
+  if (!SCRIPT_URL) return;
+  const now = new Date();
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mes = meses[now.getMonth()];
+  try {
+    const url = `${SCRIPT_URL}?action=getAcumulado&mes=${mes}&token=${encodeURIComponent(SECRET_TOKEN)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.acumulados) {
+      acumulados = data.acumulados;
+      updateAcumInGrid();
+    }
+  } catch(e) {}
+}
+
+// ==========================================
+// POLLING
+// ==========================================
+async function startPolling() {
+  if (!SCRIPT_URL) {
+    setTimeout(startPolling, 30000);
+    return;
+  }
+  try {
+    const url = `${SCRIPT_URL}?action=getLastIngreso&token=${encodeURIComponent(SECRET_TOKEN)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.id && data.id !== lastIngresoId && lastIngresoId !== null) {
+      mostrarNuevoBanner();
+      cargarLog();
+      cargarAcumulados();
+    }
+    if (data.id) lastIngresoId = data.id;
+  } catch(e) {}
+  setTimeout(startPolling, 30000);
+}
+
+function mostrarNuevoBanner() {
+  const banner = document.getElementById('nuevo-banner');
+  banner.style.display = 'block';
+  if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+  playBeep();
+  setTimeout(() => { banner.style.display = 'none'; }, 5000);
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [440, 550, 660].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.08);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.1);
+      osc.stop(ctx.currentTime + i * 0.1 + 0.1);
+    });
+  } catch(e) {}
+}
+
+// ==========================================
+// SETTINGS
+// ==========================================
+function openSettings() {
+  document.getElementById('script-url-input').value = SCRIPT_URL;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function closeSettingsOutside(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeSettings();
+}
+function saveSettings() {
+  const url = document.getElementById('script-url-input').value.trim();
+  if (url) {
+    SCRIPT_URL = url;
+    localStorage.setItem('vvs_script_url', url);
+    closeSettings();
+    cargarLog();
+    cargarAcumulados();
+  }
+}
+</script>
+</body>
+</html>
