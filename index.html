@@ -27,7 +27,6 @@
       --white: #fdfaf7;
       --success: #5a7a5a;
       --error: #8b4a4a;
-      --warning: #8b7a3a;
       --radius: 12px;
       --radius-sm: 8px;
       --shadow: 0 2px 12px rgba(90,70,45,0.10);
@@ -41,43 +40,112 @@
       background: var(--beige-light);
       color: var(--text-main);
       min-height: 100vh;
-      padding-bottom: 80px;
+      overflow: hidden;
     }
 
-    /* HEADER */
+    /* ===================== HEADER ===================== */
     .header {
       background: var(--beige-mid);
       border-bottom: 1px solid var(--beige-dark);
-      padding: 16px 20px 14px;
-      text-align: center;
-      position: sticky;
-      top: 0;
+      padding: 14px 20px 12px;
+      position: fixed;
+      top: 0; left: 0; right: 0;
       z-index: 100;
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .header-icon {
+      display: flex;
+      align-items: center;
     }
     .header-title {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 500;
       letter-spacing: 0.04em;
       color: var(--black);
     }
-    .header-sub {
+
+    /* ===================== TAB NAV ===================== */
+    .tab-nav {
+      position: fixed;
+      top: 52px; left: 0; right: 0;
+      background: var(--beige-mid);
+      border-bottom: 1px solid var(--beige-dark);
+      display: flex;
+      z-index: 99;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    /* full width centering trick */
+    .tab-nav-wrap {
+      position: fixed;
+      top: 52px; left: 0; right: 0;
+      background: var(--beige-mid);
+      border-bottom: 1px solid var(--beige-dark);
+      z-index: 99;
+    }
+    .tab-nav {
+      position: relative;
+      top: auto; left: auto; right: auto;
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      background: none;
+      border: none;
+      font-family: 'Jost', sans-serif;
       font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 300;
+      font-weight: 500;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      margin-top: 2px;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: var(--black);
+      border-bottom-color: var(--black);
     }
 
-    /* MAIN CONTAINER */
+    /* ===================== SWIPE CONTAINER ===================== */
+    .screens-wrapper {
+      position: fixed;
+      top: 96px; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+    }
+    .screens-track {
+      display: flex;
+      width: 200%;
+      height: 100%;
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .screens-track.no-transition { transition: none; }
+    .screen {
+      width: 50%;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ===================== MAIN CONTAINER ===================== */
     .container {
       max-width: 480px;
       margin: 0 auto;
-      padding: 20px 16px;
+      padding: 20px 16px 100px;
     }
 
-    /* SECTION LABELS */
+    /* ===================== SECTION LABELS ===================== */
     .section-label {
       font-size: 10px;
       font-weight: 500;
@@ -89,7 +157,7 @@
     }
     .section-label:first-child { margin-top: 0; }
 
-    /* MONTO INPUT */
+    /* ===================== MONTO ===================== */
     .monto-wrapper {
       background: var(--white);
       border: 1.5px solid var(--beige-dark);
@@ -97,19 +165,18 @@
       padding: 20px 20px 16px;
       text-align: center;
       box-shadow: var(--shadow);
-      margin-bottom: 4px;
-    }
-    .monto-prefix {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 18px;
-      font-weight: 300;
-      color: var(--text-muted);
     }
     .monto-input-row {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 4px;
+    }
+    .monto-prefix {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px;
+      font-weight: 300;
+      color: var(--text-muted);
     }
     #monto {
       font-family: 'Cormorant Garamond', serif;
@@ -133,7 +200,7 @@
       min-height: 18px;
     }
 
-    /* CATEGORIAS GRID */
+    /* ===================== CAT GRID ===================== */
     .cat-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -149,7 +216,6 @@
       transition: all 0.18s ease;
       box-shadow: var(--shadow);
       position: relative;
-      overflow: hidden;
     }
     .cat-btn:active { transform: scale(0.97); }
     .cat-btn.selected {
@@ -162,458 +228,313 @@
       font-size: 15px;
       font-weight: 500;
       color: var(--black-soft);
-      line-height: 1.2;
       margin-bottom: 6px;
     }
-    .cat-btn-acum {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: 300;
-    }
-    .cat-btn-acum span {
-      font-weight: 500;
-      color: var(--brown-soft);
-    }
+    .cat-btn-acum { font-size: 11px; color: var(--text-muted); font-weight: 300; }
+    .cat-btn-acum span { font-weight: 500; color: var(--brown-soft); }
     .cat-btn.selected .cat-btn-name { color: var(--black); }
     .cat-indicator {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--brown-soft);
-      opacity: 0;
-      transition: opacity 0.2s;
+      position: absolute; top: 8px; right: 8px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--brown-soft); opacity: 0; transition: opacity 0.2s;
     }
     .cat-btn.selected .cat-indicator { opacity: 1; }
 
-    /* SUBCATEGORIAS */
-    .subcats-wrapper {
-      display: none;
-      margin-top: 12px;
-    }
+    /* ===================== SUBCATS ===================== */
+    .subcats-wrapper { display: none; margin-top: 12px; }
     .subcats-wrapper.visible { display: block; }
     .subcat-label {
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .subcats-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      font-size: 10px; font-weight: 500; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
     }
     .subcat-group-name {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--brown-dark);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-top: 6px;
-      margin-bottom: 4px;
+      font-size: 11px; font-weight: 500; color: var(--brown-dark);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      margin-top: 10px; margin-bottom: 6px;
     }
-    .subcat-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .subcat-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .subcat-pill {
       background: var(--white);
       border: 1.5px solid var(--beige-dark);
       border-radius: 999px;
       padding: 8px 14px;
-      font-size: 13px;
-      font-family: 'Jost', sans-serif;
-      font-weight: 400;
-      color: var(--text-main);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1px;
+      font-size: 13px; font-family: 'Jost', sans-serif; font-weight: 400;
+      color: var(--text-main); cursor: pointer; transition: all 0.15s ease;
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
     }
     .subcat-pill:active { transform: scale(0.96); }
-    .subcat-pill.selected {
-      background: var(--brown-soft);
-      border-color: var(--brown-soft);
-      color: var(--white);
-    }
+    .subcat-pill.selected { background: var(--brown-soft); border-color: var(--brown-soft); color: var(--white); }
     .subcat-pill .pill-name { font-size: 12px; }
     .subcat-pill .pill-price { font-size: 10px; opacity: 0.75; }
     .subcat-pill.selected .pill-price { opacity: 0.9; }
 
-    /* TAGS */
-    .tags-wrapper {
-      display: none;
-      margin-top: 12px;
+    /* ===================== HORA EXTRA ===================== */
+    .extra-hora-row { margin-top: 10px; display: none; }
+    .checkbox-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--white); border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-sm); padding: 12px 14px; cursor: pointer;
     }
+    .checkbox-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brown-soft); }
+    .checkbox-label { font-size: 14px; color: var(--text-main); flex: 1; }
+    .checkbox-price { font-size: 12px; color: var(--text-muted); }
+
+    /* ===================== TAGS ===================== */
+    .tags-wrapper { display: none; margin-top: 12px; }
     .tags-wrapper.visible { display: flex; flex-wrap: wrap; gap: 8px; }
     .tag-chip {
-      background: var(--beige-mid);
-      border: 1px solid var(--beige-dark);
-      border-radius: 999px;
-      padding: 6px 14px;
-      font-size: 12px;
-      font-weight: 400;
-      color: var(--text-main);
-      cursor: pointer;
-      transition: all 0.15s ease;
+      background: var(--beige-mid); border: 1px solid var(--beige-dark);
+      border-radius: 999px; padding: 6px 14px; font-size: 12px;
+      color: var(--text-main); cursor: pointer; transition: all 0.15s;
     }
-    .tag-chip.selected {
-      background: var(--brown-dark);
-      color: var(--white);
-      border-color: var(--brown-dark);
-    }
-    .tag-chip:active { transform: scale(0.96); }
+    .tag-chip.selected { background: var(--brown-dark); color: var(--white); border-color: var(--brown-dark); }
 
-    /* FECHA */
+    /* ===================== INPUTS ===================== */
     .fecha-input {
-      width: 100%;
-      background: var(--white);
-      border: 1.5px solid var(--beige-dark);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      font-family: 'Jost', sans-serif;
-      font-size: 15px;
-      color: var(--text-main);
-      outline: none;
-      box-shadow: var(--shadow);
-      appearance: none;
-      -webkit-appearance: none;
+      width: 100%; background: var(--white); border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius); padding: 14px 16px;
+      font-family: 'Jost', sans-serif; font-size: 15px; color: var(--text-main);
+      outline: none; box-shadow: var(--shadow); appearance: none; -webkit-appearance: none;
     }
     .fecha-input:focus { border-color: var(--brown-soft); }
-
-    /* NOTA */
     .nota-input {
-      width: 100%;
-      background: var(--white);
-      border: 1.5px solid var(--beige-dark);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      font-family: 'Jost', sans-serif;
-      font-size: 14px;
-      color: var(--text-main);
-      outline: none;
-      resize: none;
-      box-shadow: var(--shadow);
-      min-height: 80px;
+      width: 100%; background: var(--white); border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius); padding: 14px 16px;
+      font-family: 'Jost', sans-serif; font-size: 14px; color: var(--text-main);
+      outline: none; resize: none; box-shadow: var(--shadow); min-height: 80px;
     }
     .nota-input:focus { border-color: var(--brown-soft); }
     .nota-input::placeholder { color: var(--beige-deeper); }
 
-    /* SUBMIT BUTTON */
+    /* ===================== BUTTON ===================== */
     .btn-registrar {
-      width: 100%;
-      background: var(--black);
-      color: var(--white);
-      border: none;
-      border-radius: var(--radius);
-      padding: 18px;
-      font-family: 'Jost', sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.18s ease;
-      margin-top: 8px;
-      box-shadow: var(--shadow-md);
+      width: 100%; background: var(--black); color: var(--white);
+      border: none; border-radius: var(--radius); padding: 18px;
+      font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
+      transition: all 0.18s; margin-top: 8px; box-shadow: var(--shadow-md);
     }
     .btn-registrar:active { transform: scale(0.98); }
     .btn-registrar:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* FEEDBACK BANNER */
+    /* ===================== FEEDBACK ===================== */
     #feedback {
-      display: none;
-      border-radius: var(--radius-sm);
-      padding: 14px 16px;
-      font-size: 14px;
-      font-weight: 400;
-      margin-top: 12px;
-      text-align: center;
+      display: none; border-radius: var(--radius-sm); padding: 14px 16px;
+      font-size: 14px; margin-top: 12px; text-align: center;
     }
     #feedback.success { display: block; background: #edf5ed; border: 1px solid #b8d4b8; color: var(--success); }
     #feedback.error   { display: block; background: #f5edec; border: 1px solid #d4b8b8; color: var(--error); }
     #feedback.loading { display: block; background: var(--beige-mid); border: 1px solid var(--beige-dark); color: var(--text-muted); }
 
-    /* LOG */
-    .log-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    /* ===================== LOG ===================== */
+    .divider { height: 1px; background: var(--beige-dark); margin: 24px 0; }
+    .log-list { display: flex; flex-direction: column; gap: 8px; }
     .log-item {
-      background: var(--white);
-      border: 1px solid var(--beige-dark);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      box-shadow: var(--shadow);
+      background: var(--white); border: 1px solid var(--beige-dark);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      box-shadow: var(--shadow); gap: 8px;
     }
-    .log-left .log-cat {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--black-soft);
+    .log-left { flex: 1; min-width: 0; }
+    .log-left .log-cat { font-size: 13px; font-weight: 500; color: var(--black-soft); }
+    .log-left .log-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-right { text-align: right; flex-shrink: 0; }
+    .log-right .log-monto { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 500; color: var(--black); }
+    .log-right .log-fecha { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    .log-delete {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 16px; padding: 2px 4px;
+      flex-shrink: 0; line-height: 1; opacity: 0.5; transition: opacity 0.15s;
     }
-    .log-left .log-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-    .log-right {
-      text-align: right;
-    }
-    .log-right .log-monto {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 17px;
-      font-weight: 500;
-      color: var(--black);
-    }
-    .log-right .log-fecha {
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
+    .log-delete:active { opacity: 1; color: var(--error); }
+    .empty-log { text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px 0; font-style: italic; }
 
-    /* NEW INCOME BANNER */
+    /* ===================== RESUMEN SCREEN ===================== */
+    .resumen-container {
+      max-width: 480px; margin: 0 auto; padding: 20px 16px 100px;
+    }
+    .resumen-mes-card {
+      background: var(--white); border: 1px solid var(--beige-dark);
+      border-radius: var(--radius); margin-bottom: 14px;
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .resumen-mes-header {
+      background: var(--black); color: var(--white);
+      padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .resumen-mes-nombre {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 16px; font-weight: 500; letter-spacing: 0.06em;
+    }
+    .resumen-mes-total {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px; font-weight: 400;
+    }
+    .resumen-cats { padding: 12px 16px; }
+    .resumen-cat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 7px 0; border-bottom: 1px solid var(--beige-light);
+    }
+    .resumen-cat-row:last-child { border-bottom: none; }
+    .resumen-cat-name { font-size: 13px; color: var(--text-main); }
+    .resumen-cat-monto { font-size: 13px; font-weight: 500; color: var(--brown-dark); }
+    .resumen-cat-monto.cero { color: var(--text-muted); font-weight: 300; }
+    .resumen-loading { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; font-style: italic; }
+    .resumen-mes-card.current .resumen-mes-header { background: var(--brown-dark); }
+
+    /* ===================== NUEVO BANNER ===================== */
     #nuevo-banner {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      background: var(--brown-soft);
-      color: var(--white);
-      text-align: center;
-      padding: 14px 16px;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 999;
-      animation: slideDown 0.3s ease;
+      display: none; position: fixed; top: 0; left: 0; right: 0;
+      background: var(--brown-soft); color: var(--white);
+      text-align: center; padding: 14px 16px; font-size: 14px; font-weight: 500;
+      z-index: 999; animation: slideDown 0.3s ease;
     }
     @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 
-    /* SETTINGS BTN */
+    /* ===================== SETTINGS BTN ===================== */
     #btn-settings {
-      position: fixed;
-      bottom: 24px;
-      right: 20px;
-      width: 44px;
-      height: 44px;
-      background: var(--beige-mid);
-      border: 1.5px solid var(--beige-dark);
-      border-radius: 50%;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: var(--shadow-md);
-      z-index: 200;
+      position: fixed; bottom: 24px; right: 20px;
+      width: 44px; height: 44px; background: var(--beige-mid);
+      border: 1.5px solid var(--beige-dark); border-radius: 50%;
+      font-size: 18px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; box-shadow: var(--shadow-md); z-index: 200;
     }
 
-    /* SETTINGS MODAL */
+    /* ===================== MODAL ===================== */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(26,20,16,0.5);
-      z-index: 300;
-      align-items: flex-end;
+      display: none; position: fixed; inset: 0;
+      background: rgba(26,20,16,0.5); z-index: 300; align-items: flex-end;
     }
     .modal-overlay.open { display: flex; }
     .modal-sheet {
-      background: var(--white);
-      border-radius: 20px 20px 0 0;
-      padding: 28px 20px 40px;
-      width: 100%;
-      max-width: 480px;
-      margin: 0 auto;
+      background: var(--white); border-radius: 20px 20px 0 0;
+      padding: 28px 20px 40px; width: 100%; max-width: 480px; margin: 0 auto;
     }
-    .modal-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 20px;
-      font-weight: 500;
-      margin-bottom: 16px;
-      color: var(--black);
-    }
-    .modal-label {
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-    }
+    .modal-title { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 500; margin-bottom: 16px; }
+    .modal-label { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
     .modal-input {
-      width: 100%;
-      background: var(--beige-light);
-      border: 1.5px solid var(--beige-dark);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      font-family: 'Jost', sans-serif;
-      font-size: 13px;
-      color: var(--text-main);
-      outline: none;
-      margin-bottom: 16px;
+      width: 100%; background: var(--beige-light); border: 1.5px solid var(--beige-dark);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      font-family: 'Jost', sans-serif; font-size: 13px; color: var(--text-main); outline: none; margin-bottom: 16px;
     }
     .modal-input:focus { border-color: var(--brown-soft); }
     .modal-actions { display: flex; gap: 10px; }
     .btn-modal-save {
-      flex: 1;
-      background: var(--black);
-      color: var(--white);
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 14px;
-      font-family: 'Jost', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
+      flex: 1; background: var(--black); color: var(--white); border: none;
+      border-radius: var(--radius-sm); padding: 14px;
+      font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
     }
     .btn-modal-cancel {
-      flex: 1;
-      background: var(--beige-mid);
-      color: var(--text-main);
-      border: 1.5px solid var(--beige-dark);
-      border-radius: var(--radius-sm);
-      padding: 14px;
-      font-family: 'Jost', sans-serif;
-      font-size: 13px;
-      font-weight: 400;
-      cursor: pointer;
+      flex: 1; background: var(--beige-mid); color: var(--text-main);
+      border: 1.5px solid var(--beige-dark); border-radius: var(--radius-sm);
+      padding: 14px; font-family: 'Jost', sans-serif; font-size: 13px; cursor: pointer;
     }
 
-    /* DIVIDER */
-    .divider {
-      height: 1px;
-      background: var(--beige-dark);
-      margin: 24px 0;
-    }
-
-    .empty-log {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 13px;
-      padding: 20px 0;
-      font-style: italic;
-    }
-
-    /* Extra hora badge */
-    .extra-hora-row {
-      margin-top: 10px;
-    }
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--white);
-      border: 1.5px solid var(--beige-dark);
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      cursor: pointer;
-    }
-    .checkbox-row input[type=checkbox] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--brown-soft);
-      cursor: pointer;
-    }
-    .checkbox-label {
-      font-size: 14px;
-      color: var(--text-main);
-      flex: 1;
-    }
-    .checkbox-price {
-      font-size: 12px;
-      color: var(--text-muted);
+    /* ===================== DELETE CONFIRM MODAL ===================== */
+    .modal-confirm-msg { font-size: 14px; color: var(--text-main); margin-bottom: 20px; line-height: 1.5; }
+    .btn-modal-delete {
+      flex: 1; background: var(--error); color: var(--white); border: none;
+      border-radius: var(--radius-sm); padding: 14px;
+      font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<!-- NUEVO INGRESO BANNER -->
 <div id="nuevo-banner">📸 Nuevo ingreso registrado</div>
 
 <!-- HEADER -->
 <div class="header">
-  <div class="header-title">Vanessa Velasco Studio</div>
-  <div class="header-sub">Captura de ingresos</div>
+  <div class="header-inner">
+    <div class="header-icon">
+      <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 2L6.5 4H2C1.45 4 1 4.45 1 5V16C1 16.55 1.45 17 2 17H20C20.55 17 21 16.55 21 16V5C21 4.45 20.55 4 20 4H15.5L14 2H8Z" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle cx="11" cy="10.5" r="3.5" stroke="#1a1410" stroke-width="1.5"/>
+        <circle cx="11" cy="10.5" r="1.5" fill="#1a1410"/>
+        <rect x="3" y="6.5" width="2.5" height="1.5" rx="0.75" fill="#1a1410"/>
+      </svg>
+    </div>
+    <div class="header-title">Vanessa Velasco Studio</div>
+  </div>
 </div>
 
-<!-- MAIN -->
-<div class="container">
+<!-- TAB NAV -->
+<div class="tab-nav-wrap">
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-captura" onclick="switchTab(0)">Captura</button>
+    <button class="tab-btn" id="tab-resumen" onclick="switchTab(1)">Resumen</button>
+  </div>
+</div>
 
-  <!-- MONTO -->
-  <div class="section-label">Monto a registrar</div>
-  <div class="monto-wrapper">
-    <div class="monto-input-row">
-      <span class="monto-prefix">$</span>
-      <input id="monto" type="number" inputmode="decimal" placeholder="0" step="0.01" min="0" />
+<!-- SCREENS -->
+<div class="screens-wrapper">
+  <div class="screens-track" id="screens-track">
+
+    <!-- PANTALLA 0: CAPTURA -->
+    <div class="screen" id="screen-captura">
+      <div class="container">
+
+        <div class="section-label">Monto a registrar</div>
+        <div class="monto-wrapper">
+          <div class="monto-input-row">
+            <span class="monto-prefix">$</span>
+            <input id="monto" type="number" inputmode="decimal" placeholder="0" step="0.01" min="0" />
+          </div>
+          <div id="monto-display"></div>
+        </div>
+
+        <div class="section-label" style="margin-top:20px;">Categoría</div>
+        <div class="cat-grid" id="cat-grid"></div>
+
+        <div class="subcats-wrapper" id="subcats-wrapper">
+          <div class="subcat-label">Selecciona paquete</div>
+          <div id="subcats-grid"></div>
+        </div>
+
+        <div class="extra-hora-row" id="extra-hora-row">
+          <label class="checkbox-row">
+            <input type="checkbox" id="extra-hora-check" onchange="toggleExtraHora()" />
+            <span class="checkbox-label">+ Hora extra</span>
+            <span class="checkbox-price" id="extra-hora-price"></span>
+          </label>
+        </div>
+
+        <div class="tags-wrapper" id="tags-wrapper"></div>
+
+        <div class="section-label">Fecha</div>
+        <input type="date" id="fecha" class="fecha-input" />
+
+        <div class="section-label">Nota (opcional)</div>
+        <textarea id="nota" class="nota-input" placeholder="Cliente, detalles del servicio..."></textarea>
+
+        <button class="btn-registrar" id="btn-registrar" onclick="registrar()">Registrar ingreso</button>
+        <div id="feedback"></div>
+
+        <div class="divider"></div>
+        <div class="section-label">Últimos registros</div>
+        <div class="log-list" id="log-list"><div class="empty-log">Cargando...</div></div>
+
+      </div>
     </div>
-    <div id="monto-display"></div>
+
+    <!-- PANTALLA 1: RESUMEN -->
+    <div class="screen" id="screen-resumen">
+      <div class="resumen-container">
+        <div id="resumen-content"><div class="resumen-loading">Cargando resumen...</div></div>
+      </div>
+    </div>
+
   </div>
-
-  <!-- CATEGORIAS -->
-  <div class="section-label" style="margin-top:20px;">Categoría</div>
-  <div class="cat-grid" id="cat-grid"></div>
-
-  <!-- SUBCATEGORIAS -->
-  <div class="subcats-wrapper" id="subcats-wrapper">
-    <div class="subcat-label">Selecciona paquete</div>
-    <div class="subcats-grid" id="subcats-grid"></div>
-  </div>
-
-  <!-- HORA EXTRA (condicional) -->
-  <div class="extra-hora-row" id="extra-hora-row" style="display:none;">
-    <label class="checkbox-row">
-      <input type="checkbox" id="extra-hora-check" onchange="toggleExtraHora()" />
-      <span class="checkbox-label">+ Hora extra</span>
-      <span class="checkbox-price" id="extra-hora-price"></span>
-    </label>
-  </div>
-
-  <!-- TAGS NOTA RAPIDA -->
-  <div class="tags-wrapper" id="tags-wrapper"></div>
-
-  <!-- FECHA -->
-  <div class="section-label">Fecha</div>
-  <input type="date" id="fecha" class="fecha-input" />
-
-  <!-- NOTA -->
-  <div class="section-label">Nota (opcional)</div>
-  <textarea id="nota" class="nota-input" placeholder="Cliente, detalles del servicio..."></textarea>
-
-  <!-- BOTON -->
-  <button class="btn-registrar" id="btn-registrar" onclick="registrar()">
-    Registrar ingreso
-  </button>
-
-  <!-- FEEDBACK -->
-  <div id="feedback"></div>
-
-  <div class="divider"></div>
-
-  <!-- LOG -->
-  <div class="section-label">Últimos registros</div>
-  <div class="log-list" id="log-list">
-    <div class="empty-log">Cargando registros...</div>
-  </div>
-
 </div>
 
 <!-- SETTINGS BUTTON -->
 <button id="btn-settings" onclick="openSettings()">⚙️</button>
 
 <!-- SETTINGS MODAL -->
-<div class="modal-overlay" id="modal-overlay" onclick="closeSettingsOutside(event)">
+<div class="modal-overlay" id="modal-settings" onclick="closeSettingsOutside(event)">
   <div class="modal-sheet">
     <div class="modal-title">Configuración</div>
     <div class="modal-label">URL del Apps Script</div>
@@ -625,75 +546,39 @@
   </div>
 </div>
 
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="modal-delete" onclick="closeDeleteOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-title">Eliminar registro</div>
+    <div class="modal-confirm-msg" id="delete-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeDelete()">Cancelar</button>
+      <button class="btn-modal-delete" onclick="confirmarEliminar()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ==========================================
-// CONFIGURACION
-// ==========================================
+// ============================================================
+// CONFIG
+// ============================================================
 const SECRET_TOKEN = 'Negocio2026$';
 let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
 
-// ==========================================
-// DEFINICION DE CATEGORIAS
-// ==========================================
+// ============================================================
+// CATEGORIAS
+// ============================================================
 const CATEGORIAS = {
   eventos: {
     nombre: 'Eventos',
     fila: 4,
     subcats: [
-      {
-        grupo: 'Fiesta Infantil',
-        extraHora: 1500,
-        paquetes: [
-          { nombre: 'Basico',   precio: 4500 },
-          { nombre: 'Completo', precio: 7000 },
-          { nombre: 'Plus',     precio: 9500 },
-        ]
-      },
-      {
-        grupo: 'Bautizo',
-        extraHora: 1500,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3500 },
-          { nombre: 'Completo', precio: 5000 },
-          { nombre: 'Plus',     precio: 9900 },
-        ]
-      },
-      {
-        grupo: 'Primera Comunion',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3600 },
-          { nombre: 'Completo', precio: 5000 },
-          { nombre: 'Plus',     precio: 9900 },
-        ]
-      },
-      {
-        grupo: 'Gender Reveal',
-        extraHora: 1500,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3000 },
-          { nombre: 'Completo', precio: 5500 },
-          { nombre: 'Plus',     precio: 6900 },
-        ]
-      },
-      {
-        grupo: 'Baby Shower',
-        extraHora: 1500,
-        paquetes: [
-          { nombre: 'Basico',   precio: 2900 },
-          { nombre: 'Completo', precio: 5000 },
-          { nombre: 'Plus',     precio: 5900 },
-        ]
-      },
-      {
-        grupo: 'Boda Civil',
-        extraHora: 2000,
-        paquetes: [
-          { nombre: 'Basico',   precio: 4500 },
-          { nombre: 'Completo', precio: 6000 },
-          { nombre: 'Plus',     precio: 9950 },
-        ]
-      },
+      { grupo: 'Baby Shower',       extraHora: 1500, paquetes: [{ nombre: 'Basico', precio: 2900 },{ nombre: 'Completo', precio: 5000 },{ nombre: 'Plus', precio: 5900 }] },
+      { grupo: 'Bautizo',           extraHora: 1500, paquetes: [{ nombre: 'Basico', precio: 3500 },{ nombre: 'Completo', precio: 5000 },{ nombre: 'Plus', precio: 9900 }] },
+      { grupo: 'Boda Civil',        extraHora: 2000, paquetes: [{ nombre: 'Basico', precio: 4500 },{ nombre: 'Completo', precio: 6000 },{ nombre: 'Plus', precio: 9950 }] },
+      { grupo: 'Fiesta Infantil',   extraHora: 1500, paquetes: [{ nombre: 'Basico', precio: 4500 },{ nombre: 'Completo', precio: 7000 },{ nombre: 'Plus', precio: 9500 }] },
+      { grupo: 'Gender Reveal',     extraHora: 1500, paquetes: [{ nombre: 'Basico', precio: 3000 },{ nombre: 'Completo', precio: 5500 },{ nombre: 'Plus', precio: 6900 }] },
+      { grupo: 'Primera Comunion',  extraHora: null, paquetes: [{ nombre: 'Basico', precio: 3600 },{ nombre: 'Completo', precio: 5000 },{ nombre: 'Plus', precio: 9900 }] },
     ],
     tags: ['Efectivo', 'Transferencia', 'Tarjeta'],
   },
@@ -701,79 +586,14 @@ const CATEGORIAS = {
     nombre: 'Sesiones',
     fila: 5,
     subcats: [
-      {
-        grupo: 'Parejas',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3200 },
-          { nombre: 'Completo', precio: 4500 },
-          { nombre: 'Plus',     precio: 5000 },
-        ]
-      },
-      {
-        grupo: 'Infantil',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3500 },
-          { nombre: 'Completo', precio: 5000 },
-          { nombre: 'Plus',     precio: 6000 },
-        ]
-      },
-      {
-        grupo: 'Cake Smash White',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3900 },
-          { nombre: 'Completo', precio: 5300 },
-          { nombre: 'Plus',     precio: 6700 },
-        ]
-      },
-      {
-        grupo: 'Cake Smash Tematico',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Basico',   precio: 5300 },
-          { nombre: 'Completo', precio: 6700 },
-          { nombre: 'Plus',     precio: 8200 },
-        ]
-      },
-      {
-        grupo: 'Perfil Profesional',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Paquete 1', precio: 2400 },
-          { nombre: 'Paquete 2', precio: 4000 },
-        ]
-      },
-      {
-        grupo: 'Maternidad',
-        extraHora: null,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3000 },
-          { nombre: 'Completo', precio: 4500 },
-          { nombre: 'Plus',     precio: 6000 },
-        ]
-      },
-      {
-        grupo: 'Familiar 3 personas',
-        extraHora: null,
-        personaExtra: 300,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3000 },
-          { nombre: 'Completo', precio: 4500 },
-          { nombre: 'Plus',     precio: 6000 },
-        ]
-      },
-      {
-        grupo: 'Familiar +3 personas',
-        extraHora: null,
-        personaExtra: 300,
-        paquetes: [
-          { nombre: 'Basico',   precio: 3500 },
-          { nombre: 'Completo', precio: 5000 },
-          { nombre: 'Plus',     precio: 6500 },
-        ]
-      },
+      { grupo: 'Cake Smash Tematico',    extraHora: null, paquetes: [{ nombre: 'Basico', precio: 5300 },{ nombre: 'Completo', precio: 6700 },{ nombre: 'Plus', precio: 8200 }] },
+      { grupo: 'Cake Smash White',       extraHora: null, paquetes: [{ nombre: 'Basico', precio: 3900 },{ nombre: 'Completo', precio: 5300 },{ nombre: 'Plus', precio: 6700 }] },
+      { grupo: 'Familiar 3 personas',    extraHora: null, personaExtra: 300, paquetes: [{ nombre: 'Basico', precio: 3000 },{ nombre: 'Completo', precio: 4500 },{ nombre: 'Plus', precio: 6000 }] },
+      { grupo: 'Familiar +3 personas',   extraHora: null, personaExtra: 300, paquetes: [{ nombre: 'Basico', precio: 3500 },{ nombre: 'Completo', precio: 5000 },{ nombre: 'Plus', precio: 6500 }] },
+      { grupo: 'Infantil',               extraHora: null, paquetes: [{ nombre: 'Basico', precio: 3500 },{ nombre: 'Completo', precio: 5000 },{ nombre: 'Plus', precio: 6000 }] },
+      { grupo: 'Maternidad',             extraHora: null, paquetes: [{ nombre: 'Basico', precio: 3000 },{ nombre: 'Completo', precio: 4500 },{ nombre: 'Plus', precio: 6000 }] },
+      { grupo: 'Parejas',                extraHora: null, paquetes: [{ nombre: 'Basico', precio: 3200 },{ nombre: 'Completo', precio: 4500 },{ nombre: 'Plus', precio: 5000 }] },
+      { grupo: 'Perfil Profesional',     extraHora: null, paquetes: [{ nombre: 'Paquete 1', precio: 2400 },{ nombre: 'Paquete 2', precio: 4000 }] },
     ],
     tags: ['Efectivo', 'Transferencia', 'Tarjeta'],
   },
@@ -787,31 +607,44 @@ const CATEGORIAS = {
     nombre: 'Otros',
     fila: 7,
     subcats: [],
-    tags: ['Varios', 'Reimpresion', 'USB', 'Impresion'],
+    tags: ['Album', 'Fotos extra', 'Galeria extra', 'Impresion', 'Otro', 'Respaldo', 'USB'],
   },
 };
 
-// ==========================================
+const MESES_ACTIVOS = ['Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MES_ACTUAL = (() => {
+  const m = new Date().getMonth();
+  const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  return nombres[m];
+})();
+
+// ============================================================
 // ESTADO
-// ==========================================
+// ============================================================
 let selectedCat = null;
-let selectedSubcat = null;    // { grupo, paquete, precio }
+let selectedSubcat = null;
 let selectedTags = [];
 let acumulados = {};
 let lastIngresoId = null;
 let extraHoraActiva = false;
 let extraHoraPrecio = 0;
-let personasExtra = 0;
+let pendingDeleteId = null;
+let pendingDeleteInfo = '';
+let currentTab = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+let resumenCargado = false;
 
-// ==========================================
+// ============================================================
 // INIT
-// ==========================================
+// ============================================================
 document.addEventListener('DOMContentLoaded', () => {
   setDefaultFecha();
   renderCatGrid();
   cargarLog();
   cargarAcumulados();
   setTimeout(startPolling, 5000);
+  setupSwipe();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(() => {});
   }
@@ -825,14 +658,14 @@ function setDefaultFecha() {
   document.getElementById('fecha').value = `${y}-${m}-${d}`;
 }
 
-// ==========================================
-// FORMATO DINERO
-// ==========================================
+// ============================================================
+// FORMATO
+// ============================================================
 function fmtMXN(n) {
+  if (!n || n === 0) return '$0';
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(n);
 }
 
-// Al escribir en el monto, mostrar en texto
 document.getElementById('monto').addEventListener('input', function() {
   const v = parseFloat(this.value);
   const disp = document.getElementById('monto-display');
@@ -844,9 +677,37 @@ document.getElementById('monto').addEventListener('input', function() {
   }
 });
 
-// ==========================================
+// ============================================================
+// SWIPE / TABS
+// ============================================================
+function setupSwipe() {
+  const wrapper = document.querySelector('.screens-wrapper');
+  wrapper.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  wrapper.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      if (dx < 0 && currentTab === 0) switchTab(1);
+      if (dx > 0 && currentTab === 1) switchTab(0);
+    }
+  }, { passive: true });
+}
+
+function switchTab(idx) {
+  currentTab = idx;
+  const track = document.getElementById('screens-track');
+  track.style.transform = idx === 0 ? 'translateX(0)' : 'translateX(-50%)';
+  document.getElementById('tab-captura').classList.toggle('active', idx === 0);
+  document.getElementById('tab-resumen').classList.toggle('active', idx === 1);
+  if (idx === 1 && !resumenCargado) cargarResumen();
+}
+
+// ============================================================
 // RENDER CATEGORIAS
-// ==========================================
+// ============================================================
 function renderCatGrid() {
   const grid = document.getElementById('cat-grid');
   grid.innerHTML = '';
@@ -874,29 +735,27 @@ function updateAcumInGrid() {
   });
 }
 
-// ==========================================
-// SELECCION DE CATEGORIA
-// ==========================================
+// ============================================================
+// SELECCION CATEGORIA
+// ============================================================
 function selectCat(key) {
   selectedCat = key;
   selectedSubcat = null;
   selectedTags = [];
   extraHoraActiva = false;
-  personasExtra = 0;
 
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
   document.querySelector(`.cat-btn[data-key="${key}"]`).classList.add('selected');
 
   renderSubcats(key);
   renderTags(key);
-
   document.getElementById('extra-hora-row').style.display = 'none';
   document.getElementById('extra-hora-check').checked = false;
 }
 
-// ==========================================
-// RENDER SUBCATEGORIAS
-// ==========================================
+// ============================================================
+// SUBCATS
+// ============================================================
 function renderSubcats(key) {
   const cat = CATEGORIAS[key];
   const wrapper = document.getElementById('subcats-wrapper');
@@ -910,7 +769,6 @@ function renderSubcats(key) {
 
   cat.subcats.forEach(group => {
     const groupEl = document.createElement('div');
-
     const gName = document.createElement('div');
     gName.className = 'subcat-group-name';
     gName.textContent = group.grupo;
@@ -918,20 +776,13 @@ function renderSubcats(key) {
 
     const row = document.createElement('div');
     row.className = 'subcat-row';
-
     group.paquetes.forEach(paq => {
       const pill = document.createElement('button');
       pill.className = 'subcat-pill';
-      pill.dataset.grupo = group.grupo;
-      pill.dataset.paquete = paq.nombre;
-      pill.dataset.precio = paq.precio;
-      pill.dataset.extraHora = group.extraHora || 0;
-      pill.dataset.personaExtra = group.personaExtra || 0;
       pill.innerHTML = `<span class="pill-name">${paq.nombre}</span><span class="pill-price">${fmtMXN(paq.precio)}</span>`;
       pill.onclick = () => selectSubcat(pill, group, paq);
       row.appendChild(pill);
     });
-
     groupEl.appendChild(row);
     grid.appendChild(groupEl);
   });
@@ -945,120 +796,78 @@ function selectSubcat(pillEl, group, paq) {
 
   selectedSubcat = { grupo: group.grupo, paquete: paq.nombre, precio: paq.precio };
   extraHoraActiva = false;
-  personasExtra = 0;
 
-  // Establecer monto base
-  let totalMonto = paq.precio;
-  document.getElementById('monto').value = totalMonto;
-  document.getElementById('monto-display').textContent = fmtMXN(totalMonto);
+  document.getElementById('monto').value = paq.precio;
+  document.getElementById('monto-display').textContent = fmtMXN(paq.precio);
   document.getElementById('monto-display').style.color = 'var(--brown-soft)';
 
-  // Extra hora
-  const extraHoraRow = document.getElementById('extra-hora-row');
-  const extraHoraCheck = document.getElementById('extra-hora-check');
-  extraHoraCheck.checked = false;
   extraHoraPrecio = group.extraHora || 0;
+  const extraRow = document.getElementById('extra-hora-row');
+  document.getElementById('extra-hora-check').checked = false;
 
   if (group.extraHora) {
     document.getElementById('extra-hora-price').textContent = `+ ${fmtMXN(group.extraHora)}`;
-    extraHoraRow.style.display = 'block';
+    extraRow.style.display = 'block';
   } else {
-    extraHoraRow.style.display = 'none';
-  }
-
-  // Persona extra (Familiar)
-  if (group.personaExtra) {
-    // Simple note in nota
-    const notaEl = document.getElementById('nota');
-    if (!notaEl.value) notaEl.placeholder = `Persona extra: +${fmtMXN(group.personaExtra)} c/u`;
+    extraRow.style.display = 'none';
   }
 }
 
 function toggleExtraHora() {
-  const check = document.getElementById('extra-hora-check');
-  extraHoraActiva = check.checked;
+  extraHoraActiva = document.getElementById('extra-hora-check').checked;
   if (selectedSubcat) {
-    const base = selectedSubcat.precio;
-    const total = base + (extraHoraActiva ? extraHoraPrecio : 0);
+    const total = selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0);
     document.getElementById('monto').value = total;
     document.getElementById('monto-display').textContent = fmtMXN(total);
   }
 }
 
-// ==========================================
-// RENDER TAGS
-// ==========================================
+// ============================================================
+// TAGS
+// ============================================================
 function renderTags(key) {
   const cat = CATEGORIAS[key];
   const wrapper = document.getElementById('tags-wrapper');
   wrapper.innerHTML = '';
-  if (!cat.tags || cat.tags.length === 0) {
-    wrapper.classList.remove('visible');
-    return;
-  }
+  if (!cat.tags || cat.tags.length === 0) { wrapper.classList.remove('visible'); return; }
   cat.tags.forEach(tag => {
     const chip = document.createElement('div');
     chip.className = 'tag-chip';
     chip.textContent = tag;
-    chip.onclick = () => toggleTag(chip, tag);
+    chip.onclick = () => { chip.classList.toggle('selected'); };
     wrapper.appendChild(chip);
   });
   wrapper.classList.add('visible');
 }
 
-function toggleTag(el, tag) {
-  el.classList.toggle('selected');
-  if (el.classList.contains('selected')) {
-    selectedTags.push(tag);
-  } else {
-    selectedTags = selectedTags.filter(t => t !== tag);
-  }
-}
-
-// ==========================================
+// ============================================================
 // REGISTRAR
-// ==========================================
+// ============================================================
 async function registrar() {
   const montoRaw = document.getElementById('monto').value;
   const fecha = document.getElementById('fecha').value;
   const nota = document.getElementById('nota').value.trim();
 
-  if (!montoRaw || parseFloat(montoRaw) <= 0) {
-    mostrarFeedback('Ingresa un monto valido', 'error');
-    return;
-  }
-  if (!selectedCat) {
-    mostrarFeedback('Selecciona una categoria', 'error');
-    return;
-  }
-  if (!fecha) {
-    mostrarFeedback('Selecciona una fecha', 'error');
-    return;
-  }
-  if (!SCRIPT_URL) {
-    mostrarFeedback('Configura la URL del script primero (boton ⚙️)', 'error');
-    return;
-  }
+  if (!montoRaw || parseFloat(montoRaw) <= 0) { mostrarFeedback('Ingresa un monto valido', 'error'); return; }
+  if (!selectedCat) { mostrarFeedback('Selecciona una categoria', 'error'); return; }
+  if (!fecha) { mostrarFeedback('Selecciona una fecha', 'error'); return; }
+  if (!SCRIPT_URL) { mostrarFeedback('Configura la URL del script primero (boton ⚙️)', 'error'); return; }
 
   const monto = Math.round(parseFloat(montoRaw) * 100) / 100;
   const cat = CATEGORIAS[selectedCat];
   const subcatLabel = selectedSubcat
     ? `${selectedSubcat.grupo} - ${selectedSubcat.paquete}${extraHoraActiva ? ' + Hora extra' : ''}`
     : '';
-  const notaFinal = [subcatLabel, nota, selectedTags.join(', ')].filter(Boolean).join(' | ');
+  const tagsSeleccionados = Array.from(document.querySelectorAll('.tag-chip.selected')).map(c => c.textContent);
+  const notaFinal = [subcatLabel, nota, tagsSeleccionados.join(', ')].filter(Boolean).join(' | ');
 
   const payload = {
     token: SECRET_TOKEN,
-    monto,
-    categoria: cat.nombre,
-    subcategoria: subcatLabel,
-    fecha,
-    nota: notaFinal,
-    quien: 'Vanessa',
+    monto, categoria: cat.nombre, subcategoria: subcatLabel,
+    fecha, nota: notaFinal, quien: 'Vanessa',
   };
 
-  const btn = document.getElementById('btn-registrar');
-  btn.disabled = true;
+  document.getElementById('btn-registrar').disabled = true;
   mostrarFeedback('Registrando...', 'loading');
 
   try {
@@ -1073,25 +882,21 @@ async function registrar() {
       resetForm();
       cargarLog();
       cargarAcumulados();
+      resumenCargado = false; // forzar recarga en siguiente visita
     } else {
       mostrarFeedback(`Error: ${data.error || 'Intenta de nuevo'}`, 'error');
     }
-  } catch (e) {
-    mostrarFeedback('Sin conexion. Verifica tu internet e intenta de nuevo.', 'error');
+  } catch(e) {
+    mostrarFeedback('Sin conexion. Verifica tu internet.', 'error');
   }
-
-  btn.disabled = false;
+  document.getElementById('btn-registrar').disabled = false;
 }
 
 function resetForm() {
   document.getElementById('monto').value = '';
   document.getElementById('monto-display').textContent = '';
   document.getElementById('nota').value = '';
-  document.getElementById('nota').placeholder = 'Cliente, detalles del servicio...';
-  selectedCat = null;
-  selectedSubcat = null;
-  selectedTags = [];
-  extraHoraActiva = false;
+  selectedCat = null; selectedSubcat = null; selectedTags = []; extraHoraActiva = false;
   document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
   document.querySelectorAll('.subcat-pill').forEach(p => p.classList.remove('selected'));
   document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('selected'));
@@ -1101,29 +906,19 @@ function resetForm() {
   setDefaultFecha();
 }
 
-// ==========================================
-// FEEDBACK
-// ==========================================
 function mostrarFeedback(msg, tipo) {
   const el = document.getElementById('feedback');
-  el.textContent = msg;
-  el.className = tipo;
-  if (tipo === 'success' || tipo === 'error') {
-    setTimeout(() => { el.className = ''; el.textContent = ''; }, 4000);
-  }
+  el.textContent = msg; el.className = tipo;
+  if (tipo === 'success' || tipo === 'error') setTimeout(() => { el.className = ''; el.textContent = ''; }, 4000);
 }
 
-// ==========================================
+// ============================================================
 // LOG
-// ==========================================
+// ============================================================
 async function cargarLog() {
-  if (!SCRIPT_URL) {
-    document.getElementById('log-list').innerHTML = '<div class="empty-log">Configura el script en ⚙️</div>';
-    return;
-  }
+  if (!SCRIPT_URL) { document.getElementById('log-list').innerHTML = '<div class="empty-log">Configura el script en ⚙️</div>'; return; }
   try {
-    const url = `${SCRIPT_URL}?action=getLog&token=${encodeURIComponent(SECRET_TOKEN)}`;
-    const res = await fetch(url);
+    const res = await fetch(`${SCRIPT_URL}?action=getLog&token=${encodeURIComponent(SECRET_TOKEN)}`);
     const data = await res.json();
     renderLog(data.registros || []);
   } catch(e) {
@@ -1133,10 +928,7 @@ async function cargarLog() {
 
 function renderLog(registros) {
   const el = document.getElementById('log-list');
-  if (!registros.length) {
-    el.innerHTML = '<div class="empty-log">Sin registros aun</div>';
-    return;
-  }
+  if (!registros.length) { el.innerHTML = '<div class="empty-log">Sin registros aun</div>'; return; }
   el.innerHTML = registros.slice(0,5).map(r => `
     <div class="log-item">
       <div class="log-left">
@@ -1147,45 +939,115 @@ function renderLog(registros) {
         <div class="log-monto">${fmtMXN(r.monto)}</div>
         <div class="log-fecha">${r.fecha}</div>
       </div>
+      <button class="log-delete" onclick="pedirEliminar(${r.id}, '${r.categoria}', ${r.monto})" title="Eliminar">✕</button>
     </div>
   `).join('');
 }
 
-// ==========================================
+// ============================================================
+// ELIMINAR REGISTRO
+// ============================================================
+function pedirEliminar(id, cat, monto) {
+  pendingDeleteId = id;
+  pendingDeleteInfo = `${cat} — ${fmtMXN(monto)}`;
+  document.getElementById('delete-msg').textContent = `¿Eliminar el registro de ${pendingDeleteInfo}? Esta accion no se puede deshacer.`;
+  document.getElementById('modal-delete').classList.add('open');
+}
+
+function closeDelete() { document.getElementById('modal-delete').classList.remove('open'); pendingDeleteId = null; }
+function closeDeleteOutside(e) { if (e.target === document.getElementById('modal-delete')) closeDelete(); }
+
+async function confirmarEliminar() {
+  if (!pendingDeleteId) return;
+  closeDelete();
+  if (!SCRIPT_URL) return;
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ token: SECRET_TOKEN, action: 'deleteIngreso', id: pendingDeleteId }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      cargarLog();
+      cargarAcumulados();
+      resumenCargado = false;
+    } else {
+      alert('No se pudo eliminar: ' + (data.error || 'error desconocido'));
+    }
+  } catch(e) {
+    alert('Sin conexion para eliminar.');
+  }
+  pendingDeleteId = null;
+}
+
+// ============================================================
 // ACUMULADOS
-// ==========================================
+// ============================================================
 async function cargarAcumulados() {
   if (!SCRIPT_URL) return;
-  const now = new Date();
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const mes = meses[now.getMonth()];
   try {
-    const url = `${SCRIPT_URL}?action=getAcumulado&mes=${mes}&token=${encodeURIComponent(SECRET_TOKEN)}`;
-    const res = await fetch(url);
+    const res = await fetch(`${SCRIPT_URL}?action=getAcumulado&mes=${MES_ACTUAL}&token=${encodeURIComponent(SECRET_TOKEN)}`);
     const data = await res.json();
-    if (data.acumulados) {
-      acumulados = data.acumulados;
-      updateAcumInGrid();
-    }
+    if (data.acumulados) { acumulados = data.acumulados; updateAcumInGrid(); }
   } catch(e) {}
 }
 
-// ==========================================
-// POLLING
-// ==========================================
-async function startPolling() {
+// ============================================================
+// RESUMEN
+// ============================================================
+async function cargarResumen() {
   if (!SCRIPT_URL) {
-    setTimeout(startPolling, 30000);
+    document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Configura el script en ⚙️ primero</div>';
     return;
   }
+  document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Cargando resumen...</div>';
+
   try {
-    const url = `${SCRIPT_URL}?action=getLastIngreso&token=${encodeURIComponent(SECRET_TOKEN)}`;
-    const res = await fetch(url);
+    const res = await fetch(`${SCRIPT_URL}?action=getResumen&token=${encodeURIComponent(SECRET_TOKEN)}`);
+    const data = await res.json();
+    renderResumen(data.resumen || []);
+    resumenCargado = true;
+  } catch(e) {
+    document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Sin conexion</div>';
+  }
+}
+
+function renderResumen(resumen) {
+  const el = document.getElementById('resumen-content');
+  if (!resumen.length) { el.innerHTML = '<div class="resumen-loading">Sin datos aun</div>'; return; }
+
+  el.innerHTML = resumen.map(r => {
+    const esMesActual = r.mes === MES_ACTUAL;
+    const cats = Object.entries(r.categorias).map(([cat, monto]) => `
+      <div class="resumen-cat-row">
+        <span class="resumen-cat-name">${cat}</span>
+        <span class="resumen-cat-monto ${monto === 0 ? 'cero' : ''}">${fmtMXN(monto)}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="resumen-mes-card ${esMesActual ? 'current' : ''}">
+        <div class="resumen-mes-header">
+          <span class="resumen-mes-nombre">${r.mes} 2026${esMesActual ? ' ●' : ''}</span>
+          <span class="resumen-mes-total">${fmtMXN(r.total)}</span>
+        </div>
+        <div class="resumen-cats">${cats}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+// POLLING
+// ============================================================
+async function startPolling() {
+  if (!SCRIPT_URL) { setTimeout(startPolling, 30000); return; }
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getLastIngreso&token=${encodeURIComponent(SECRET_TOKEN)}`);
     const data = await res.json();
     if (data.id && data.id !== lastIngresoId && lastIngresoId !== null) {
-      mostrarNuevoBanner();
-      cargarLog();
-      cargarAcumulados();
+      mostrarNuevoBanner(); cargarLog(); cargarAcumulados(); resumenCargado = false;
     }
     if (data.id) lastIngresoId = data.id;
   } catch(e) {}
@@ -1217,28 +1079,15 @@ function playBeep() {
   } catch(e) {}
 }
 
-// ==========================================
+// ============================================================
 // SETTINGS
-// ==========================================
-function openSettings() {
-  document.getElementById('script-url-input').value = SCRIPT_URL;
-  document.getElementById('modal-overlay').classList.add('open');
-}
-function closeSettings() {
-  document.getElementById('modal-overlay').classList.remove('open');
-}
-function closeSettingsOutside(e) {
-  if (e.target === document.getElementById('modal-overlay')) closeSettings();
-}
+// ============================================================
+function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
+function closeSettings() { document.getElementById('modal-settings').classList.remove('open'); }
+function closeSettingsOutside(e) { if (e.target === document.getElementById('modal-settings')) closeSettings(); }
 function saveSettings() {
   const url = document.getElementById('script-url-input').value.trim();
-  if (url) {
-    SCRIPT_URL = url;
-    localStorage.setItem('vvs_script_url', url);
-    closeSettings();
-    cargarLog();
-    cargarAcumulados();
-  }
+  if (url) { SCRIPT_URL = url; localStorage.setItem('vvs_script_url', url); closeSettings(); cargarLog(); cargarAcumulados(); resumenCargado = false; }
 }
 </script>
 </body>
