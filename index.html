@@ -1148,11 +1148,16 @@ function cerrarMesDetail() {
   document.getElementById('mes-detail').classList.remove('visible');
 }
 
-function mostrarEventosDia(fecha, eventos) {
+function mostrarEventosDia(fecha, eventosParam) {
   const panel = document.getElementById('dia-eventos-panel');
+  // Always re-filter from todosEventos to get fresh data
+  const eventos = todosEventos.filter(e => {
+    const f = String(e.fecha_evento || '').trim().substring(0,10);
+    return f === fecha && e.estado !== 'Cancelado';
+  });
   if (!eventos.length) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
-  panel.innerHTML = `<div class="dia-eventos-titulo">${fmtFecha(fecha)}</div>`;
+  panel.innerHTML = '<div class="dia-eventos-titulo">' + fmtFecha(fecha) + '</div>';
   eventos.forEach(ev => {
     const card = document.createElement('div'); card.className = 'evento-card';
     const pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
