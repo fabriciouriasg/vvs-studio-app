@@ -144,7 +144,8 @@
     .log-delete:active{opacity:1;color:var(--error)}
     .empty-log{text-align:center;color:var(--text-muted);font-size:13px;padding:20px 0;font-style:italic}
 
-    #screen-calendario{overflow-y:hidden;}
+    #screen-calendario{overflow-y:hidden;} /* children handle their own scroll */
+    #cal-view-highlevel{overflow-y:auto;-webkit-overflow-scrolling:touch;height:100%;}
     /* ===== CALENDARIO ===== */
     .cal-container{max-width:480px;margin:0 auto;padding:0 0 100px}
 
@@ -413,7 +414,7 @@
     <div class="screen" id="screen-calendario">
 
       <!-- VISTA A: HIGH LEVEL - todos los meses -->
-      <div id="cal-view-highlevel" style="min-height:100%;overflow-y:visible;">
+      <div id="cal-view-highlevel" style="height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
         <div class="pendientes-wrap">
           <div class="pendientes-label">Sin fecha</div>
           <div class="pendientes-bubbles" id="pendientes-bubbles">
@@ -839,9 +840,11 @@ async function checkFechaConflicto() {
     const res = await fetch(`${SCRIPT_URL}?action=checkFecha&fecha=${fecha}&token=${encodeURIComponent(SECRET_TOKEN)}`);
     const data = await res.json();
     if (data.conflictos && data.conflictos.length > 0) {
-      var c = data.conflictos[0];
-      var horaWarning = c.hora ? extraerHora(String(c.hora)) : '';
-      banner.innerHTML = '<strong>⚠️ Día ocupado</strong>' + c.cliente + ' — ' + c.categoria + (horaWarning ? ' a las ' + horaWarning : '');
+      var lineas = data.conflictos.map(function(c) {
+        var horaWarning = c.hora ? extraerHora(String(c.hora)) : '';
+        return '· ' + c.cliente + ' — ' + c.categoria + (horaWarning ? ' a las ' + horaWarning : '');
+      }).join('<br>');
+      banner.innerHTML = '<strong>⚠️ Día ocupado (' + data.conflictos.length + ' evento' + (data.conflictos.length > 1 ? 's' : '') + ')</strong>' + lineas;
       banner.classList.add('visible');
     } else {
       banner.classList.remove('visible');
