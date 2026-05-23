@@ -41,7 +41,7 @@
     /* SCREENS */
     .screens-wrapper{position:fixed;top:96px;left:0;right:0;bottom:0;overflow:hidden}
     .screens-track{display:flex;width:400%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-    .screen{width:25%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative}
+    .screen{width:25%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;background:var(--beige-light)}
 
     /* CONTAINER */
     .container{max-width:480px;margin:0 auto;padding:20px 16px 100px}
@@ -142,6 +142,7 @@
     .log-delete:active{opacity:1;color:var(--error)}
     .empty-log{text-align:center;color:var(--text-muted);font-size:13px;padding:20px 0;font-style:italic}
 
+    #screen-calendario{overflow-y:hidden;}
     /* ===== CALENDARIO ===== */
     .cal-container{max-width:480px;margin:0 auto;padding:0 0 100px}
 
@@ -353,7 +354,7 @@
           <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente" oninput="buscarClienteSugerido()"/>
           <div id="ev-cliente-sugerencias" style="display:none;background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;overflow:hidden"></div>
           <div style="margin-bottom:6px">
-            <div style="font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Fecha y hora del evento</div>
+            <div style="font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Fecha y hora del evento <span style="font-weight:300;text-transform:none;letter-spacing:0">(opcional — dejar vacío si no está confirmada)</span></div>
             <div class="input-row">
               <input class="input-field" id="ev-fecha" type="date" style="margin-bottom:0" onchange="checkFechaConflicto()"/>
               <input class="input-field" id="ev-hora" type="time" style="margin-bottom:0"/>
@@ -396,7 +397,7 @@
     <div class="screen" id="screen-calendario">
 
       <!-- VISTA A: HIGH LEVEL - todos los meses -->
-      <div id="cal-view-highlevel" style="height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      <div id="cal-view-highlevel" style="min-height:100%;overflow-y:visible;">
         <div class="pendientes-wrap">
           <div class="pendientes-label">Sin fecha</div>
           <div class="pendientes-bubbles" id="pendientes-bubbles">
@@ -407,7 +408,7 @@
       </div>
 
       <!-- VISTA B: MES INDIVIDUAL - oculta por default -->
-      <div id="cal-view-mes" style="display:none;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+      <div id="cal-view-mes" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--beige-light);z-index:10;">
         <div class="mes-detail-header">
           <button class="mes-detail-back" onclick="cerrarMesDetail()">←</button>
           <span class="mes-detail-nombre" id="mes-detail-nombre"></span>
@@ -518,6 +519,22 @@
   </div>
 </div>
 
+<!-- FECHA MODAL -->
+<div class="modal-overlay" id="modal-fecha" onclick="if(event.target===this)closeModalFecha()">
+  <div class="modal-sheet">
+    <div class="modal-title">Asignar fecha al evento</div>
+    <div class="modal-label">Fecha del evento</div>
+    <input type="date" id="modal-fecha-input" class="modal-input" onchange="checkFechaModalConflicto()"/>
+    <div class="warning-banner" id="warning-fecha-modal" style="margin-bottom:12px"></div>
+    <div class="modal-label">Hora de inicio</div>
+    <input type="time" id="modal-hora-input" class="modal-input"/>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalFecha()">Cancelar</button>
+      <button class="btn-modal-save" onclick="guardarFecha()">Asignar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // CONFIG
@@ -529,7 +546,14 @@ let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
 function extraerHora(raw) {
   if (!raw || raw === 'undefined' || raw === 'null' || raw === '') return '';
   var s = String(raw).trim();
-  if (s.length >= 5 && s.indexOf(':') !== -1) return s.substring(0, 5);
+  // ISO Date format from Sheets: 1899-12-30T16:30:00.000Z
+  if (s.indexOf('T') !== -1) {
+    var timePart = s.split('T')[1] || '';
+    var hhmm = timePart.substring(0, 5);
+    return hhmm;
+  }
+  // Clean HH:MM format
+  if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
   return '';
 }
 
@@ -863,7 +887,7 @@ async function registrar() {
     const evDescValor = parseFloat(document.getElementById('ev-desc-valor').value || 0);
     const eventoFormVisible = document.getElementById('evento-form').classList.contains('visible');
 
-    if (eventoFormVisible && evCliente && evFecha && selectedSubcat) {
+    if (eventoFormVisible && evCliente && selectedSubcat) {
       const precioBase = selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0);
       const eventoPayload = {
         token: SECRET_TOKEN, action: 'crearEvento',
@@ -1334,6 +1358,7 @@ function renderDetalleEvento(ev) {
         '<button class="btn-accion primary" onclick="openModalPago()">Registrar pago</button>' +
         '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
         '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
+        (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha al evento</button>' : '') +
       '</div>' +
     '</div>';
 }
@@ -1460,6 +1485,55 @@ function playBeep() {
 // ============================================================
 // SETTINGS
 // ============================================================
+function openModalFecha() { document.getElementById('modal-fecha').classList.add('open'); }
+function closeModalFecha() { 
+  document.getElementById('modal-fecha').classList.remove('open');
+  document.getElementById('modal-fecha-input').value = '';
+  document.getElementById('modal-hora-input').value = '';
+  document.getElementById('warning-fecha-modal').classList.remove('visible');
+}
+
+async function checkFechaModalConflicto() {
+  var fecha = document.getElementById('modal-fecha-input').value;
+  var banner = document.getElementById('warning-fecha-modal');
+  if (!fecha || !SCRIPT_URL) { banner.classList.remove('visible'); return; }
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=checkFecha&fecha=' + fecha + '&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    if (data.conflictos && data.conflictos.length > 0) {
+      var c = data.conflictos[0];
+      banner.innerHTML = '<strong>⚠️ Día ocupado</strong>' + c.cliente + ' — ' + c.categoria + (c.hora ? ' a las ' + c.hora : '');
+      banner.classList.add('visible');
+    } else {
+      banner.classList.remove('visible');
+    }
+  } catch(e) {}
+}
+
+async function guardarFecha() {
+  var fecha = document.getElementById('modal-fecha-input').value;
+  var hora = document.getElementById('modal-hora-input').value;
+  if (!fecha || !eventoModalIdActual) return;
+  await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'text/plain'},
+    body: JSON.stringify({
+      token: SECRET_TOKEN,
+      action: 'actualizarEvento',
+      id_evento: eventoModalIdActual,
+      fecha_evento: fecha,
+      hora: hora
+    })
+  });
+  closeModalFecha();
+  calCargado = false;
+  abrirDetalleEvento(eventoModalIdActual);
+  // Reload calendar to move from pendientes to calendar
+  if (currentTab === 1) {
+    cargarCalendario();
+  }
+}
+
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
 function closeSettings() { document.getElementById('modal-settings').classList.remove('open'); }
 function saveSettings() {
