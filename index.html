@@ -969,7 +969,7 @@ function closeDelete() { document.getElementById('modal-delete').classList.remov
 function closeDeleteOutside(e) { if (e.target === document.getElementById('modal-delete')) closeDelete(); }
 
 async function confirmarEliminar() {
-  if (!pendingDeleteId) return;
+  if (!pendingDeleteTs && !pendingDeleteId) return;
   closeDelete();
   if (!SCRIPT_URL) return;
   try {
