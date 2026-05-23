@@ -1154,6 +1154,9 @@ function abrirMesDetail(mc) {
 }
 
 function cerrarMesDetail() {
+  var panel = document.getElementById('dia-eventos-panel');
+  panel.style.display = 'none';
+  panel.innerHTML = '';
   document.getElementById('mes-detail').classList.remove('visible');
 }
 
