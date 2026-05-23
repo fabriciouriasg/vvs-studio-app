@@ -1157,11 +1157,23 @@ async function cargarResumen() {
 function renderResumen(resumen, resEventos) {
   var el = document.getElementById('resumen-content');
   var html = '';
-
-  // SECCION 1: Por hacer
   var porEditar = (resEventos && resEventos.porEditar) || [];
   var porEntregar = (resEventos && resEventos.porEntregar) || [];
 
+  // SECCION 1: Ingresos por mes
+  if (resumen.length) {
+    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Ingresos por mes</div>';
+    resumen.forEach(function(r) {
+      var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
+      var cats = Object.entries(r.categorias).map(function(e) {
+        return '<div class="resumen-cat-row"><span>' + e[0] + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
+      }).join('');
+      html += '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' 2026' + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
+    });
+    html += '<div style="height:20px"></div>';
+  }
+
+  // SECCION 2: Por hacer
   if (porEditar.length || porEntregar.length) {
     html += '<div style="margin-bottom:20px">';
     html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Por hacer</div>';
@@ -1225,17 +1237,7 @@ function renderResumen(resumen, resEventos) {
     });
   }
 
-  // SECCION 3: Ingresos por mes (original)
-  if (resumen.length) {
-    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;margin-top:8px">Ingresos por mes</div>';
-    resumen.forEach(function(r) {
-      var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
-      var cats = Object.entries(r.categorias).map(function(e) {
-        return '<div class="resumen-cat-row"><span>' + e[0] + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
-      }).join('');
-      html += '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' 2026' + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
-    });
-  }
+
 
   if (!html) html = '<div class="resumen-loading">Sin datos aun</div>';
   el.innerHTML = html;
