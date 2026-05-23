@@ -1047,7 +1047,7 @@ function renderCalendario(eventos) {
 function crearMesMini(mc, eventosMes) {
   const div = document.createElement('div');
   div.className = 'mes-card';
-  div.onclick = () => abrirMesDetail(mc, eventosMes);
+  div.onclick = () => abrirMesDetail(mc);
 
   // Header
   const header = document.createElement('div');
@@ -1097,10 +1097,14 @@ function crearMesMini(mc, eventosMes) {
 // ============================================================
 // MES DETAIL
 // ============================================================
-function abrirMesDetail(mc, eventosMes) {
+function abrirMesDetail(mc) {
   document.getElementById('mes-detail-nombre').textContent = `${mc.nombre} ${mc.anio}`;
   const grid = document.getElementById('mes-full-grid');
   grid.innerHTML = '';
+
+  // Filter events for this month directly from todosEventos
+  const prefijo = `${mc.anio}-${String(mc.mes).padStart(2,'0')}`;
+  const eventosMes = todosEventos.filter(e => e.fecha_evento && e.fecha_evento.startsWith(prefijo));
 
   const primerDia = new Date(mc.anio, mc.mes - 1, 1);
   const diasMes = new Date(mc.anio, mc.mes, 0).getDate();
@@ -1114,7 +1118,10 @@ function abrirMesDetail(mc, eventosMes) {
 
   for (let d = 1; d <= diasMes; d++) {
     const fechaStr = `${mc.anio}-${String(mc.mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const evsDelDia = eventosMes.filter(e => e.fecha_evento === fechaStr && e.estado !== 'Cancelado');
+    const evsDelDia = eventosMes.filter(e => {
+      const f = String(e.fecha_evento || '').trim().substring(0,10);
+      return f === fechaStr && e.estado !== 'Cancelado';
+    });
     const diaEl = document.createElement('div');
     diaEl.className = 'mes-full-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
     const numEl = document.createElement('div'); numEl.className = 'dia-num'; numEl.textContent = d;
