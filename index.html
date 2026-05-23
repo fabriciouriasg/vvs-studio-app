@@ -1178,6 +1178,57 @@ function mostrarEventosDia(fecha, eventos) {
 }
 
 // ============================================================
+// CLIENTES
+// ============================================================
+async function buscarClientes() {
+  const q = document.getElementById('search-cliente').value.trim();
+  const desde = document.getElementById('search-desde').value;
+  const hasta = document.getElementById('search-hasta').value;
+  if (!SCRIPT_URL) {
+    document.getElementById('clientes-list').innerHTML = '<div class="clientes-empty">Configura el script en ⚙️</div>';
+    return;
+  }
+  document.getElementById('clientes-list').innerHTML = '<div class="clientes-empty">Buscando...</div>';
+  try {
+    let url = SCRIPT_URL + '?action=getClientes&token=' + encodeURIComponent(SECRET_TOKEN);
+    if (q) url += '&q=' + encodeURIComponent(q);
+    if (desde) url += '&desde=' + desde;
+    if (hasta) url += '&hasta=' + hasta;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('clientes-list').innerHTML = '<div class="clientes-empty">Error: ' + (data.error || 'desconocido') + '</div>';
+      return;
+    }
+    renderClientes(data.clientes || []);
+  } catch(e) {
+    document.getElementById('clientes-list').innerHTML = '<div class="clientes-empty">Sin conexion</div>';
+  }
+}
+
+function renderClientes(clientes) {
+  const el = document.getElementById('clientes-list');
+  if (!clientes.length) { el.innerHTML = '<div class="clientes-empty">Sin resultados</div>'; return; }
+  el.innerHTML = '';
+  clientes.forEach(function(c) {
+    const card = document.createElement('div');
+    card.className = 'cliente-card';
+    const saldo = c.total - c.pagado;
+    const hora = c.hora && !c.hora.includes('1899') ? ' · ' + c.hora : '';
+    card.innerHTML =
+      '<div class="cliente-card-top">' +
+        '<div><div class="cliente-nombre">' + c.cliente + '</div>' +
+        '<div class="cliente-cat">' + c.categoria + ' · ' + fmtFecha(c.fecha_evento) + hora + '</div></div>' +
+        '<div><div class="cliente-pago">' + fmtMXN(c.pagado) + ' / ' + fmtMXN(c.total) + '</div>' +
+        '<div class="cliente-pago-sub">' + (saldo > 0 ? 'Saldo: ' + fmtMXN(saldo) : '✓ Cubierto') + '</div></div>' +
+      '</div>' +
+      '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(c.estado) + '22;color:' + estadoColor(c.estado) + '">' + c.estado + '</span></div>';
+    card.onclick = function() { abrirDetalleEvento(c.id_evento); };
+    el.appendChild(card);
+  });
+}
+
+// ============================================================
 // POLLING
 // ============================================================
 async function startPolling() {
