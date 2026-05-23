@@ -948,10 +948,14 @@ function renderLog(registros) {
       '</div>' +
       '<button class="log-delete" title="Eliminar">✕</button>';
     var btn = div.querySelector('.log-delete');
-    var rCopy = { id: r.id, ts: r.ts, categoria: r.categoria, monto: r.monto };
+    var rId = r.id;
+    var rTs = r.ts;
+    var rCat = r.categoria;
+    var rMonto = r.monto;
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
-      pedirEliminar(rCopy.id, rCopy.ts, rCopy.categoria, rCopy.monto);
+      alert('CLICK ts=' + rTs + ' id=' + rId);
+      pedirEliminar(rId, rTs, rCat, rMonto);
     });
     el.appendChild(div);
   });
