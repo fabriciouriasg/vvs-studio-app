@@ -957,7 +957,7 @@ function renderLog(registros) {
 // ============================================================
 function pedirEliminar(id, cat, monto) {
   pendingDeleteId = parseInt(id);
-  console.log('Eliminar id:', pendingDeleteId, 'cat:', cat, 'monto:', monto);
+  alert('DEBUG — id:' + id + ' | parsed:' + pendingDeleteId + ' | cat:' + cat + ' | monto:' + monto);
   pendingDeleteInfo = `${cat} — ${fmtMXN(monto)}`;
   document.getElementById('delete-msg').textContent = `¿Eliminar el registro de ${pendingDeleteInfo}? Esta accion no se puede deshacer.`;
   document.getElementById('modal-delete').classList.add('open');
@@ -971,12 +971,15 @@ async function confirmarEliminar() {
   closeDelete();
   if (!SCRIPT_URL) return;
   try {
+    const payload = { token: SECRET_TOKEN, action: 'deleteIngreso', id: pendingDeleteId };
+    alert('DEBUG SEND — ' + JSON.stringify(payload));
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ token: SECRET_TOKEN, action: 'deleteIngreso', id: pendingDeleteId }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
+    alert('DEBUG RESPONSE — ' + JSON.stringify(data));
     if (data.ok) {
       cargarLog();
       cargarAcumulados();
