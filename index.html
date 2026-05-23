@@ -930,8 +930,9 @@ function renderLog(registros) {
   const el = document.getElementById('log-list');
   if (!registros.length) { el.innerHTML = '<div class="empty-log">Sin registros aun</div>'; return; }
   console.log('Log registros:', JSON.stringify(registros.slice(0,3)));
-  const slice = registros.slice(0,5);
-  el.innerHTML = slice.map(r => `
+  // Guardar registros en window para acceso global desde botones
+  window._logRegistros = registros.slice(0,5);
+  el.innerHTML = window._logRegistros.map((r, idx) => `
     <div class="log-item">
       <div class="log-left">
         <div class="log-cat">${r.categoria}</div>
@@ -941,23 +942,23 @@ function renderLog(registros) {
         <div class="log-monto">${fmtMXN(r.monto)}</div>
         <div class="log-fecha">${r.fecha}</div>
       </div>
-      <button class="log-delete" data-id="${r.id}" data-cat="${r.categoria}" data-monto="${r.monto}" title="Eliminar">✕</button>
+      <button class="log-delete" onclick="eliminarPorIndice(${idx})" title="Eliminar">✕</button>
     </div>
   `).join('');
-  // Attach delete listeners after render
-  el.querySelectorAll('.log-delete').forEach(btn => {
-    btn.addEventListener('click', function() {
-      pedirEliminar(parseInt(this.dataset.id), this.dataset.cat, parseFloat(this.dataset.monto));
-    });
-  });
 }
 
 // ============================================================
 // ELIMINAR REGISTRO
 // ============================================================
+function eliminarPorIndice(idx) {
+  const r = window._logRegistros[idx];
+  if (!r) { alert('Error: registro no encontrado'); return; }
+  pedirEliminar(r.id, r.categoria, r.monto);
+}
+
 function pedirEliminar(id, cat, monto) {
   pendingDeleteId = parseInt(id);
-  alert('DEBUG — id:' + id + ' | parsed:' + pendingDeleteId + ' | cat:' + cat + ' | monto:' + monto);
+  alert('DEBUG — id:' + id + ' | parsed:' + pendingDeleteId + ' | cat:' + cat);
   pendingDeleteInfo = `${cat} — ${fmtMXN(monto)}`;
   document.getElementById('delete-msg').textContent = `¿Eliminar el registro de ${pendingDeleteInfo}? Esta accion no se puede deshacer.`;
   document.getElementById('modal-delete').classList.add('open');
