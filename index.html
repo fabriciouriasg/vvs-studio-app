@@ -731,36 +731,79 @@ const MES_ACTUAL_IDX = new Date().getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][MES_ACTUAL_IDX];
 const HOY = new Date().toISOString().slice(0,10);
 
-const CATEGORIAS = {
-  eventos: {
-    nombre:'Eventos', fila:4,
-    subcats:[
-      {grupo:'Baby Shower',      extraHora:1500,paquetes:[{nombre:'Basico',precio:2900},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:5900}]},
-      {grupo:'Bautizo',          extraHora:1500,paquetes:[{nombre:'Basico',precio:3500},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:9900}]},
-      {grupo:'Boda Civil',       extraHora:2000,paquetes:[{nombre:'Basico',precio:4500},{nombre:'Completo',precio:6000},{nombre:'Plus',precio:9950}]},
-      {grupo:'Fiesta Infantil',  extraHora:1500,paquetes:[{nombre:'Basico',precio:4500},{nombre:'Completo',precio:7000},{nombre:'Plus',precio:9500}]},
-      {grupo:'Gender Reveal',    extraHora:1500,paquetes:[{nombre:'Basico',precio:3000},{nombre:'Completo',precio:5500},{nombre:'Plus',precio:6900}]},
-      {grupo:'Primera Comunion', extraHora:null,paquetes:[{nombre:'Basico',precio:3600},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:9900}]},
-    ],
-    tags:['Efectivo','Transferencia','Tarjeta'],
-  },
-  sesiones: {
-    nombre:'Sesiones', fila:5,
-    subcats:[
-      {grupo:'Cake Smash Tematico', extraHora:null,paquetes:[{nombre:'Basico',precio:5300},{nombre:'Completo',precio:6700},{nombre:'Plus',precio:8200}]},
-      {grupo:'Cake Smash White',    extraHora:null,paquetes:[{nombre:'Basico',precio:3900},{nombre:'Completo',precio:5300},{nombre:'Plus',precio:6700}]},
-      {grupo:'Familiar 3 personas', extraHora:null,personaExtra:300,paquetes:[{nombre:'Basico',precio:3000},{nombre:'Completo',precio:4500},{nombre:'Plus',precio:6000}]},
-      {grupo:'Familiar +3 personas',extraHora:null,personaExtra:300,paquetes:[{nombre:'Basico',precio:3500},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:6500}]},
-      {grupo:'Infantil',            extraHora:null,paquetes:[{nombre:'Basico',precio:3500},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:6000}]},
-      {grupo:'Maternidad',          extraHora:null,paquetes:[{nombre:'Basico',precio:3000},{nombre:'Completo',precio:4500},{nombre:'Plus',precio:6000}]},
-      {grupo:'Parejas',             extraHora:null,paquetes:[{nombre:'Basico',precio:3200},{nombre:'Completo',precio:4500},{nombre:'Plus',precio:5000}]},
-      {grupo:'Perfil Profesional',  extraHora:null,paquetes:[{nombre:'Paquete 1',precio:2400},{nombre:'Paquete 2',precio:4000}]},
-    ],
-    tags:['Efectivo','Transferencia','Tarjeta'],
-  },
-  anticipos: {nombre:'Anticipos',fila:6,subcats:[],tags:['Evento','Sesion','Pedido especial']},
-  otros:     {nombre:'Otros',    fila:7,subcats:[],tags:['Album','Fotos extra','Galeria extra','Impresion','Otro','Respaldo','USB']},
+// CATEGORIAS - base structure, subcats populated from Sheet
+var CATEGORIAS = {
+  eventos:   { nombre:'Eventos',   fila:4, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
+  sesiones:  { nombre:'Sesiones',  fila:5, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
+  anticipos: { nombre:'Anticipos', fila:6, subcats:[], tags:['Evento','Sesion','Pedido especial'] },
+  otros:     { nombre:'Otros',     fila:7, subcats:[], tags:['Album','Fotos extra','Galeria extra','Impresion','Otro','Respaldo','USB'] },
 };
+
+// Fallback prices in case Sheet is unavailable
+var PRECIOS_FALLBACK = [
+  {categoria:'Eventos',  tipo:'Baby Shower',         basico:2900, completo:5000, plus:5900,  extra_hora:1500},
+  {categoria:'Eventos',  tipo:'Bautizo',              basico:3500, completo:5000, plus:9900,  extra_hora:1500},
+  {categoria:'Eventos',  tipo:'Boda Civil',           basico:4500, completo:6000, plus:9950,  extra_hora:2000},
+  {categoria:'Eventos',  tipo:'Fiesta Infantil',      basico:4500, completo:7000, plus:9500,  extra_hora:1500},
+  {categoria:'Eventos',  tipo:'Gender Reveal',        basico:3000, completo:5500, plus:6900,  extra_hora:1500},
+  {categoria:'Eventos',  tipo:'Primera Comunion',     basico:3600, completo:5000, plus:9900,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Cake Smash Tematico',  basico:5300, completo:6700, plus:8200,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Cake Smash White',     basico:3900, completo:5300, plus:6700,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Familiar 3 personas',  basico:3000, completo:4500, plus:6000,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Familiar +3 personas', basico:3500, completo:5000, plus:6500,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Infantil',             basico:3500, completo:5000, plus:6000,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Maternidad',           basico:3000, completo:4500, plus:6000,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Parejas',              basico:3200, completo:4500, plus:5000,  extra_hora:0},
+  {categoria:'Sesiones', tipo:'Perfil Profesional',   basico:2400, completo:4000, plus:0,     extra_hora:0},
+];
+
+function aplicarPrecios(precios) {
+  // Reset subcats
+  CATEGORIAS.eventos.subcats = [];
+  CATEGORIAS.sesiones.subcats = [];
+
+  precios.forEach(function(p) {
+    var catKey = p.categoria === 'Eventos' ? 'eventos' : 'sesiones';
+    var paquetes = [];
+    if (p.basico > 0)   paquetes.push({ nombre: 'Basico',   precio: p.basico });
+    if (p.completo > 0) paquetes.push({ nombre: 'Completo', precio: p.completo });
+    if (p.plus > 0)     paquetes.push({ nombre: 'Plus',     precio: p.plus });
+    // Special case Perfil Profesional
+    if (p.tipo === 'Perfil Profesional') {
+      paquetes = [];
+      if (p.basico > 0)   paquetes.push({ nombre: 'Paquete 1', precio: p.basico });
+      if (p.completo > 0) paquetes.push({ nombre: 'Paquete 2', precio: p.completo });
+    }
+    CATEGORIAS[catKey].subcats.push({
+      grupo: p.tipo,
+      extraHora: p.extra_hora || null,
+      paquetes: paquetes
+    });
+  });
+
+  // Also update SUBCATS_CONV for convertir modal
+  SUBCATS_CONV.Eventos = CATEGORIAS.eventos.subcats.map(function(s) {
+    return { grupo: s.grupo, paquetes: s.paquetes };
+  });
+  SUBCATS_CONV.Sesiones = CATEGORIAS.sesiones.subcats.map(function(s) {
+    return { grupo: s.grupo, paquetes: s.paquetes };
+  });
+}
+
+async function cargarPrecios() {
+  if (!SCRIPT_URL) { aplicarPrecios(PRECIOS_FALLBACK); return; }
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getPrecios&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    if (data.ok && data.precios && data.precios.length > 0) {
+      aplicarPrecios(data.precios);
+    } else {
+      aplicarPrecios(PRECIOS_FALLBACK);
+    }
+  } catch(e) {
+    aplicarPrecios(PRECIOS_FALLBACK);
+  }
+}
 
 // ============================================================
 // ESTADO
@@ -776,8 +819,9 @@ let eventoModalIdActual = null;
 // ============================================================
 // INIT
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   setDefaultFecha();
+  await cargarPrecios();
   renderCatGrid();
   cargarLog();
   cargarAcumulados();
