@@ -629,6 +629,7 @@ let lastIngresoId = null;
 let extraHoraActiva = false;
 let extraHoraPrecio = 0;
 let pendingDeleteId = null;
+let pendingDeleteTs = '';
 let pendingDeleteInfo = '';
 let currentTab = 0;
 let touchStartX = 0;
@@ -953,18 +954,18 @@ function renderLog(registros) {
 function eliminarPorIndice(idx) {
   const r = window._logRegistros[idx];
   if (!r) { alert('Error: registro no encontrado'); return; }
-  pedirEliminar(r.id, r.categoria, r.monto);
+  pedirEliminar(r.id, r.ts, r.categoria, r.monto);
 }
 
-function pedirEliminar(id, cat, monto) {
-  pendingDeleteId = parseInt(id);
-  alert('DEBUG — id:' + id + ' | parsed:' + pendingDeleteId + ' | cat:' + cat);
-  pendingDeleteInfo = `${cat} — ${fmtMXN(monto)}`;
-  document.getElementById('delete-msg').textContent = `¿Eliminar el registro de ${pendingDeleteInfo}? Esta accion no se puede deshacer.`;
+function pedirEliminar(id, ts, cat, monto) {
+  pendingDeleteId = parseInt(id) || 0;
+  pendingDeleteTs = ts || '';
+  pendingDeleteInfo = cat + ' — ' + fmtMXN(monto);
+  document.getElementById('delete-msg').textContent = '¿Eliminar el registro de ' + pendingDeleteInfo + '? Esta accion no se puede deshacer.';
   document.getElementById('modal-delete').classList.add('open');
 }
 
-function closeDelete() { document.getElementById('modal-delete').classList.remove('open'); pendingDeleteId = null; }
+function closeDelete() { document.getElementById('modal-delete').classList.remove('open'); pendingDeleteId = null; pendingDeleteTs = ''; }
 function closeDeleteOutside(e) { if (e.target === document.getElementById('modal-delete')) closeDelete(); }
 
 async function confirmarEliminar() {
@@ -972,15 +973,13 @@ async function confirmarEliminar() {
   closeDelete();
   if (!SCRIPT_URL) return;
   try {
-    const payload = { token: SECRET_TOKEN, action: 'deleteIngreso', id: pendingDeleteId };
-    alert('DEBUG SEND — ' + JSON.stringify(payload));
+    const payload = { token: SECRET_TOKEN, action: 'deleteIngreso', id: pendingDeleteId, ts: pendingDeleteTs };
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    alert('DEBUG RESPONSE — ' + JSON.stringify(data));
     if (data.ok) {
       cargarLog();
       cargarAcumulados();
