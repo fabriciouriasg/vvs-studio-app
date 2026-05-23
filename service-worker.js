@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vvs-cache-v1';
+const CACHE_NAME = 'vvs-cache-v3';
 const ASSETS = [
   'index.html',
   'manifest.json',
