@@ -285,6 +285,23 @@
     /* SETTINGS */
     #btn-settings{position:fixed;bottom:24px;right:20px;width:44px;height:44px;background:var(--beige-mid);border:1.5px solid var(--beige-dark);border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-md);z-index:200}
 
+    /* SEGUIMIENTO MODAL */
+    .seguimiento-overlay{display:none;position:fixed;inset:0;background:rgba(26,20,16,.6);z-index:500;align-items:flex-end;justify-content:center}
+    .seguimiento-overlay.open{display:flex}
+    .seguimiento-sheet{background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 24px 40px}
+    .seg-icon{font-size:32px;text-align:center;margin-bottom:12px}
+    .seg-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--black);text-align:center;margin-bottom:4px}
+    .seg-sub{font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:24px}
+    .seg-btn-row{display:flex;gap:10px;margin-bottom:10px}
+    .seg-btn{flex:1;padding:16px;border-radius:var(--radius);font-family:'Jost',sans-serif;font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border:none;transition:all .15s}
+    .seg-btn.cubierto{background:var(--black);color:var(--white)}
+    .seg-btn.cancelado{background:var(--beige-mid);color:var(--text-main);border:1.5px solid var(--beige-dark)}
+    .seg-btn.no{background:var(--beige-mid);color:var(--text-main);border:1.5px solid var(--beige-dark)}
+    .seg-btn.si{background:var(--brown-soft);color:var(--white)}
+    .seg-btn.tiempo{flex:none;width:100%;background:var(--beige-light);border:1.5px solid var(--beige-dark);color:var(--text-main);margin-bottom:8px}
+    .seg-btn.proxima{width:100%;background:var(--beige-light);border:1.5px solid var(--beige-dark);color:var(--text-muted);font-size:12px}
+    .seg-counter{font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px}
+
     /* BANNER */
     #nuevo-banner{display:none;position:fixed;top:0;left:0;right:0;background:var(--brown-soft);color:var(--white);text-align:center;padding:14px 16px;font-size:14px;font-weight:500;z-index:999;animation:slideDown .3s ease}
     @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
@@ -474,6 +491,56 @@
 
 <!-- SETTINGS BTN -->
 <button id="btn-settings" onclick="openSettings()">⚙️</button>
+
+<!-- SEGUIMIENTO MODALS -->
+<div class="seguimiento-overlay" id="seg-overlay-1">
+  <div class="seguimiento-sheet">
+    <div class="seg-icon">📸</div>
+    <div class="seg-title" id="seg-cliente-nombre">Cliente</div>
+    <div class="seg-sub" id="seg-evento-info">Tipo · Fecha · Hora</div>
+    <div class="seg-btn-row">
+      <button class="seg-btn cubierto" onclick="segConfirmar('cubierto')">✓ Sí, se realizó</button>
+      <button class="seg-btn cancelado" onclick="segConfirmar('cancelar-init')">✗ Se canceló</button>
+    </div>
+    <div class="seg-counter" id="seg-recordatorio-info"></div>
+  </div>
+</div>
+
+<div class="seguimiento-overlay" id="seg-overlay-cancel-confirm">
+  <div class="seguimiento-sheet">
+    <div class="seg-icon">⚠️</div>
+    <div class="seg-title">¿Confirmas cancelación?</div>
+    <div class="seg-sub">El dinero recibido queda con Vanessa</div>
+    <div class="seg-btn-row">
+      <button class="seg-btn no" onclick="segConfirmar('cancelar-no')">No, regresar</button>
+      <button class="seg-btn cubierto" style="background:var(--error)" onclick="segConfirmar('cancelar-si')">Sí, cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="seguimiento-overlay" id="seg-overlay-2">
+  <div class="seguimiento-sheet">
+    <div class="seg-icon">💰</div>
+    <div class="seg-title">¿Hubo gasto adicional?</div>
+    <div class="seg-sub">¿Algo no registrado aún?</div>
+    <div class="seg-btn-row">
+      <button class="seg-btn no" onclick="segConfirmar('gasto-no')">No, todo registrado</button>
+      <button class="seg-btn si" onclick="segConfirmar('gasto-si')">Sí, falta registrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="seguimiento-overlay" id="seg-overlay-3">
+  <div class="seguimiento-sheet">
+    <div class="seg-icon">⏰</div>
+    <div class="seg-title">¿Cuándo capturas los datos?</div>
+    <div class="seg-sub">Te mostraremos un recordatorio</div>
+    <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-1')">En 1 hora</button>
+    <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-2')">En 2 horas</button>
+    <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-3')">En 3 horas</button>
+    <button class="seg-btn proxima" onclick="segConfirmar('tiempo-proxima')">La próxima vez que abra la app</button>
+  </div>
+</div>
 
 <!-- SETTINGS MODAL -->
 <div class="modal-overlay" id="modal-settings" onclick="if(event.target===this)closeSettings()">
@@ -669,6 +736,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSwipe();
   setTimeout(startPolling, 5000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  // Check for vencidos after short delay to let app load first
+  setTimeout(verificarEventosVencidos, 2000);
 });
 
 function setDefaultFecha() {
@@ -1076,23 +1145,114 @@ async function cargarAcumulados() {
 async function cargarResumen() {
   if (!SCRIPT_URL) { document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Configura el script en ⚙️</div>'; return; }
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getResumen&token=${encodeURIComponent(SECRET_TOKEN)}`);
-    const data = await res.json();
-    renderResumen(data.resumen || []);
+    const [resIngresos, resEventos] = await Promise.all([
+      fetch(SCRIPT_URL + '?action=getResumen&token=' + encodeURIComponent(SECRET_TOKEN)).then(r => r.json()),
+      fetch(SCRIPT_URL + '?action=getResumenEventos&token=' + encodeURIComponent(SECRET_TOKEN)).then(r => r.json())
+    ]);
+    renderResumen(resIngresos.resumen || [], resEventos);
     resumenCargado = true;
   } catch(e) { document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Sin conexion</div>'; }
 }
 
-function renderResumen(resumen) {
-  const el = document.getElementById('resumen-content');
-  if (!resumen.length) { el.innerHTML = '<div class="resumen-loading">Sin datos aun</div>'; return; }
-  el.innerHTML = resumen.map(r => {
-    const esCurrent = r.mes === MES_ACTUAL_NOMBRE;
-    const cats = Object.entries(r.categorias).map(([cat,monto]) =>
-      `<div class="resumen-cat-row"><span>${cat}</span><span class="resumen-cat-monto ${monto===0?'cero':''}">${fmtMXN(monto)}</span></div>`
-    ).join('');
-    return `<div class="resumen-mes-card"><div class="resumen-mes-header${esCurrent?' current':''}"><span class="resumen-mes-nombre">${r.mes} 2026${esCurrent?' ●':''}</span><span class="resumen-mes-total">${fmtMXN(r.total)}</span></div><div class="resumen-cats">${cats}</div></div>`;
-  }).join('');
+function renderResumen(resumen, resEventos) {
+  var el = document.getElementById('resumen-content');
+  var html = '';
+
+  // SECCION 1: Por hacer
+  var porEditar = (resEventos && resEventos.porEditar) || [];
+  var porEntregar = (resEventos && resEventos.porEntregar) || [];
+
+  if (porEditar.length || porEntregar.length) {
+    html += '<div style="margin-bottom:20px">';
+    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Por hacer</div>';
+
+    if (porEditar.length) {
+      html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">';
+      html += '<div style="background:var(--brown-soft);color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-size:13px;font-weight:500">✏️ Por editar</span>';
+      html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEditar.length + '</span></div>';
+      porEditar.forEach(function(ev) {
+        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<span style="color:var(--black-soft)">' + ev.cliente + '</span>';
+        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    if (porEntregar.length) {
+      html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">';
+      html += '<div style="background:var(--brown-dark);color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-size:13px;font-weight:500">📦 Por entregar</span>';
+      html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEntregar.length + '</span></div>';
+      porEntregar.forEach(function(ev) {
+        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<span style="color:var(--black-soft)">' + ev.cliente + '</span>';
+        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+  }
+
+  // SECCION 2: Sumario por mes
+  var resEv = (resEventos && resEventos.resumen) || [];
+  if (resEv.length) {
+    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Eventos por mes</div>';
+    var estadoDesc = {
+      Agendado:  'Próximos a realizarse',
+      Cubierto:  'Realizados, pendientes de edición',
+      Editado:   'Editados, pendientes de entrega',
+      Entregado: 'Completados y entregados',
+      Cancelado: 'Cancelados'
+    };
+    resEv.forEach(function(r) {
+      var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
+      html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">';
+      html += '<div style="background:' + (esCurrent ? 'var(--brown-dark)' : 'var(--black)') + ';color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-family:Cormorant Garamond,serif;font-size:16px">' + r.mes + ' 2026' + (esCurrent ? ' ●' : '') + '</span>';
+      html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + r.total + ' evento' + (r.total !== 1 ? 's' : '') + '</span></div>';
+      html += '<div style="padding:8px 16px">';
+      var estadosOrden = ['Agendado','Cubierto','Editado','Entregado','Cancelado'];
+      estadosOrden.forEach(function(est) {
+        var count = r.estados[est] || 0;
+        if (count === 0) return;
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--beige-light)">';
+        html += '<div><span style="font-size:13px;color:var(--text-main)">' + est + '</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + estadoDesc[est] + '</span></div>';
+        html += '<span style="font-size:15px;font-weight:500;color:var(--brown-dark)">' + count + '</span></div>';
+      });
+      html += '</div></div>';
+    });
+  }
+
+  // SECCION 3: Ingresos por mes (original)
+  if (resumen.length) {
+    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;margin-top:8px">Ingresos por mes</div>';
+    resumen.forEach(function(r) {
+      var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
+      var cats = Object.entries(r.categorias).map(function(e) {
+        return '<div class="resumen-cat-row"><span>' + e[0] + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
+      }).join('');
+      html += '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' 2026' + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
+    });
+  }
+
+  if (!html) html = '<div class="resumen-loading">Sin datos aun</div>';
+  el.innerHTML = html;
+}
+
+async function buscarYAbrirEvento(el) {
+  var cliente = el.dataset.cliente;
+  var fecha = el.dataset.fecha;
+  if (!SCRIPT_URL || !cliente) return;
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getClientes&q=' + encodeURIComponent(cliente) + '&desde=' + fecha + '&hasta=' + fecha + '&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    if (data.clientes && data.clientes.length > 0) {
+      switchTab(1);
+      setTimeout(function() { abrirDetalleEvento(data.clientes[0].id_evento); }, 300);
+    }
+  } catch(e) {}
 }
 
 // ============================================================
@@ -1857,6 +2017,139 @@ async function guardarConvertir() {
   }
   btn.textContent = 'Convertir';
   btn.disabled = false;
+}
+
+// ============================================================
+// SEGUIMIENTO DE EVENTOS VENCIDOS
+// ============================================================
+var segEventosPendientes = [];
+var segEventoActual = null;
+var segIdx = 0;
+
+async function verificarEventosVencidos() {
+  if (!SCRIPT_URL) return;
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+
+  // Check localStorage for snoozed events
+  var snoozed = JSON.parse(localStorage.getItem('vvs_snoozed') || '{}');
+  var pendienteLocal = localStorage.getItem('vvs_pendiente_gasto');
+
+  // Show pending gasto reminder if exists
+  if (pendienteLocal) {
+    var pendData = JSON.parse(pendienteLocal);
+    var ahora = new Date().getTime();
+    if (ahora >= pendData.cuando) {
+      localStorage.removeItem('vvs_pendiente_gasto');
+      segEventoActual = pendData.evento;
+      abrirOverlay('seg-overlay-2');
+      return;
+    }
+  }
+
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getEventos&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    var eventos = data.eventos || [];
+
+    // Filter: Agendado + fecha pasada + not snoozed or snooze expired
+    var ahora = new Date().getTime();
+    segEventosPendientes = eventos.filter(function(ev) {
+      if (ev.estado !== 'Agendado') return false;
+      if (!ev.fecha_evento) return false;
+      var fechaEv = new Date(ev.fecha_evento);
+      fechaEv.setHours(23,59,59,0);
+      if (fechaEv >= new Date()) return false; // still in future
+      // Check snooze
+      var snoozeHasta = snoozed[ev.id_evento] || 0;
+      return ahora >= snoozeHasta;
+    });
+
+    if (segEventosPendientes.length > 0) {
+      segIdx = 0;
+      mostrarSiguienteEvento();
+    }
+  } catch(e) {}
+}
+
+function mostrarSiguienteEvento() {
+  if (segIdx >= segEventosPendientes.length) return;
+  segEventoActual = segEventosPendientes[segIdx];
+  document.getElementById('seg-cliente-nombre').textContent = segEventoActual.cliente;
+  document.getElementById('seg-evento-info').textContent =
+    segEventoActual.paquete + ' · ' + fmtFecha(segEventoActual.fecha_evento) + (segEventoActual.hora ? ' · ' + segEventoActual.hora : '');
+  // Show snooze info
+  var snoozed = JSON.parse(localStorage.getItem('vvs_snoozed') || '{}');
+  var info = document.getElementById('seg-recordatorio-info');
+  info.textContent = segEventosPendientes.length > 1 ?
+    (segIdx + 1) + ' de ' + segEventosPendientes.length + ' eventos por confirmar' : '';
+  abrirOverlay('seg-overlay-1');
+}
+
+function abrirOverlay(id) {
+  ['seg-overlay-1','seg-overlay-2','seg-overlay-3','seg-overlay-cancel-confirm'].forEach(function(oid) {
+    document.getElementById(oid).classList.remove('open');
+  });
+  document.getElementById(id).classList.add('open');
+}
+
+function cerrarTodosOverlays() {
+  ['seg-overlay-1','seg-overlay-2','seg-overlay-3','seg-overlay-cancel-confirm'].forEach(function(oid) {
+    document.getElementById(oid).classList.remove('open');
+  });
+}
+
+async function segConfirmar(accion) {
+  if (accion === 'cubierto') {
+    // Mark as Cubierto
+    await cambiarEstado(segEventoActual.id_evento, 'Cubierto');
+    calCargado = false; resumenCargado = false;
+    abrirOverlay('seg-overlay-2');
+  }
+  else if (accion === 'cancelar-init') {
+    abrirOverlay('seg-overlay-cancel-confirm');
+  }
+  else if (accion === 'cancelar-no') {
+    abrirOverlay('seg-overlay-1');
+  }
+  else if (accion === 'cancelar-si') {
+    await cambiarEstado(segEventoActual.id_evento, 'Cancelado');
+    calCargado = false; resumenCargado = false;
+    avanzarSeguimiento();
+  }
+  else if (accion === 'gasto-no') {
+    avanzarSeguimiento();
+  }
+  else if (accion === 'gasto-si') {
+    abrirOverlay('seg-overlay-3');
+  }
+  else if (accion.startsWith('tiempo-')) {
+    var horas = accion === 'tiempo-1' ? 1 : accion === 'tiempo-2' ? 2 : accion === 'tiempo-3' ? 3 : 0;
+    var cuando = horas > 0
+      ? new Date().getTime() + horas * 60 * 60 * 1000
+      : 0; // 0 = proxima vez
+
+    localStorage.setItem('vvs_pendiente_gasto', JSON.stringify({
+      cuando: cuando,
+      evento: segEventoActual
+    }));
+    avanzarSeguimiento();
+  }
+}
+
+function avanzarSeguimiento() {
+  segIdx++;
+  cerrarTodosOverlays();
+  if (segIdx < segEventosPendientes.length) {
+    setTimeout(mostrarSiguienteEvento, 400);
+  }
+}
+
+function snoozeEvento(horas) {
+  var snoozed = JSON.parse(localStorage.getItem('vvs_snoozed') || '{}');
+  var hasta = new Date().getTime() + horas * 60 * 60 * 1000;
+  snoozed[segEventoActual.id_evento] = hasta;
+  localStorage.setItem('vvs_snoozed', JSON.stringify(snoozed));
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
