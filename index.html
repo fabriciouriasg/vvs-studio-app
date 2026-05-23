@@ -619,6 +619,40 @@
   </div>
 </div>
 
+<!-- EDITAR EVENTO MODAL -->
+<div class="modal-overlay" id="modal-editar" onclick="if(event.target===this)closeModalEditar()">
+  <div class="modal-sheet" style="max-height:80vh;overflow-y:auto">
+    <div class="modal-title">✏️ Editar evento</div>
+    <div class="modal-label">Nombre del cliente</div>
+    <input type="text" id="edit-cliente" class="modal-input" placeholder="Nombre del cliente"/>
+    <div class="modal-label">Precio base</div>
+    <input type="number" id="edit-precio" class="modal-input" inputmode="decimal" placeholder="0.00"/>
+    <div class="modal-label">Fecha del evento</div>
+    <input type="date" id="edit-fecha" class="modal-input"/>
+    <div class="modal-label">Hora</div>
+    <input type="time" id="edit-hora" class="modal-input"/>
+    <div class="modal-label">Notas</div>
+    <input type="text" id="edit-notas" class="modal-input" placeholder="Notas del evento"/>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalEditar()">Cancelar</button>
+      <button class="btn-modal-save" onclick="guardarEdicion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ELIMINAR EVENTO MODAL -->
+<div class="modal-overlay" id="modal-eliminar-evento" onclick="if(event.target===this)closeModalEliminarEvento()">
+  <div class="modal-sheet">
+    <div class="modal-title">🗑️ Eliminar evento</div>
+    <div style="font-size:14px;color:var(--text-main);margin-bottom:8px;line-height:1.5" id="eliminar-evento-msg"></div>
+    <div style="font-size:12px;color:var(--error);margin-bottom:20px">Esta acción eliminará el evento y todos sus pagos asociados del historial. No se puede deshacer.</div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalEliminarEvento()">Cancelar</button>
+      <button class="btn-modal-save" style="background:var(--error)" onclick="confirmarEliminarEvento()">Eliminar todo</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONVERTIR MODAL -->
 <div class="modal-overlay" id="modal-convertir" onclick="if(event.target===this)closeModalConvertir()">
   <div class="modal-sheet" style="max-height:85vh;overflow-y:auto">
@@ -657,15 +691,23 @@ let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
 function extraerHora(raw) {
   if (!raw || raw === 'undefined' || raw === 'null' || raw === '') return '';
   var s = String(raw).trim();
-  // ISO Date format from Sheets: 1899-12-30T16:30:00.000Z
   if (s.indexOf('T') !== -1) {
     var timePart = s.split('T')[1] || '';
-    var hhmm = timePart.substring(0, 5);
-    return hhmm;
+    s = timePart.substring(0, 5);
   }
-  // Clean HH:MM format
-  if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
+  if (/^\d{1,2}:\d{2}/.test(s)) return a12h(s);
   return '';
+}
+
+function a12h(hhmm) {
+  if (!hhmm) return '';
+  var parts = hhmm.split(':');
+  var h = parseInt(parts[0]);
+  var m = parts[1] || '00';
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return h + ':' + m + ' ' + ampm;
 }
 
 const MESES_CONFIG = [
@@ -1003,6 +1045,17 @@ async function registrar() {
     const eventoFormVisible = document.getElementById('evento-form').classList.contains('visible');
 
     if (eventoFormVisible) {
+      // Validar cliente mandatorio
+      if (modoEvento === 'nuevo' && !evCliente) {
+        mostrarFeedback('El nombre del cliente es obligatorio', 'error');
+        btn.disabled = false;
+        return;
+      }
+      if (modoEvento === 'ligar' && !eventoLigadoId) {
+        mostrarFeedback('Selecciona un evento existente', 'error');
+        btn.disabled = false;
+        return;
+      }
       if (modoEvento === 'ligar' && eventoLigadoId) {
         // LIGAR a evento existente
         idEvento = eventoLigadoId;
@@ -1408,6 +1461,19 @@ function abrirMesDetail(mc) {
   document.getElementById('mes-detail').classList.add('visible');
 }
 
+function filtrarCalendario() {
+  var q = document.getElementById('cal-search').value.trim().toLowerCase();
+  if (!q) {
+    renderCalendario(todosEventos);
+    return;
+  }
+  var filtrados = todosEventos.filter(function(ev) {
+    return ev.cliente.toLowerCase().indexOf(q) !== -1 ||
+           ev.paquete.toLowerCase().indexOf(q) !== -1;
+  });
+  renderCalendario(filtrados);
+}
+
 function cerrarMesDetail() {
   var panel = document.getElementById('dia-eventos-panel');
   panel.style.display = 'none';
@@ -1583,8 +1649,10 @@ function renderDetalleEvento(ev) {
         '<button class="btn-accion primary" onclick="openModalPago()">Registrar pago</button>' +
         '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
         '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
+        '<button class="btn-accion" onclick="openModalEditar()">✏️ Editar</button>' +
         (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha</button>' : '') +
         (ev.categoria === 'Anticipos' ? '<button class="btn-accion" style="grid-column:1/-1;background:var(--brown-soft);color:var(--white);border-color:var(--brown-soft)" onclick="openModalConvertir()">🔄 Convertir a Evento / Sesión</button>' : '') +
+        '<button class="btn-accion" style="grid-column:1/-1;color:var(--error);border-color:var(--error)" onclick="eliminarEvento()">🗑️ Eliminar evento</button>' +
       '</div>' +
     '</div>';
 }
@@ -2056,13 +2124,35 @@ async function verificarEventosVencidos() {
 
     // Filter: Agendado + fecha pasada + not snoozed or snooze expired
     var ahora = new Date().getTime();
+    var manana = new Date(); manana.setDate(manana.getDate() + 1); manana.setHours(0,0,0,0);
+
+    // Check 24hr reminders
+    eventos.forEach(function(ev) {
+      if (ev.estado !== 'Agendado' || !ev.fecha_evento) return;
+      var fechaEv = new Date(ev.fecha_evento);
+      fechaEv.setHours(0,0,0,0);
+      var key24 = 'vvs_reminder24_' + ev.id_evento;
+      if (fechaEv.getTime() === manana.getTime() && !localStorage.getItem(key24)) {
+        localStorage.setItem(key24, '1');
+        setTimeout(function() {
+          mostrarNuevoBanner();
+          // Show reminder notification
+          var reminderEl = document.createElement('div');
+          reminderEl.style.cssText = 'position:fixed;top:60px;left:0;right:0;background:var(--brown-soft);color:var(--white);padding:14px 20px;text-align:center;z-index:998;font-size:13px';
+          reminderEl.innerHTML = '⏰ Mañana: <strong>' + ev.cliente + '</strong> — ' + ev.paquete.split(' - ')[0] + (ev.hora ? ' a las ' + extraerHora(ev.hora) : '') + (ev.pagado < ev.total ? ' · Saldo pendiente: ' + fmtMXN(ev.total - ev.pagado) : '');
+          document.body.appendChild(reminderEl);
+          if ('vibrate' in navigator) navigator.vibrate([200,100,200]);
+          setTimeout(function() { reminderEl.remove(); }, 8000);
+        }, 1000);
+      }
+    });
+
     segEventosPendientes = eventos.filter(function(ev) {
       if (ev.estado !== 'Agendado') return false;
       if (!ev.fecha_evento) return false;
       var fechaEv = new Date(ev.fecha_evento);
       fechaEv.setHours(23,59,59,0);
-      if (fechaEv >= new Date()) return false; // still in future
-      // Check snooze
+      if (fechaEv >= new Date()) return false;
       var snoozeHasta = snoozed[ev.id_evento] || 0;
       return ahora >= snoozeHasta;
     });
@@ -2152,6 +2242,76 @@ function snoozeEvento(horas) {
   var hasta = new Date().getTime() + horas * 60 * 60 * 1000;
   snoozed[segEventoActual.id_evento] = hasta;
   localStorage.setItem('vvs_snoozed', JSON.stringify(snoozed));
+}
+
+// ============================================================
+// EDITAR EVENTO
+// ============================================================
+function openModalEditar() {
+  if (!eventoDetalleActual) return;
+  document.getElementById('edit-cliente').value = eventoDetalleActual.cliente || '';
+  document.getElementById('edit-precio').value = eventoDetalleActual.precio_base || '';
+  document.getElementById('edit-fecha').value = eventoDetalleActual.fecha_evento || '';
+  document.getElementById('edit-hora').value = eventoDetalleActual.hora || '';
+  document.getElementById('edit-notas').value = eventoDetalleActual.notas || '';
+  document.getElementById('modal-editar').classList.add('open');
+}
+function closeModalEditar() { document.getElementById('modal-editar').classList.remove('open'); }
+
+async function guardarEdicion() {
+  var cliente = document.getElementById('edit-cliente').value.trim();
+  if (!cliente) { alert('El nombre del cliente es obligatorio'); return; }
+  var payload = {
+    token: SECRET_TOKEN,
+    action: 'actualizarEvento',
+    id_evento: eventoModalIdActual,
+    cliente: cliente,
+    precio_base: parseFloat(document.getElementById('edit-precio').value) || eventoDetalleActual.precio_base,
+    fecha_evento: document.getElementById('edit-fecha').value,
+    hora: document.getElementById('edit-hora').value,
+    notas: document.getElementById('edit-notas').value.trim()
+  };
+  var btn = document.querySelector('#modal-editar .btn-modal-save');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+  try {
+    var res = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+    var data = await res.json();
+    if (data.ok) {
+      closeModalEditar();
+      calCargado = false; resumenCargado = false;
+      abrirDetalleEvento(eventoModalIdActual);
+    } else { alert('Error: ' + (data.error || 'desconocido')); }
+  } catch(e) { alert('Sin conexion'); }
+  btn.textContent = 'Guardar'; btn.disabled = false;
+}
+
+// ============================================================
+// ELIMINAR EVENTO COMPLETO
+// ============================================================
+function eliminarEvento() {
+  if (!eventoDetalleActual) return;
+  document.getElementById('eliminar-evento-msg').textContent =
+    '¿Eliminar el evento de ' + eventoDetalleActual.cliente + ' (' + eventoDetalleActual.paquete.split(' - ')[0] + ')? Se eliminarán también todos los pagos registrados.';
+  document.getElementById('modal-eliminar-evento').classList.add('open');
+}
+function closeModalEliminarEvento() { document.getElementById('modal-eliminar-evento').classList.remove('open'); }
+
+async function confirmarEliminarEvento() {
+  if (!eventoModalIdActual) return;
+  var btn = document.querySelector('#modal-eliminar-evento .btn-modal-save');
+  btn.textContent = 'Eliminando...'; btn.disabled = true;
+  try {
+    var res = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({token:SECRET_TOKEN, action:'eliminarEvento', id_evento:eventoModalIdActual})});
+    var data = await res.json();
+    if (data.ok) {
+      closeModalEliminarEvento();
+      cerrarDetalleEvento();
+      calCargado = false; resumenCargado = false;
+      if (currentTab === 1) cargarCalendario();
+    } else { alert('Error: ' + (data.error||'desconocido')); }
+  } catch(e) { alert('Sin conexion'); }
+  btn.textContent = 'Eliminar todo'; btn.disabled = false;
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
