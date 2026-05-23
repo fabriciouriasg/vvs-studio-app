@@ -391,19 +391,18 @@
 
     <!-- ===== PANTALLA 1: CALENDARIO ===== -->
     <div class="screen" id="screen-calendario">
-      <div class="cal-container">
-        <!-- Pendientes -->
+      <!-- High level: pendientes + meses -->
+      <div class="cal-container" id="cal-highlevel">
         <div class="pendientes-wrap">
           <div class="pendientes-label">Sin fecha</div>
           <div class="pendientes-bubbles" id="pendientes-bubbles">
             <span class="pendientes-empty">Sin pendientes</span>
           </div>
         </div>
-        <!-- Meses high level -->
         <div class="meses-scroll" id="meses-scroll"></div>
       </div>
 
-      <!-- Vista mes individual (overlay) -->
+      <!-- Vista mes individual - cubre todo el screen cuando visible -->
       <div class="mes-detail" id="mes-detail">
         <div class="mes-detail-header">
           <button class="mes-detail-back" onclick="cerrarMesDetail()">←</button>
@@ -1107,7 +1106,8 @@ function crearMesMini(mc, eventosMes) {
 // MES DETAIL
 // ============================================================
 function abrirMesDetail(mc) {
-  document.getElementById('mes-detail-nombre').textContent = `${mc.nombre} ${mc.anio}`;
+  document.getElementById('cal-highlevel').style.display = 'none';
+  document.getElementById('mes-detail-nombre').textContent = mc.nombre + ' ' + mc.anio;
   const grid = document.getElementById('mes-full-grid');
   grid.innerHTML = '';
 
@@ -1158,6 +1158,7 @@ function cerrarMesDetail() {
   panel.style.display = 'none';
   panel.innerHTML = '';
   document.getElementById('mes-detail').classList.remove('visible');
+  document.getElementById('cal-highlevel').style.display = 'block';
 }
 
 function mostrarEventosDia(fecha) {
