@@ -947,14 +947,23 @@ function renderLog(registros) {
       '</div>' +
       '<button class="log-delete" title="Eliminar">✕</button>';
     var btn = div.querySelector('.log-delete');
-    var rId = r.id;
-    var rTs = r.ts;
-    var rCat = r.categoria;
-    var rMonto = r.monto;
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      pedirEliminar(rId, rTs, rCat, rMonto);
-    });
+    (function(id, ts, cat, monto) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (!confirm('Eliminar: ' + cat + ' ' + fmtMXN(monto) + '?')) return;
+        fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ token: SECRET_TOKEN, action: 'deleteIngreso', id: id, ts: ts })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.ok) { cargarLog(); cargarAcumulados(); resumenCargado = false; }
+          else { alert('Error: ' + (data.error || 'desconocido')); }
+        })
+        .catch(function() { alert('Sin conexion'); });
+      });
+    })(r.id, r.ts, r.categoria, r.monto);
     el.appendChild(div);
   });
 }
