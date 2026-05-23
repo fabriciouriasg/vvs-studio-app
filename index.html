@@ -194,18 +194,19 @@
     .dia-full-dots{display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;justify-content:center}
 
     /* Panel eventos del dia */
-    .dia-eventos-panel{background:var(--white);border-top:1px solid var(--beige-dark);padding:16px;margin-top:8px}
-    .dia-eventos-titulo{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px}
-    .evento-card{background:var(--beige-light);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+    .dia-eventos-panel{background:var(--white);border-top:1px solid var(--beige-dark);padding:14px 16px;margin-top:8px}
+    .dia-eventos-titulo{font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}
+    .dia-eventos-cards{display:flex;gap:8px;flex-wrap:wrap}
+    .evento-card{background:var(--beige-light);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;transition:all .15s;flex:1;min-width:140px;max-width:220px}
     .evento-card:active{background:var(--beige-mid)}
+    .evento-card-hora{font-size:11px;font-weight:500;color:var(--brown-soft);margin-bottom:4px}
     .evento-card-top{display:flex;justify-content:space-between;align-items:flex-start}
-    .evento-card-cliente{font-size:14px;font-weight:500;color:var(--black)}
-    .evento-card-hora{font-size:12px;color:var(--text-muted)}
-    .evento-card-sub{font-size:12px;color:var(--text-muted);margin-top:3px}
-    .evento-card-pago{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-    .pago-bar-wrap{flex:1;height:4px;background:var(--beige-dark);border-radius:2px;margin-right:10px;overflow:hidden}
+    .evento-card-cliente{font-size:13px;font-weight:500;color:var(--black)}
+    .evento-card-sub{font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .evento-card-pago{display:flex;align-items:center;gap:6px;margin-top:6px}
+    .pago-bar-wrap{flex:1;height:3px;background:var(--beige-dark);border-radius:2px;overflow:hidden}
     .pago-bar{height:100%;border-radius:2px;background:var(--brown-soft);transition:width .3s}
-    .pago-texto{font-size:11px;color:var(--text-muted);white-space:nowrap}
+    .pago-texto{font-size:10px;color:var(--text-muted);white-space:nowrap}
     .estado-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:500;letter-spacing:.06em}
 
     /* DETALLE EVENTO MODAL */
@@ -1155,7 +1156,8 @@ function mostrarEventosDia(fecha) {
   });
   if (!eventos.length) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
-  panel.innerHTML = '<div class="dia-eventos-titulo">' + fmtFecha(fecha) + '</div>';
+  panel.innerHTML = '<div class="dia-eventos-titulo">' + fmtFecha(fecha) + '</div><div class="dia-eventos-cards" id="dia-cards-container"></div>';
+  var cardsContainer = document.getElementById('dia-cards-container');
   for (var i = 0; i < eventos.length; i++) {
     (function(ev) {
       var pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
@@ -1163,18 +1165,16 @@ function mostrarEventosDia(fecha) {
       var card = document.createElement('div');
       card.className = 'evento-card';
       card.innerHTML =
-        '<div class="evento-card-top">' +
-          '<div><div class="evento-card-cliente">' + ev.cliente + '</div>' +
-          '<div class="evento-card-sub">' + ev.paquete + '</div></div>' +
-          '<div class="evento-card-hora">' + horaStr + '</div>' +
-        '</div>' +
+        '<div class="evento-card-hora">' + (horaStr || 'Sin hora') + '</div>' +
+        '<div class="evento-card-cliente">' + ev.cliente + '</div>' +
+        '<div class="evento-card-sub">' + ev.paquete + '</div>' +
         '<div class="evento-card-pago">' +
           '<div class="pago-bar-wrap"><div class="pago-bar" style="width:' + pagoPct + '%"></div></div>' +
-          '<span class="pago-texto">' + fmtMXN(ev.pagado) + ' / ' + fmtMXN(ev.total) + '</span>' +
+          '<span class="pago-texto">' + fmtMXN(ev.pagado) + '/' + fmtMXN(ev.total) + '</span>' +
         '</div>' +
         '<div style="margin-top:6px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>';
       card.addEventListener('click', function() { abrirDetalleEvento(ev.id_evento); });
-      panel.appendChild(card);
+      cardsContainer.appendChild(card);
     })(eventos[i]);
   }
 }
