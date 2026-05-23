@@ -1212,9 +1212,9 @@ async function buscarClientes() {
 }
 
 function renderClientes(clientes) {
-  const el = document.getElementById('clientes-list');
-  if (!clientes.length) { el.innerHTML = '<div class="clientes-empty">Sin resultados</div>'; return; }
-  el.innerHTML = '';
+  const clEl = document.getElementById('clientes-list');
+  if (!clientes.length) { clEl.innerHTML = '<div class="clientes-empty">Sin resultados</div>'; return; }
+  clEl.innerHTML = '';
   clientes.forEach(function(c) {
     const card = document.createElement('div');
     card.className = 'cliente-card';
@@ -1229,7 +1229,7 @@ function renderClientes(clientes) {
       '</div>' +
       '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(c.estado) + '22;color:' + estadoColor(c.estado) + '">' + c.estado + '</span></div>';
     card.onclick = function() { abrirDetalleEvento(c.id_evento); };
-    el.appendChild(card);
+    clEl.appendChild(card);
   });
 }
 
