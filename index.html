@@ -177,7 +177,7 @@
     .dia-dot.otro{background:var(--beige-deeper)}
 
     /* Vista mes individual */
-    .mes-detail{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--beige-light);z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .mes-detail{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--beige-light);z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
     .mes-detail.visible{display:block}
     .mes-detail-header{background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);padding:14px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:10}
     .mes-detail-back{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-main);padding:0;line-height:1}
@@ -417,10 +417,9 @@
             <div class="mes-full-dow">D</div>
           </div>
           <div class="mes-full-grid" id="mes-full-grid"></div>
+          <div class="dia-eventos-panel" id="dia-eventos-panel" style="display:none"></div>
         </div>
-        <div class="dia-eventos-panel" id="dia-eventos-panel" style="display:none"></div>
       </div>
-    </div><!-- end mes-detail -->
     </div>
 
     <!-- ===== PANTALLA 2: RESUMEN ===== -->
