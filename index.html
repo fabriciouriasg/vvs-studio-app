@@ -1230,6 +1230,187 @@ function renderClientes(clientes) {
   });
 }
 
+
+// ============================================================
+// DETALLE EVENTO
+// ============================================================
+async function abrirDetalleEvento(idEvento) {
+  if (!idEvento) return;
+  eventoModalIdActual = idEvento;
+  var modal = document.getElementById('evento-modal');
+  var sheet = document.getElementById('evento-modal-sheet');
+  modal.classList.add('open');
+  sheet.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">Cargando...</div>';
+  try {
+    var url = SCRIPT_URL + '?action=getEvento&id_evento=' + encodeURIComponent(idEvento) + '&token=' + encodeURIComponent(SECRET_TOKEN);
+    var res = await fetch(url);
+    var data = await res.json();
+    if (data.ok) renderDetalleEvento(data.evento);
+    else sheet.innerHTML = '<div style="padding:40px;text-align:center;color:var(--error)">Error: ' + (data.error||'desconocido') + '</div>';
+  } catch(e) {
+    sheet.innerHTML = '<div style="padding:40px;text-align:center;color:var(--error)">Sin conexion</div>';
+  }
+}
+
+function renderDetalleEvento(ev) {
+  eventoDetalleActual = ev;
+  var saldo = ev.total - ev.pagado;
+  var saldoCubierto = saldo <= 0;
+
+  var extrasHtml = '';
+  if (ev.extras && ev.extras.length) {
+    for (var i = 0; i < ev.extras.length; i++) {
+      var ex = ev.extras[i];
+      extrasHtml += '<div class="extras-item"><span>' + ex.descripcion + '</span><div style="display:flex;align-items:center;gap:8px"><span>' + fmtMXN(ex.monto) + '</span><button class="btn-extra-delete" onclick="eliminarExtra(\'' + ev.id_evento + '\',' + i + ')">✕</button></div></div>';
+    }
+  } else {
+    extrasHtml = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin extras</div>';
+  }
+
+  var pagosHtml = '';
+  if (ev.pagos && ev.pagos.length) {
+    for (var j = 0; j < ev.pagos.length; j++) {
+      var p = ev.pagos[j];
+      pagosHtml += '<div class="historial-item"><span style="color:var(--text-muted)">' + p.fecha + '</span><span>' + (p.nota||'Pago') + '</span><span style="font-weight:500">' + fmtMXN(p.monto) + '</span></div>';
+    }
+  } else {
+    pagosHtml = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin pagos registrados</div>';
+  }
+
+  var descHtml = '';
+  if (ev.descuento_tipo && ev.descuento_valor > 0) {
+    var label = ev.descuento_tipo === 'porcentaje' ? ev.descuento_valor + '%' : fmtMXN(ev.descuento_valor);
+    descHtml = '<div class="detalle-row"><span class="detalle-label">Descuento</span><span class="detalle-valor" style="color:var(--success)">- ' + label + '</span></div>';
+  }
+
+  var estadoOptions = ['Agendado','Cubierto','Editado','Entregado','Cancelado'].map(function(s) {
+    return '<option value="' + s + '"' + (s === ev.estado ? ' selected' : '') + '>' + s + '</option>';
+  }).join('');
+
+  var horaDisplay = '';
+  if (ev.hora) {
+    var horaRaw = String(ev.hora);
+    if (horaRaw.indexOf('T') !== -1) {
+      var tPart = horaRaw.split('T')[1];
+      if (tPart) {
+        var parts = tPart.split(':');
+        var hh = (parseInt(parts[0]) - 6 + 24) % 24;
+        horaDisplay = String(hh).padStart(2,'0') + ':' + (parts[1]||'00');
+      }
+    } else {
+      horaDisplay = horaRaw.substring(0,5);
+    }
+  }
+
+  document.getElementById('evento-modal-sheet').innerHTML =
+    '<div class="evento-modal-header" style="position:relative">' +
+      '<button class="close-modal-btn" onclick="cerrarDetalleEvento()">✕</button>' +
+      '<div class="evento-modal-cliente">' + ev.cliente + '</div>' +
+      '<div class="evento-modal-sub">' + ev.paquete + ' · ' + fmtFecha(ev.fecha_evento) + (horaDisplay ? ' · ' + horaDisplay : '') + '</div>' +
+      '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>' +
+    '</div>' +
+    '<div class="evento-modal-body">' +
+      '<div class="seccion-titulo">Resumen financiero</div>' +
+      '<div class="detalle-row"><span class="detalle-label">Precio base</span><span class="detalle-valor">' + fmtMXN(ev.precio_base) + '</span></div>' +
+      descHtml +
+      '<div class="detalle-row"><span class="detalle-label">Total</span><span class="detalle-total">' + fmtMXN(ev.total) + '</span></div>' +
+      '<div class="detalle-row"><span class="detalle-label">Pagado</span><span class="detalle-valor">' + fmtMXN(ev.pagado) + '</span></div>' +
+      '<div class="detalle-row"><span class="detalle-label">Saldo</span><span class="detalle-valor detalle-saldo ' + (saldoCubierto?'cubierto':'') + '">' + (saldoCubierto ? '✓ Cubierto' : fmtMXN(saldo)) + '</span></div>' +
+      '<div class="seccion-titulo">Extras</div>' +
+      extrasHtml +
+      '<div class="seccion-titulo">Historial de pagos</div>' +
+      pagosHtml +
+      '<div class="seccion-titulo">Estado</div>' +
+      '<select class="estado-select" onchange="cambiarEstado(\'' + ev.id_evento + '\', this.value)">' + estadoOptions + '</select>' +
+      '<div class="acciones-grid" style="margin-top:20px">' +
+        '<button class="btn-accion primary" onclick="openModalPago()">Registrar pago</button>' +
+        '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
+        '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function cerrarDetalleEvento() {
+  document.getElementById('evento-modal').classList.remove('open');
+  eventoModalIdActual = null;
+  eventoDetalleActual = null;
+}
+
+async function cambiarEstado(idEvento, nuevoEstado) {
+  if (!SCRIPT_URL) return;
+  await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({token:SECRET_TOKEN,action:'actualizarEvento',id_evento:idEvento,estado:nuevoEstado})});
+  calCargado = false;
+}
+
+function openModalExtra() { document.getElementById('modal-extra').classList.add('open'); }
+function closeModalExtra() {
+  document.getElementById('modal-extra').classList.remove('open');
+  document.getElementById('extra-desc').value = '';
+  document.getElementById('extra-monto').value = '';
+}
+
+async function guardarExtra() {
+  var desc = document.getElementById('extra-desc').value.trim();
+  var monto = parseFloat(document.getElementById('extra-monto').value) || 0;
+  if (!desc || !monto || !eventoModalIdActual) return;
+  await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:eventoModalIdActual,descripcion:desc,monto:monto})});
+  closeModalExtra();
+  abrirDetalleEvento(eventoModalIdActual);
+  calCargado = false;
+}
+
+async function eliminarExtra(idEvento, idx) {
+  if (!confirm('¿Eliminar este extra?')) return;
+  await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({token:SECRET_TOKEN,action:'eliminarExtra',id_evento:idEvento,extra_idx:idx})});
+  abrirDetalleEvento(idEvento);
+  calCargado = false;
+}
+
+function openModalDescuento() { document.getElementById('modal-descuento').classList.add('open'); }
+function closeModalDescuento() { document.getElementById('modal-descuento').classList.remove('open'); }
+
+async function guardarDescuento() {
+  var tipo = document.getElementById('desc-tipo').value;
+  var valor = parseFloat(document.getElementById('desc-valor').value) || 0;
+  if (!valor || !eventoModalIdActual) return;
+  await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({token:SECRET_TOKEN,action:'aplicarDescuento',id_evento:eventoModalIdActual,tipo:tipo,valor:valor})});
+  closeModalDescuento();
+  abrirDetalleEvento(eventoModalIdActual);
+  calCargado = false;
+}
+
+function openModalPago() { document.getElementById('modal-pago').classList.add('open'); }
+function closeModalPago() {
+  document.getElementById('modal-pago').classList.remove('open');
+  document.getElementById('pago-monto').value = '';
+  document.getElementById('pago-nota').value = '';
+}
+
+async function guardarPago() {
+  var monto = parseFloat(document.getElementById('pago-monto').value) || 0;
+  var nota = document.getElementById('pago-nota').value.trim();
+  if (!monto || !eventoModalIdActual || !eventoDetalleActual) return;
+  var payload = {
+    token: SECRET_TOKEN,
+    monto: monto,
+    categoria: eventoDetalleActual.categoria,
+    subcategoria: eventoDetalleActual.paquete,
+    fecha: HOY,
+    nota: nota || 'Pago',
+    quien: 'Vanessa',
+    id_evento: eventoModalIdActual
+  };
+  await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+  closeModalPago();
+  abrirDetalleEvento(eventoModalIdActual);
+  cargarLog(); cargarAcumulados();
+  resumenCargado = false; calCargado = false;
+}
+
 // ============================================================
 // POLLING
 // ============================================================
