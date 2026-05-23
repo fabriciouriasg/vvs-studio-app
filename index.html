@@ -931,32 +931,34 @@ function renderLog(registros) {
   const el = document.getElementById('log-list');
   if (!registros.length) { el.innerHTML = '<div class="empty-log">Sin registros aun</div>'; return; }
   console.log('Log registros:', JSON.stringify(registros.slice(0,3)));
-  // Guardar registros en window para acceso global desde botones
   window._logRegistros = registros.slice(0,5);
-  el.innerHTML = window._logRegistros.map((r, idx) => `
-    <div class="log-item">
-      <div class="log-left">
-        <div class="log-cat">${r.categoria}</div>
-        <div class="log-sub">${r.subcategoria || r.nota || ''}</div>
-      </div>
-      <div class="log-right">
-        <div class="log-monto">${fmtMXN(r.monto)}</div>
-        <div class="log-fecha">${r.fecha}</div>
-      </div>
-      <button class="log-delete" onclick="eliminarPorIndice(${idx})" title="Eliminar">✕</button>
-    </div>
-  `).join('');
+  el.innerHTML = '';
+  window._logRegistros.forEach(function(r, idx) {
+    var div = document.createElement('div');
+    div.className = 'log-item';
+    div.innerHTML =
+      '<div class="log-left">' +
+        '<div class="log-cat">' + r.categoria + '</div>' +
+        '<div class="log-sub">' + (r.subcategoria || r.nota || '') + '</div>' +
+      '</div>' +
+      '<div class="log-right">' +
+        '<div class="log-monto">' + fmtMXN(r.monto) + '</div>' +
+        '<div class="log-fecha">' + r.fecha + '</div>' +
+      '</div>' +
+      '<button class="log-delete" title="Eliminar">✕</button>';
+    var btn = div.querySelector('.log-delete');
+    var rCopy = { id: r.id, ts: r.ts, categoria: r.categoria, monto: r.monto };
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      pedirEliminar(rCopy.id, rCopy.ts, rCopy.categoria, rCopy.monto);
+    });
+    el.appendChild(div);
+  });
 }
 
 // ============================================================
 // ELIMINAR REGISTRO
 // ============================================================
-function eliminarPorIndice(idx) {
-  const r = window._logRegistros[idx];
-  if (!r) { alert('Error: registro no encontrado'); return; }
-  pedirEliminar(r.id, r.ts, r.categoria, r.monto);
-}
-
 function pedirEliminar(id, ts, cat, monto) {
   pendingDeleteId = parseInt(id) || 0;
   pendingDeleteTs = ts || '';
