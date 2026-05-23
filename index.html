@@ -878,6 +878,7 @@ async function registrar() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    alert('DELETE RESULT: ' + JSON.stringify(data));
     if (data.ok) {
       mostrarFeedback(`✓ Registrado: ${fmtMXN(monto)} en ${cat.nombre}`, 'success');
       resetForm();
@@ -982,6 +983,7 @@ async function confirmarEliminar() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    alert('DELETE RESULT: ' + JSON.stringify(data));
     if (data.ok) {
       cargarLog();
       cargarAcumulados();
