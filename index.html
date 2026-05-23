@@ -341,16 +341,7 @@
     <!-- ===== PANTALLA 0: CAPTURA ===== -->
     <div class="screen" id="screen-captura">
       <div class="container">
-        <div class="section-label">Monto a registrar</div>
-        <div class="monto-wrapper">
-          <div class="monto-input-row">
-            <span class="monto-prefix">$</span>
-            <input id="monto" type="number" inputmode="decimal" placeholder="0" step="0.01" min="0"/>
-          </div>
-          <div id="monto-display"></div>
-        </div>
-
-        <div class="section-label" style="margin-top:20px">Categoría</div>
+        <div class="section-label">Categoría</div>
         <div class="cat-grid" id="cat-grid"></div>
 
         <div class="subcats-wrapper" id="subcats-wrapper">
@@ -368,6 +359,16 @@
 
         <div class="tags-wrapper" id="tags-wrapper"></div>
 
+        <!-- MONTO PAGADO -->
+        <div class="section-label" id="monto-section-label" style="display:none">Monto pagado hoy</div>
+        <div class="monto-wrapper" id="monto-wrapper" style="display:none">
+          <div class="monto-input-row">
+            <span class="monto-prefix">$</span>
+            <input id="monto" type="number" inputmode="decimal" placeholder="0" step="0.01" min="0"/>
+          </div>
+          <div id="monto-display"></div>
+        </div>
+
         <!-- EVENTO FORM -->
         <div class="evento-form" id="evento-form">
           <div class="evento-form-title" id="evento-form-title">📅 Datos del evento</div>
@@ -384,7 +385,8 @@
         </div>
         <!-- Panel crear nuevo -->
         <div id="panel-nuevo">
-          <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente" oninput="buscarClienteSugerido()"/>
+          <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente *" oninput="buscarClienteSugerido()"/>
+          <input class="input-field" id="ev-email" type="email" inputmode="email" placeholder="Correo electrónico (opcional)"/>
           <div id="ev-cliente-sugerencias" style="display:none;background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;overflow:hidden"></div>
           <div style="margin-bottom:6px">
             <div style="font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Fecha y hora del evento <span style="font-weight:300;text-transform:none;letter-spacing:0">(opcional — dejar vacío si no está confirmada)</span></div>
@@ -432,6 +434,9 @@
 
       <!-- VISTA A: HIGH LEVEL - todos los meses -->
       <div id="cal-view-highlevel" style="height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div style="padding:10px 16px 0;background:var(--beige-light)">
+          <input type="text" id="cal-search" class="search-box" placeholder="🔍 Buscar cliente..." oninput="filtrarCalendario()" style="margin-bottom:0;font-size:13px"/>
+        </div>
         <div class="pendientes-wrap">
           <div class="pendientes-label">Sin fecha</div>
           <div class="pendientes-bubbles" id="pendientes-bubbles">
@@ -535,9 +540,8 @@
     <div class="seg-icon">⏰</div>
     <div class="seg-title">¿Cuándo capturas los datos?</div>
     <div class="seg-sub">Te mostraremos un recordatorio</div>
-    <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-1')">En 1 hora</button>
+    <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-ahora')">Capturar ahora</button>
     <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-2')">En 2 horas</button>
-    <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-3')">En 3 horas</button>
     <button class="seg-btn proxima" onclick="segConfirmar('tiempo-proxima')">La próxima vez que abra la app</button>
   </div>
 </div>
@@ -631,6 +635,8 @@
     <input type="date" id="edit-fecha" class="modal-input"/>
     <div class="modal-label">Hora</div>
     <input type="time" id="edit-hora" class="modal-input"/>
+    <div class="modal-label">Correo electrónico</div>
+    <input type="email" id="edit-email" class="modal-input" inputmode="email" placeholder="correo@ejemplo.com"/>
     <div class="modal-label">Notas</div>
     <input type="text" id="edit-notas" class="modal-input" placeholder="Notas del evento"/>
     <div class="modal-actions">
@@ -878,7 +884,9 @@ function selectCat(key) {
   renderSubcats(key); renderTags(key);
   document.getElementById('extra-hora-row').style.display = 'none';
   document.getElementById('extra-hora-check').checked = false;
-  // Mostrar form de evento para todas las categorias
+  // Mostrar monto y form de evento
+  document.getElementById('monto-section-label').style.display = 'block';
+  document.getElementById('monto-wrapper').style.display = 'block';
   document.getElementById('evento-form').classList.add('visible');
   // Cambiar titulo y modo segun categoria
   actualizarModoEvento(key);
@@ -912,12 +920,10 @@ function selectSubcat(pillEl, group, paq) {
   pillEl.classList.add('selected');
   selectedSubcat = {grupo:group.grupo, paquete:paq.nombre, precio:paq.precio};
   extraHoraActiva = false;
-  document.getElementById('monto').value = paq.precio;
-  document.getElementById('monto-display').textContent = fmtMXN(paq.precio);
-  document.getElementById('monto-display').style.color = 'var(--brown-soft)';
-  // Sync pago inicial en evento form
-  const evPago = document.getElementById('ev-pago-inicial');
-  if (evPago && !evPago.value) evPago.value = paq.precio;
+  // Show the precio as reference in monto display but keep monto at 0 for actual payment
+  document.getElementById('monto').value = '';
+  document.getElementById('monto-display').textContent = 'Precio: ' + fmtMXN(paq.precio);
+  document.getElementById('monto-display').style.color = 'var(--text-muted)';
   extraHoraPrecio = group.extraHora || 0;
   document.getElementById('extra-hora-check').checked = false;
   if (group.extraHora) {
@@ -931,9 +937,8 @@ function selectSubcat(pillEl, group, paq) {
 function toggleExtraHora() {
   extraHoraActiva = document.getElementById('extra-hora-check').checked;
   if (selectedSubcat) {
-    const total = selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0);
-    document.getElementById('monto').value = total;
-    document.getElementById('monto-display').textContent = fmtMXN(total);
+    var precioTotal = selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0);
+    document.getElementById('monto-display').textContent = 'Precio: ' + fmtMXN(precioTotal);
   }
 }
 
@@ -1067,9 +1072,10 @@ async function registrar() {
       } else if (modoEvento === 'nuevo' && evCliente) {
         // CREAR nuevo evento
         const precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
+        var evEmail = document.getElementById('ev-email') ? document.getElementById('ev-email').value.trim() : '';
         const eventoPayload = {
           token: SECRET_TOKEN, action: 'crearEvento',
-          cliente: evCliente, categoria: cat.nombre,
+          cliente: evCliente, email: evEmail, categoria: cat.nombre,
           paquete: subcatLabel || cat.nombre,
           fecha_evento: evFecha, hora: evHora,
           precio_base: precioBase, extras: [],
@@ -1114,6 +1120,7 @@ function resetForm() {
   document.getElementById('monto-display').textContent = '';
   document.getElementById('nota').value = '';
   document.getElementById('ev-cliente').value = '';
+  if (document.getElementById('ev-email')) document.getElementById('ev-email').value = '';
   document.getElementById('ev-fecha').value = '';
   document.getElementById('ev-hora').value = '';
   document.getElementById('ev-pago-inicial').value = '';
@@ -1131,6 +1138,8 @@ function resetForm() {
   document.getElementById('tags-wrapper').classList.remove('visible');
   document.getElementById('extra-hora-row').style.display = 'none';
   document.getElementById('evento-form').classList.remove('visible');
+  document.getElementById('monto-section-label').style.display = 'none';
+  document.getElementById('monto-wrapper').style.display = 'none';
   if (document.getElementById('ev-buscar-existente')) document.getElementById('ev-buscar-existente').value = '';
   if (document.getElementById('ev-seleccionado-info')) document.getElementById('ev-seleccionado-info').style.display = 'none';
   if (document.getElementById('ev-existente-resultados')) document.getElementById('ev-existente-resultados').style.display = 'none';
@@ -1554,7 +1563,9 @@ function renderClientes(clientes) {
     card.innerHTML =
       '<div class="cliente-card-top">' +
         '<div><div class="cliente-nombre">' + c.cliente + '</div>' +
-        '<div class="cliente-cat">' + c.categoria + ' · ' + fmtFecha(c.fecha_evento) + hora + '</div></div>' +
+        '<div class="cliente-cat">' + c.categoria + ' · ' + fmtFecha(c.fecha_evento) + hora + '</div>' +
+        (c.email ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">✉️ ' + c.email + '</div>' : '') +
+        '</div>' +
         '<div><div class="cliente-pago">' + fmtMXN(c.pagado) + ' / ' + fmtMXN(c.total) + '</div>' +
         '<div class="cliente-pago-sub">' + (saldo > 0 ? 'Saldo: ' + fmtMXN(saldo) : '✓ Cubierto') + '</div></div>' +
       '</div>' +
@@ -1630,6 +1641,7 @@ function renderDetalleEvento(ev) {
       '<button class="close-modal-btn" onclick="cerrarDetalleEvento()">✕</button>' +
       '<div class="evento-modal-cliente">' + ev.cliente + '</div>' +
       '<div class="evento-modal-sub">' + ev.paquete + ' · ' + fmtFecha(ev.fecha_evento) + (horaDisplay ? ' · ' + horaDisplay : '') + '</div>' +
+      (ev.email ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">✉️ ' + ev.email + '</div>' : '') +
       '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>' +
     '</div>' +
     '<div class="evento-modal-body">' +
@@ -2126,35 +2138,58 @@ async function verificarEventosVencidos() {
     var ahora = new Date().getTime();
     var manana = new Date(); manana.setDate(manana.getDate() + 1); manana.setHours(0,0,0,0);
 
-    // Check 24hr reminders
+    // Check 24hr reminders - show banner for events tomorrow
+    var hoyStr = new Date().toISOString().slice(0,10);
+    var recordatoriosMostrados = JSON.parse(localStorage.getItem('vvs_r24_' + hoyStr) || '[]');
+
     eventos.forEach(function(ev) {
       if (ev.estado !== 'Agendado' || !ev.fecha_evento) return;
-      var fechaEv = new Date(ev.fecha_evento);
-      fechaEv.setHours(0,0,0,0);
-      var key24 = 'vvs_reminder24_' + ev.id_evento;
-      if (fechaEv.getTime() === manana.getTime() && !localStorage.getItem(key24)) {
-        localStorage.setItem(key24, '1');
+      var fechaEv = new Date(ev.fecha_evento + 'T00:00:00');
+      var mananaDate = new Date(); mananaDate.setDate(mananaDate.getDate() + 1);
+      var mananaStr = mananaDate.toISOString().slice(0,10);
+      if (ev.fecha_evento !== mananaStr) return;
+      if (recordatoriosMostrados.indexOf(ev.id_evento) !== -1) return;
+
+      // Mark as shown today
+      recordatoriosMostrados.push(ev.id_evento);
+      localStorage.setItem('vvs_r24_' + hoyStr, JSON.stringify(recordatoriosMostrados));
+
+      // Show banner
+      (function(evLocal) {
         setTimeout(function() {
-          mostrarNuevoBanner();
-          // Show reminder notification
           var reminderEl = document.createElement('div');
-          reminderEl.style.cssText = 'position:fixed;top:60px;left:0;right:0;background:var(--brown-soft);color:var(--white);padding:14px 20px;text-align:center;z-index:998;font-size:13px';
-          reminderEl.innerHTML = '⏰ Mañana: <strong>' + ev.cliente + '</strong> — ' + ev.paquete.split(' - ')[0] + (ev.hora ? ' a las ' + extraerHora(ev.hora) : '') + (ev.pagado < ev.total ? ' · Saldo pendiente: ' + fmtMXN(ev.total - ev.pagado) : '');
+          reminderEl.style.cssText = 'position:fixed;top:96px;left:0;right:0;background:#5c4a32;color:#fdfaf7;padding:14px 20px;text-align:center;z-index:998;font-size:13px;cursor:pointer';
+          var saldo = evLocal.total - evLocal.pagado;
+          reminderEl.innerHTML = '⏰ <strong>Mañana:</strong> ' + evLocal.cliente + ' — ' + (evLocal.paquete||'').split(' - ')[0] +
+            (evLocal.hora ? ' a las ' + extraerHora(evLocal.hora) : '') +
+            (saldo > 0 ? ' &nbsp;·&nbsp; 💰 Saldo: ' + fmtMXN(saldo) : ' &nbsp;·&nbsp; ✓ Pagado');
+          reminderEl.onclick = function() { reminderEl.remove(); };
           document.body.appendChild(reminderEl);
-          if ('vibrate' in navigator) navigator.vibrate([200,100,200]);
-          setTimeout(function() { reminderEl.remove(); }, 8000);
-        }, 1000);
-      }
+          if ('vibrate' in navigator) navigator.vibrate([100,50,100]);
+          setTimeout(function() { if (reminderEl.parentNode) reminderEl.remove(); }, 10000);
+        }, 2500);
+      })(ev);
     });
 
     segEventosPendientes = eventos.filter(function(ev) {
       if (ev.estado !== 'Agendado') return false;
       if (!ev.fecha_evento) return false;
-      var fechaEv = new Date(ev.fecha_evento);
-      fechaEv.setHours(23,59,59,0);
-      if (fechaEv >= new Date()) return false;
+
+      // Calculate event datetime + 24hrs
+      var fechaEv = new Date(ev.fecha_evento + 'T00:00:00');
+      if (ev.hora && ev.hora.length >= 5) {
+        var parts = ev.hora.split(':');
+        fechaEv.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+      } else {
+        fechaEv.setHours(23, 59, 0, 0); // if no hora, use end of day
+      }
+      var confirmAfter = fechaEv.getTime() + 24 * 60 * 60 * 1000; // +24hrs
+      if (ahora < confirmAfter) return false; // not yet 24hrs after event
+
+      // Check snooze (only used for "en 2 horas" option)
       var snoozeHasta = snoozed[ev.id_evento] || 0;
       return ahora >= snoozeHasta;
+      // Note: NO localStorage permanent skip - repeats every open until confirmed
     });
 
     if (segEventosPendientes.length > 0) {
@@ -2216,16 +2251,34 @@ async function segConfirmar(accion) {
     abrirOverlay('seg-overlay-3');
   }
   else if (accion.startsWith('tiempo-')) {
-    var horas = accion === 'tiempo-1' ? 1 : accion === 'tiempo-2' ? 2 : accion === 'tiempo-3' ? 3 : 0;
-    var cuando = horas > 0
-      ? new Date().getTime() + horas * 60 * 60 * 1000
-      : 0; // 0 = proxima vez
-
-    localStorage.setItem('vvs_pendiente_gasto', JSON.stringify({
-      cuando: cuando,
-      evento: segEventoActual
-    }));
-    avanzarSeguimiento();
+    if (accion === 'tiempo-ahora') {
+      // Go to captura and pre-fill evento
+      avanzarSeguimiento();
+      switchTab(0);
+      // Pre-select categoria if possible
+      if (segEventoActual) {
+        var catKey = segEventoActual.categoria === 'Eventos' ? 'eventos' :
+                     segEventoActual.categoria === 'Sesiones' ? 'sesiones' :
+                     segEventoActual.categoria === 'Anticipos' ? 'anticipos' : 'otros';
+        selectCat(catKey);
+        // Pre-fill cliente search with evento id
+        if (document.getElementById('ev-buscar-existente')) {
+          setModoEvento('ligar');
+          document.getElementById('ev-buscar-existente').value = segEventoActual.cliente;
+          seleccionarEventoExistente(segEventoActual);
+        }
+      }
+    } else {
+      var horas = accion === 'tiempo-2' ? 2 : 0;
+      var cuando = horas > 0
+        ? new Date().getTime() + horas * 60 * 60 * 1000
+        : 0;
+      localStorage.setItem('vvs_pendiente_gasto', JSON.stringify({
+        cuando: cuando,
+        evento: segEventoActual
+      }));
+      avanzarSeguimiento();
+    }
   }
 }
 
@@ -2254,6 +2307,7 @@ function openModalEditar() {
   document.getElementById('edit-fecha').value = eventoDetalleActual.fecha_evento || '';
   document.getElementById('edit-hora').value = eventoDetalleActual.hora || '';
   document.getElementById('edit-notas').value = eventoDetalleActual.notas || '';
+  if (document.getElementById('edit-email')) document.getElementById('edit-email').value = eventoDetalleActual.email || '';
   document.getElementById('modal-editar').classList.add('open');
 }
 function closeModalEditar() { document.getElementById('modal-editar').classList.remove('open'); }
@@ -2266,6 +2320,7 @@ async function guardarEdicion() {
     action: 'actualizarEvento',
     id_evento: eventoModalIdActual,
     cliente: cliente,
+    email: document.getElementById('edit-email') ? document.getElementById('edit-email').value.trim() : '',
     precio_base: parseFloat(document.getElementById('edit-precio').value) || eventoDetalleActual.precio_base,
     fecha_evento: document.getElementById('edit-fecha').value,
     hora: document.getElementById('edit-hora').value,
