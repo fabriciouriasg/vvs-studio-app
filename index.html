@@ -1135,7 +1135,7 @@ function abrirMesDetail(mc) {
       diaEl.appendChild(dots);
     }
     (function(fecha, evs) {
-      diaEl.addEventListener('click', function() { mostrarEventosDia(fecha, evs); });
+      diaEl.addEventListener('click', function() { mostrarEventosDia(fecha); });
     })(fechaStr, evsDelDia);
     grid.appendChild(diaEl);
   }
@@ -1148,38 +1148,35 @@ function cerrarMesDetail() {
   document.getElementById('mes-detail').classList.remove('visible');
 }
 
-function mostrarEventosDia(fecha, eventosParam) {
-  const panel = document.getElementById('dia-eventos-panel');
-  // Always re-filter from todosEventos to get fresh data
-  const eventos = todosEventos.filter(e => {
-    const f = String(e.fecha_evento || '').trim().substring(0,10);
-    return f === fecha && e.estado !== 'Cancelado';
+function mostrarEventosDia(fecha) {
+  var panel = document.getElementById('dia-eventos-panel');
+  var eventos = todosEventos.filter(function(e) {
+    return String(e.fecha_evento || '').substring(0,10) === fecha && e.estado !== 'Cancelado';
   });
   if (!eventos.length) { panel.style.display = 'none'; return; }
   panel.style.display = 'block';
   panel.innerHTML = '<div class="dia-eventos-titulo">' + fmtFecha(fecha) + '</div>';
-  eventos.forEach(ev => {
-    const card = document.createElement('div'); card.className = 'evento-card';
-    const pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
-    card.innerHTML = `
-      <div class="evento-card-top">
-        <div>
-          <div class="evento-card-cliente">${ev.cliente}</div>
-          <div class="evento-card-sub">${ev.paquete}</div>
-        </div>
-        <div class="evento-card-hora">${ev.hora || ''}</div>
-      </div>
-      <div class="evento-card-pago">
-        <div class="pago-bar-wrap"><div class="pago-bar" style="width:${pagoPct}%"></div></div>
-        <span class="pago-texto">${fmtMXN(ev.pagado)} / ${fmtMXN(ev.total)}</span>
-      </div>
-      <div style="margin-top:6px">
-        <span class="estado-badge" style="background:${estadoColor(ev.estado)}22;color:${estadoColor(ev.estado)}">${ev.estado}</span>
-      </div>`;
-    card.oncli
-    card.onclick = () => abrirDetalleEvento(c.id_evento);
-    el.appendChild(card);
-  });
+  for (var i = 0; i < eventos.length; i++) {
+    (function(ev) {
+      var pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
+      var horaStr = ev.hora && String(ev.hora).indexOf('1899') === -1 ? String(ev.hora).substring(0,5) : '';
+      var card = document.createElement('div');
+      card.className = 'evento-card';
+      card.innerHTML =
+        '<div class="evento-card-top">' +
+          '<div><div class="evento-card-cliente">' + ev.cliente + '</div>' +
+          '<div class="evento-card-sub">' + ev.paquete + '</div></div>' +
+          '<div class="evento-card-hora">' + horaStr + '</div>' +
+        '</div>' +
+        '<div class="evento-card-pago">' +
+          '<div class="pago-bar-wrap"><div class="pago-bar" style="width:' + pagoPct + '%"></div></div>' +
+          '<span class="pago-texto">' + fmtMXN(ev.pagado) + ' / ' + fmtMXN(ev.total) + '</span>' +
+        '</div>' +
+        '<div style="margin-top:6px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>';
+      card.addEventListener('click', function() { abrirDetalleEvento(ev.id_evento); });
+      panel.appendChild(card);
+    })(eventos[i]);
+  }
 }
 
 // ============================================================
