@@ -552,6 +552,33 @@
   </div>
 </div>
 
+<!-- CONVERTIR MODAL -->
+<div class="modal-overlay" id="modal-convertir" onclick="if(event.target===this)closeModalConvertir()">
+  <div class="modal-sheet" style="max-height:85vh;overflow-y:auto">
+    <div class="modal-title">🔄 Convertir a Evento / Sesión</div>
+    <div class="modal-label">Categoría</div>
+    <select id="conv-categoria" class="modal-input" style="appearance:none;-webkit-appearance:none" onchange="renderConvSubcats()">
+      <option value="Eventos">Eventos</option>
+      <option value="Sesiones">Sesiones</option>
+    </select>
+    <div class="modal-label">Tipo de evento</div>
+    <select id="conv-tipo" class="modal-input" style="appearance:none;-webkit-appearance:none" onchange="renderConvPaquetes()">
+    </select>
+    <div class="modal-label">Paquete</div>
+    <select id="conv-paquete" class="modal-input" style="appearance:none;-webkit-appearance:none" onchange="renderConvPrecio()">
+    </select>
+    <div id="conv-precio-info" style="font-size:13px;color:var(--brown-soft);margin-top:-10px;margin-bottom:12px;text-align:right"></div>
+    <div class="modal-label">Fecha del evento</div>
+    <input type="date" id="conv-fecha" class="modal-input"/>
+    <div class="modal-label">Hora de inicio</div>
+    <input type="time" id="conv-hora" class="modal-input"/>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalConvertir()">Cancelar</button>
+      <button class="btn-modal-save" onclick="guardarConvertir()">Convertir</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // CONFIG
@@ -1362,8 +1389,10 @@ function renderDetalleEvento(ev) {
     descHtml = '<div class="detalle-row"><span class="detalle-label">Descuento</span><span class="detalle-valor" style="color:var(--success)">- ' + label + '</span></div>';
   }
 
-  var estadoOptions = ['Agendado','Cubierto','Editado','Entregado','Cancelado'].map(function(s) {
-    return '<option value="' + s + '"' + (s === ev.estado ? ' selected' : '') + '>' + s + '</option>';
+  // Reglas de transicion de estados
+  var estadosPermitidos = getEstadosPermitidos(ev.estado, ev.fecha_evento);
+  var estadoOptions = estadosPermitidos.map(function(s) {
+    return '<option value="' + s.valor + '"' + (s.valor === ev.estado ? ' selected' : '') + (s.disabled ? ' disabled' : '') + '>' + s.label + '</option>';
   }).join('');
 
   var horaDisplay = ev.hora ? String(ev.hora).substring(0,5) : '';
@@ -1387,12 +1416,13 @@ function renderDetalleEvento(ev) {
       '<div class="seccion-titulo">Historial de pagos</div>' +
       pagosHtml +
       '<div class="seccion-titulo">Estado</div>' +
-      '<select class="estado-select" onchange="cambiarEstado(\'' + ev.id_evento + '\', this.value)">' + estadoOptions + '</select>' +
+      '<select class="estado-select" onchange="validarCambioEstado(\'' + ev.id_evento + '\', this.value, ' + ev.pagado + ', ' + ev.total + ')">' + estadoOptions + '</select>' +
       '<div class="acciones-grid" style="margin-top:20px">' +
         '<button class="btn-accion primary" onclick="openModalPago()">Registrar pago</button>' +
         '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
         '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
-        (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha al evento</button>' : '') +
+        (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha</button>' : '') +
+        (ev.categoria === 'Anticipos' ? '<button class="btn-accion" style="grid-column:1/-1;background:var(--brown-soft);color:var(--white);border-color:var(--brown-soft)" onclick="openModalConvertir()">🔄 Convertir a Evento / Sesión</button>' : '') +
       '</div>' +
     '</div>';
 }
@@ -1630,6 +1660,203 @@ async function guardarFecha() {
   if (currentTab === 1) {
     cargarCalendario();
   }
+}
+
+// ============================================================
+// REGLAS DE ESTADOS
+// ============================================================
+function getEstadosPermitidos(estadoActual, fechaEvento) {
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  var fechaEv = fechaEvento ? new Date(fechaEvento) : null;
+  var yaOcurrio = fechaEv ? fechaEv <= hoy : false;
+
+  var orden = ['Agendado','Cubierto','Editado','Entregado'];
+  var idxActual = orden.indexOf(estadoActual);
+  if (idxActual === -1) idxActual = 0; // Cancelado u otro
+
+  var resultado = [];
+
+  // Estado actual siempre visible
+  orden.forEach(function(s, idx) {
+    var disabled = false;
+    var label = s;
+
+    if (s === estadoActual) {
+      // Current - always selectable
+      disabled = false;
+    } else if (s === 'Cubierto') {
+      // Solo si ya paso la fecha
+      disabled = !yaOcurrio;
+      if (disabled) label = s + ' (aun no ha ocurrido)';
+      if (idx !== idxActual + 1) disabled = true;
+    } else if (s === 'Editado') {
+      // Solo si actual es Cubierto
+      disabled = estadoActual !== 'Cubierto';
+      if (disabled) label = s + ' (requiere Cubierto primero)';
+    } else if (s === 'Entregado') {
+      // Solo si actual es Editado
+      disabled = estadoActual !== 'Editado';
+      if (disabled) label = s + ' (requiere Editado primero)';
+    }
+
+    resultado.push({ valor: s, label: label, disabled: disabled });
+  });
+
+  // Cancelado: disponible desde Agendado, Cubierto, Editado (NO desde Entregado)
+  if (estadoActual !== 'Entregado' && estadoActual !== 'Cancelado') {
+    resultado.push({ valor: 'Cancelado', label: 'Cancelado', disabled: false });
+  }
+  if (estadoActual === 'Cancelado') {
+    resultado.push({ valor: 'Cancelado', label: 'Cancelado', disabled: false });
+  }
+
+  return resultado;
+}
+
+async function validarCambioEstado(idEvento, nuevoEstado, pagado, total) {
+  // Warning si intenta entregar con saldo pendiente
+  if (nuevoEstado === 'Entregado' && total > 0 && pagado < total) {
+    var saldo = total - pagado;
+    var continuar = confirm('⚠️ Hay un saldo pendiente de ' + fmtMXN(saldo) + '. ¿Marcar como Entregado de todas formas?');
+    if (!continuar) {
+      // Revert select to current value
+      abrirDetalleEvento(idEvento);
+      return;
+    }
+  }
+
+  // Warning si cancela
+  if (nuevoEstado === 'Cancelado') {
+    var confirmarCancel = confirm('¿Confirmas cancelación? El dinero recibido queda con Vanessa.');
+    if (!confirmarCancel) {
+      abrirDetalleEvento(idEvento);
+      return;
+    }
+  }
+
+  await cambiarEstado(idEvento, nuevoEstado);
+  calCargado = false;
+  abrirDetalleEvento(idEvento);
+}
+
+// ============================================================
+// CONVERTIR ANTICIPO
+// ============================================================
+var SUBCATS_CONV = {
+  Eventos: [
+    {grupo:'Baby Shower',    paquetes:[{nombre:'Basico',precio:2900},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:5900}]},
+    {grupo:'Bautizo',        paquetes:[{nombre:'Basico',precio:3500},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:9900}]},
+    {grupo:'Boda Civil',     paquetes:[{nombre:'Basico',precio:4500},{nombre:'Completo',precio:6000},{nombre:'Plus',precio:9950}]},
+    {grupo:'Fiesta Infantil',paquetes:[{nombre:'Basico',precio:4500},{nombre:'Completo',precio:7000},{nombre:'Plus',precio:9500}]},
+    {grupo:'Gender Reveal',  paquetes:[{nombre:'Basico',precio:3000},{nombre:'Completo',precio:5500},{nombre:'Plus',precio:6900}]},
+    {grupo:'Primera Comunion',paquetes:[{nombre:'Basico',precio:3600},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:9900}]}
+  ],
+  Sesiones: [
+    {grupo:'Cake Smash Tematico',  paquetes:[{nombre:'Basico',precio:5300},{nombre:'Completo',precio:6700},{nombre:'Plus',precio:8200}]},
+    {grupo:'Cake Smash White',     paquetes:[{nombre:'Basico',precio:3900},{nombre:'Completo',precio:5300},{nombre:'Plus',precio:6700}]},
+    {grupo:'Familiar 3 personas',  paquetes:[{nombre:'Basico',precio:3000},{nombre:'Completo',precio:4500},{nombre:'Plus',precio:6000}]},
+    {grupo:'Familiar +3 personas', paquetes:[{nombre:'Basico',precio:3500},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:6500}]},
+    {grupo:'Infantil',             paquetes:[{nombre:'Basico',precio:3500},{nombre:'Completo',precio:5000},{nombre:'Plus',precio:6000}]},
+    {grupo:'Maternidad',           paquetes:[{nombre:'Basico',precio:3000},{nombre:'Completo',precio:4500},{nombre:'Plus',precio:6000}]},
+    {grupo:'Parejas',              paquetes:[{nombre:'Basico',precio:3200},{nombre:'Completo',precio:4500},{nombre:'Plus',precio:5000}]},
+    {grupo:'Perfil Profesional',   paquetes:[{nombre:'Paquete 1',precio:2400},{nombre:'Paquete 2',precio:4000}]}
+  ]
+};
+
+function openModalConvertir() {
+  renderConvSubcats();
+  // Pre-fill fecha/hora if evento already has them
+  if (eventoDetalleActual && eventoDetalleActual.fecha_evento) {
+    document.getElementById('conv-fecha').value = eventoDetalleActual.fecha_evento;
+  }
+  if (eventoDetalleActual && eventoDetalleActual.hora) {
+    document.getElementById('conv-hora').value = eventoDetalleActual.hora;
+  }
+  document.getElementById('modal-convertir').classList.add('open');
+}
+
+function closeModalConvertir() {
+  document.getElementById('modal-convertir').classList.remove('open');
+}
+
+function renderConvSubcats() {
+  var cat = document.getElementById('conv-categoria').value;
+  var grupos = SUBCATS_CONV[cat] || [];
+  var tipoSel = document.getElementById('conv-tipo');
+  tipoSel.innerHTML = grupos.map(function(g) {
+    return '<option value="' + g.grupo + '">' + g.grupo + '</option>';
+  }).join('');
+  renderConvPaquetes();
+}
+
+function renderConvPaquetes() {
+  var cat = document.getElementById('conv-categoria').value;
+  var tipo = document.getElementById('conv-tipo').value;
+  var grupos = SUBCATS_CONV[cat] || [];
+  var grupo = grupos.find(function(g) { return g.grupo === tipo; });
+  var paqSel = document.getElementById('conv-paquete');
+  if (grupo) {
+    paqSel.innerHTML = grupo.paquetes.map(function(p) {
+      return '<option value="' + p.precio + '" data-nombre="' + p.nombre + '">' + p.nombre + ' — ' + fmtMXN(p.precio) + '</option>';
+    }).join('');
+  }
+  renderConvPrecio();
+}
+
+function renderConvPrecio() {
+  var paqSel = document.getElementById('conv-paquete');
+  var precio = parseFloat(paqSel.value) || 0;
+  var pagado = eventoDetalleActual ? (eventoDetalleActual.pagado || 0) : 0;
+  var saldo = precio - pagado;
+  document.getElementById('conv-precio-info').innerHTML =
+    'Precio: <strong>' + fmtMXN(precio) + '</strong> &nbsp;·&nbsp; Ya pagado: <strong>' + fmtMXN(pagado) + '</strong> &nbsp;·&nbsp; Saldo: <strong>' + fmtMXN(Math.max(0, saldo)) + '</strong>';
+}
+
+async function guardarConvertir() {
+  if (!eventoModalIdActual || !SCRIPT_URL) return;
+  var cat = document.getElementById('conv-categoria').value;
+  var tipo = document.getElementById('conv-tipo').value;
+  var paqSel = document.getElementById('conv-paquete');
+  var precio = parseFloat(paqSel.value) || 0;
+  var paqueteNombre = paqSel.options[paqSel.selectedIndex].getAttribute('data-nombre');
+  var fecha = document.getElementById('conv-fecha').value;
+  var hora = document.getElementById('conv-hora').value;
+  var paqueteCompleto = tipo + ' - ' + paqueteNombre;
+
+  var btn = document.querySelector('#modal-convertir .btn-modal-save');
+  btn.textContent = 'Convirtiendo...';
+  btn.disabled = true;
+
+  try {
+    var res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify({
+        token: SECRET_TOKEN,
+        action: 'convertirEvento',
+        id_evento: eventoModalIdActual,
+        nueva_categoria: cat,
+        nuevo_paquete: paqueteCompleto,
+        nuevo_precio_base: precio,
+        fecha_evento: fecha,
+        hora: hora
+      })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      closeModalConvertir();
+      calCargado = false;
+      resumenCargado = false;
+      abrirDetalleEvento(eventoModalIdActual);
+    } else {
+      alert('Error: ' + (data.error || 'desconocido'));
+    }
+  } catch(e) {
+    alert('Sin conexion');
+  }
+  btn.textContent = 'Convertir';
+  btn.disabled = false;
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
