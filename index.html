@@ -420,6 +420,7 @@
         </div>
         <div class="dia-eventos-panel" id="dia-eventos-panel" style="display:none"></div>
       </div>
+    </div><!-- end mes-detail -->
     </div>
 
     <!-- ===== PANTALLA 2: RESUMEN ===== -->
@@ -446,7 +447,7 @@
 </div><!-- screens-wrapper -->
 
 <!-- DETALLE EVENTO MODAL -->
-<div class="evento-modal" id="evento-modal">
+<div class="evento-modal" id="evento-modal" onclick="if(event.target===this)cerrarDetalleEvento()">
   <div class="evento-modal-sheet" id="evento-modal-sheet"></div>
 </div>
 
@@ -520,6 +521,27 @@
 // ============================================================
 const SECRET_TOKEN = 'Negocio2026$';
 let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
+
+// Helper: extraer HH:MM de cualquier formato de hora
+function extraerHora(raw) {
+  if (!raw || raw === 'undefined' || raw === 'null') return '';
+  var s = String(raw).trim();
+  // Formato HH:MM directo
+  if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
+  // Formato Date ISO con T: 1899-12-30T16:30:00.000Z
+  if (s.indexOf('T') !== -1) {
+    var tPart = s.split('T')[1];
+    if (tPart) {
+      var parts = tPart.split(':');
+      var hh = parseInt(parts[0]);
+      var mm = parts[1] || '00';
+      // Apps Script guarda horas locales en UTC-6, ajustar
+      hh = (hh + 18) % 24; // +18 = -6 en UTC
+      return String(hh).padStart(2,'0') + ':' + mm;
+    }
+  }
+  return '';
+}
 
 const MESES_CONFIG = [
   { nombre: 'Mayo',       anio: 2026, mes: 5 },
@@ -1287,20 +1309,7 @@ function renderDetalleEvento(ev) {
     return '<option value="' + s + '"' + (s === ev.estado ? ' selected' : '') + '>' + s + '</option>';
   }).join('');
 
-  var horaDisplay = '';
-  if (ev.hora) {
-    var horaRaw = String(ev.hora);
-    if (horaRaw.indexOf('T') !== -1) {
-      var tPart = horaRaw.split('T')[1];
-      if (tPart) {
-        var parts = tPart.split(':');
-        var hh = (parseInt(parts[0]) - 6 + 24) % 24;
-        horaDisplay = String(hh).padStart(2,'0') + ':' + (parts[1]||'00');
-      }
-    } else {
-      horaDisplay = horaRaw.substring(0,5);
-    }
-  }
+  var horaDisplay = extraerHora(String(ev.hora || ''));
 
   document.getElementById('evento-modal-sheet').innerHTML =
     '<div class="evento-modal-header" style="position:relative">' +
