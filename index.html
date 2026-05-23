@@ -878,7 +878,6 @@ async function registrar() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    alert('DELETE RESULT: ' + JSON.stringify(data));
     if (data.ok) {
       mostrarFeedback(`✓ Registrado: ${fmtMXN(monto)} en ${cat.nombre}`, 'success');
       resetForm();
@@ -954,7 +953,6 @@ function renderLog(registros) {
     var rMonto = r.monto;
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
-      alert('CLICK ts=' + rTs + ' id=' + rId);
       pedirEliminar(rId, rTs, rCat, rMonto);
     });
     el.appendChild(div);
@@ -966,10 +964,12 @@ function renderLog(registros) {
 // ============================================================
 function pedirEliminar(id, ts, cat, monto) {
   pendingDeleteId = parseInt(id) || 0;
-  pendingDeleteTs = ts || '';
+  pendingDeleteTs = String(ts || '');
   pendingDeleteInfo = cat + ' — ' + fmtMXN(monto);
   document.getElementById('delete-msg').textContent = '¿Eliminar el registro de ' + pendingDeleteInfo + '? Esta accion no se puede deshacer.';
   document.getElementById('modal-delete').classList.add('open');
+  // Verificar que se guardaron correctamente
+  console.log('pendingDeleteTs set to:', pendingDeleteTs, 'id:', pendingDeleteId);
 }
 
 function closeDelete() { document.getElementById('modal-delete').classList.remove('open'); pendingDeleteId = null; pendingDeleteTs = ''; }
@@ -987,7 +987,6 @@ async function confirmarEliminar() {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    alert('DELETE RESULT: ' + JSON.stringify(data));
     if (data.ok) {
       cargarLog();
       cargarAcumulados();
