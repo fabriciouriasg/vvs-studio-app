@@ -98,6 +98,8 @@
     .evento-form.visible{display:block}
     .evento-form-title{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:500;color:var(--black);margin-bottom:14px}
     .input-field{width:100%;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:11px 14px;font-family:'Jost',sans-serif;font-size:14px;color:var(--text-main);outline:none;margin-bottom:10px}
+    .btn-modo{flex:1;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:9px;font-family:'Jost',sans-serif;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;letter-spacing:.06em;text-transform:uppercase}
+    .btn-modo.active{background:var(--black);color:var(--white);border-color:var(--black)}
     .input-field:focus{border-color:var(--brown-soft)}
     .input-row{display:flex;gap:8px}
     .input-row .input-field{flex:1;margin-bottom:0}
@@ -350,7 +352,20 @@
 
         <!-- EVENTO FORM -->
         <div class="evento-form" id="evento-form">
-          <div class="evento-form-title">📅 Datos del evento</div>
+          <div class="evento-form-title" id="evento-form-title">📅 Datos del evento</div>
+        <!-- Modo: crear nuevo o ligar a existente -->
+        <div style="display:flex;gap:8px;margin-bottom:12px" id="evento-modo-tabs">
+          <button id="btn-modo-nuevo" class="btn-modo active" onclick="setModoEvento('nuevo')">+ Nuevo evento</button>
+          <button id="btn-modo-ligar" class="btn-modo" onclick="setModoEvento('ligar')">Ligar a existente</button>
+        </div>
+        <!-- Panel ligar a existente -->
+        <div id="panel-ligar" style="display:none">
+          <input class="input-field" id="ev-buscar-existente" type="text" placeholder="Buscar cliente o evento..." oninput="buscarEventoExistente()"/>
+          <div id="ev-existente-resultados" style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;display:none;overflow:hidden"></div>
+          <div id="ev-seleccionado-info" style="display:none;background:var(--beige-mid);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;margin-bottom:10px;color:var(--text-main)"></div>
+        </div>
+        <!-- Panel crear nuevo -->
+        <div id="panel-nuevo">
           <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente" oninput="buscarClienteSugerido()"/>
           <div id="ev-cliente-sugerencias" style="display:none;background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;overflow:hidden"></div>
           <div style="margin-bottom:6px">
@@ -376,7 +391,7 @@
             <input class="input-field" id="ev-desc-valor" type="number" inputmode="decimal" placeholder="Valor" style="flex:1;margin-bottom:0" oninput="calcularDescuento()"/>
           </div>
           <div id="ev-desc-resultado" style="font-size:12px;color:var(--brown-soft);margin-top:4px;text-align:right;min-height:16px"></div>
-        </div>
+        </div><!-- end panel-nuevo -->
 
         <div class="section-label">Fecha de hoy</div>
         <input type="date" id="fecha" class="fecha-input"/>
@@ -723,9 +738,10 @@ function selectCat(key) {
   renderSubcats(key); renderTags(key);
   document.getElementById('extra-hora-row').style.display = 'none';
   document.getElementById('extra-hora-check').checked = false;
-  // Mostrar form de evento para Eventos y Sesiones
-  const showEvento = key === 'eventos' || key === 'sesiones';
-  document.getElementById('evento-form').classList.toggle('visible', showEvento);
+  // Mostrar form de evento para todas las categorias
+  document.getElementById('evento-form').classList.add('visible');
+  // Cambiar titulo y modo segun categoria
+  actualizarModoEvento(key);
 }
 
 function renderSubcats(key) {
@@ -877,7 +893,6 @@ async function registrar() {
   try {
     let idEvento = '';
 
-    // Si hay form de evento con cliente y fecha de evento → crear evento
     const evCliente = document.getElementById('ev-cliente').value.trim();
     const evFecha = document.getElementById('ev-fecha').value;
     const evHora = document.getElementById('ev-hora').value;
@@ -887,23 +902,33 @@ async function registrar() {
     const evDescValor = parseFloat(document.getElementById('ev-desc-valor').value || 0);
     const eventoFormVisible = document.getElementById('evento-form').classList.contains('visible');
 
-    if (eventoFormVisible && evCliente && selectedSubcat) {
-      const precioBase = selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0);
-      const eventoPayload = {
-        token: SECRET_TOKEN, action: 'crearEvento',
-        cliente: evCliente, categoria: cat.nombre,
-        paquete: subcatLabel || selectedSubcat.paquete,
-        fecha_evento: evFecha, hora: evHora,
-        precio_base: precioBase,
-        extras: [],
-        descuento_tipo: evDescCheck ? evDescTipo : '',
-        descuento_valor: evDescCheck ? evDescValor : 0,
-        pagado_inicial: evPagoInicial > 0 ? evPagoInicial : (monto > 0 ? monto : 0),
-        estado: 'Agendado', notas: notaFinal
-      };
-      const evRes = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(eventoPayload)});
-      const evData = await evRes.json();
-      if (evData.ok) idEvento = evData.id_evento;
+    if (eventoFormVisible) {
+      if (modoEvento === 'ligar' && eventoLigadoId) {
+        // LIGAR a evento existente
+        idEvento = eventoLigadoId;
+        // Si es Otros, agregar como extra al evento
+        if (esOtros && monto > 0) {
+          await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
+            body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:idEvento,descripcion:subcatLabel||notaFinal||'Otro',monto:monto})});
+        }
+      } else if (modoEvento === 'nuevo' && evCliente) {
+        // CREAR nuevo evento
+        const precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
+        const eventoPayload = {
+          token: SECRET_TOKEN, action: 'crearEvento',
+          cliente: evCliente, categoria: cat.nombre,
+          paquete: subcatLabel || cat.nombre,
+          fecha_evento: evFecha, hora: evHora,
+          precio_base: precioBase, extras: [],
+          descuento_tipo: evDescCheck ? evDescTipo : '',
+          descuento_valor: evDescCheck ? evDescValor : 0,
+          pagado_inicial: 0,
+          estado: 'Agendado', notas: notaFinal
+        };
+        const evRes = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(eventoPayload)});
+        const evData = await evRes.json();
+        if (evData.ok) idEvento = evData.id_evento;
+      }
     }
 
     // Registrar ingreso solo si hay monto > 0
@@ -953,6 +978,11 @@ function resetForm() {
   document.getElementById('tags-wrapper').classList.remove('visible');
   document.getElementById('extra-hora-row').style.display = 'none';
   document.getElementById('evento-form').classList.remove('visible');
+  if (document.getElementById('ev-buscar-existente')) document.getElementById('ev-buscar-existente').value = '';
+  if (document.getElementById('ev-seleccionado-info')) document.getElementById('ev-seleccionado-info').style.display = 'none';
+  if (document.getElementById('ev-existente-resultados')) document.getElementById('ev-existente-resultados').style.display = 'none';
+  eventoLigadoId = null;
+  modoEvento = 'nuevo';
   setDefaultFecha();
 }
 
@@ -1442,6 +1472,70 @@ async function guardarPago() {
   abrirDetalleEvento(eventoModalIdActual);
   cargarLog(); cargarAcumulados();
   resumenCargado = false; calCargado = false;
+}
+
+// ============================================================
+// MODO EVENTO (nuevo vs ligar)
+// ============================================================
+var modoEvento = 'nuevo'; // 'nuevo' | 'ligar'
+var eventoLigadoId = null;
+var esOtros = false;
+
+function actualizarModoEvento(key) {
+  esOtros = (key === 'otros');
+  var titulo = document.getElementById('evento-form-title');
+  if (key === 'anticipos') titulo.textContent = '💰 Datos del evento (anticipo)';
+  else if (key === 'otros') titulo.textContent = '📦 Ligar a evento';
+  else titulo.textContent = '📅 Datos del evento';
+  // Reset modo
+  setModoEvento('nuevo');
+  eventoLigadoId = null;
+  document.getElementById('ev-seleccionado-info').style.display = 'none';
+  document.getElementById('ev-existente-resultados').style.display = 'none';
+  document.getElementById('ev-buscar-existente').value = '';
+}
+
+function setModoEvento(modo) {
+  modoEvento = modo;
+  document.getElementById('btn-modo-nuevo').classList.toggle('active', modo === 'nuevo');
+  document.getElementById('btn-modo-ligar').classList.toggle('active', modo === 'ligar');
+  document.getElementById('panel-nuevo').style.display = modo === 'nuevo' ? 'block' : 'none';
+  document.getElementById('panel-ligar').style.display = modo === 'ligar' ? 'block' : 'none';
+  eventoLigadoId = null;
+  document.getElementById('ev-seleccionado-info').style.display = 'none';
+}
+
+async function buscarEventoExistente() {
+  var q = document.getElementById('ev-buscar-existente').value.trim();
+  var cont = document.getElementById('ev-existente-resultados');
+  if (q.length < 2 || !SCRIPT_URL) { cont.style.display = 'none'; return; }
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getClientes&q=' + encodeURIComponent(q) + '&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    if (data.clientes && data.clientes.length) {
+      cont.style.display = 'block';
+      cont.innerHTML = '';
+      data.clientes.slice(0, 5).forEach(function(ev) {
+        var div = document.createElement('div');
+        div.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--beige-light);font-size:13px;cursor:pointer';
+        div.innerHTML = '<strong>' + ev.cliente + '</strong> <span style="color:var(--text-muted)">· ' + ev.categoria + ' ' + (ev.fecha_evento ? fmtFecha(ev.fecha_evento) : 'Sin fecha') + '</span>';
+        div.addEventListener('click', function() { seleccionarEventoExistente(ev); });
+        cont.appendChild(div);
+      });
+    } else { cont.style.display = 'none'; }
+  } catch(e) { cont.style.display = 'none'; }
+}
+
+function seleccionarEventoExistente(ev) {
+  eventoLigadoId = ev.id_evento;
+  document.getElementById('ev-existente-resultados').style.display = 'none';
+  document.getElementById('ev-buscar-existente').value = ev.cliente;
+  var info = document.getElementById('ev-seleccionado-info');
+  var saldo = ev.total - ev.pagado;
+  info.innerHTML = '<strong>' + ev.cliente + '</strong> — ' + ev.categoria + '<br>' +
+    (ev.fecha_evento ? fmtFecha(ev.fecha_evento) : 'Sin fecha') +
+    ' &nbsp;|&nbsp; Saldo: <strong>' + fmtMXN(saldo) + '</strong>';
+  info.style.display = 'block';
 }
 
 // ============================================================
