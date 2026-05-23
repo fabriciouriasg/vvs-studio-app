@@ -802,7 +802,7 @@ function switchTab(idx) {
   document.getElementById('screens-track').style.transform = `translateX(-${idx * 25}%)`;
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
   if (idx === 1 && !calCargado) cargarCalendario();
-  if (idx === 2 && !resumenCargado) cargarResumen();
+  if (idx === 2) { resumenCargado = false; cargarResumen(); }
 }
 
 // ============================================================
