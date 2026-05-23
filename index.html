@@ -352,9 +352,12 @@
           <div class="evento-form-title">📅 Datos del evento</div>
           <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente" oninput="buscarClienteSugerido()"/>
           <div id="ev-cliente-sugerencias" style="display:none;background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;overflow:hidden"></div>
-          <div class="input-row" style="margin-bottom:10px">
-            <input class="input-field" id="ev-fecha" type="date" placeholder="Fecha del evento" onchange="checkFechaConflicto()"/>
-            <input class="input-field" id="ev-hora" type="time" placeholder="Hora"/>
+          <div style="margin-bottom:6px">
+            <div style="font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Fecha y hora del evento</div>
+            <div class="input-row">
+              <input class="input-field" id="ev-fecha" type="date" style="margin-bottom:0" onchange="checkFechaConflicto()"/>
+              <input class="input-field" id="ev-hora" type="time" style="margin-bottom:0"/>
+            </div>
           </div>
           <div class="warning-banner" id="warning-fecha"></div>
           <input class="input-field" id="ev-pago-inicial" type="number" inputmode="decimal" placeholder="Pago de hoy ($0 si solo aparta fecha)" step="0.01" min="0"/>
@@ -391,8 +394,9 @@
 
     <!-- ===== PANTALLA 1: CALENDARIO ===== -->
     <div class="screen" id="screen-calendario">
-      <!-- High level: pendientes + meses -->
-      <div class="cal-container" id="cal-highlevel">
+
+      <!-- VISTA A: HIGH LEVEL - todos los meses -->
+      <div id="cal-view-highlevel" style="height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
         <div class="pendientes-wrap">
           <div class="pendientes-label">Sin fecha</div>
           <div class="pendientes-bubbles" id="pendientes-bubbles">
@@ -402,14 +406,14 @@
         <div class="meses-scroll" id="meses-scroll"></div>
       </div>
 
-      <!-- Vista mes individual - cubre todo el screen cuando visible -->
-      <div class="mes-detail" id="mes-detail">
+      <!-- VISTA B: MES INDIVIDUAL - oculta por default -->
+      <div id="cal-view-mes" style="display:none;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
         <div class="mes-detail-header">
           <button class="mes-detail-back" onclick="cerrarMesDetail()">←</button>
           <span class="mes-detail-nombre" id="mes-detail-nombre"></span>
         </div>
-        <div class="mes-detail-grid">
-          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;width:100%">
+        <div style="padding:12px 8px">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
             <div class="mes-full-dow">L</div><div class="mes-full-dow">M</div>
             <div class="mes-full-dow">M</div><div class="mes-full-dow">J</div>
             <div class="mes-full-dow">V</div><div class="mes-full-dow">S</div>
@@ -419,9 +423,10 @@
           <div class="dia-eventos-panel" id="dia-eventos-panel" style="display:none"></div>
         </div>
       </div>
+
     </div>
 
-    <!-- ===== PANTALLA 2: RESUMEN ===== -->
+        <!-- ===== PANTALLA 2: RESUMEN ===== -->
     <div class="screen" id="screen-resumen">
       <div class="resumen-container">
         <div id="resumen-content"><div class="resumen-loading">Cargando resumen...</div></div>
@@ -793,8 +798,9 @@ async function checkFechaConflicto() {
     const res = await fetch(`${SCRIPT_URL}?action=checkFecha&fecha=${fecha}&token=${encodeURIComponent(SECRET_TOKEN)}`);
     const data = await res.json();
     if (data.conflictos && data.conflictos.length > 0) {
-      const c = data.conflictos[0];
-      banner.innerHTML = `<strong>⚠️ Día ocupado</strong>${c.cliente} — ${c.categoria} a las ${c.hora || 'sin hora'}`;
+      var c = data.conflictos[0];
+      var horaWarning = c.hora ? extraerHora(String(c.hora)) : '';
+      banner.innerHTML = '<strong>⚠️ Día ocupado</strong>' + c.cliente + ' — ' + c.categoria + (horaWarning ? ' a las ' + horaWarning : '');
       banner.classList.add('visible');
     } else {
       banner.classList.remove('visible');
@@ -1106,7 +1112,9 @@ function crearMesMini(mc, eventosMes) {
 // MES DETAIL
 // ============================================================
 function abrirMesDetail(mc) {
-  document.getElementById('cal-highlevel').style.display = 'none';
+  document.getElementById('cal-view-highlevel').style.display = 'none';
+  document.getElementById('cal-view-mes').style.display = 'block';
+  document.getElementById('cal-view-mes').scrollTop = 0;
   document.getElementById('mes-detail-nombre').textContent = mc.nombre + ' ' + mc.anio;
   const grid = document.getElementById('mes-full-grid');
   grid.innerHTML = '';
@@ -1157,8 +1165,9 @@ function cerrarMesDetail() {
   var panel = document.getElementById('dia-eventos-panel');
   panel.style.display = 'none';
   panel.innerHTML = '';
-  document.getElementById('mes-detail').classList.remove('visible');
-  document.getElementById('cal-highlevel').style.display = 'block';
+  document.getElementById('cal-view-mes').style.display = 'none';
+  document.getElementById('cal-view-highlevel').style.display = 'block';
+  document.getElementById('cal-view-highlevel').scrollTop = 0;
 }
 
 function mostrarEventosDia(fecha) {
