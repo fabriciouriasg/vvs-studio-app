@@ -41,7 +41,7 @@
     /* SCREENS */
     .screens-wrapper{position:fixed;top:96px;left:0;right:0;bottom:0;overflow:hidden}
     .screens-track{display:flex;width:400%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-    .screen{width:25%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .screen{width:25%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative}
 
     /* CONTAINER */
     .container{max-width:480px;margin:0 auto;padding:20px 16px 100px}
@@ -177,20 +177,20 @@
     .dia-dot.otro{background:var(--beige-deeper)}
 
     /* Vista mes individual */
-    .mes-detail{display:none;position:fixed;top:96px;left:0;right:0;bottom:0;background:var(--beige-light);z-index:50;overflow-y:auto}
+    .mes-detail{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--beige-light);z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch}
     .mes-detail.visible{display:block}
     .mes-detail-header{background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);padding:14px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:10}
     .mes-detail-back{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-main);padding:0;line-height:1}
     .mes-detail-nombre{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--black)}
-    .mes-detail-grid{padding:16px}
-    .mes-full-dow{font-size:10px;color:var(--text-muted);text-align:center;font-weight:500;padding:4px 0;text-transform:uppercase}
-    .mes-full-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-    .mes-full-dia{min-height:48px;border-radius:8px;padding:4px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;transition:background .15s}
+    .mes-detail-grid{padding:12px 8px}
+    .mes-full-dow{font-size:9px;color:var(--text-muted);text-align:center;font-weight:500;padding:3px 0;text-transform:uppercase}
+    .mes-full-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;width:100%}
+    .mes-full-dia{min-height:42px;border-radius:6px;padding:3px 2px;cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;transition:background .15s}
     .mes-full-dia:active{background:var(--beige-mid)}
     .mes-full-dia.vacio{cursor:default}
     .mes-full-dia.hoy .dia-num{font-weight:700;color:var(--brown-dark)}
     .mes-full-dia.con-evento{background:var(--beige-light)}
-    .dia-num{font-size:13px;color:var(--text-main);line-height:1.2}
+    .dia-num{font-size:12px;color:var(--text-main);line-height:1.2}
     .dia-full-dots{display:flex;gap:2px;margin-top:3px;flex-wrap:wrap;justify-content:center}
 
     /* Panel eventos del dia */
@@ -409,7 +409,7 @@
           <span class="mes-detail-nombre" id="mes-detail-nombre"></span>
         </div>
         <div class="mes-detail-grid">
-          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;width:100%">
             <div class="mes-full-dow">L</div><div class="mes-full-dow">M</div>
             <div class="mes-full-dow">M</div><div class="mes-full-dow">J</div>
             <div class="mes-full-dow">V</div><div class="mes-full-dow">S</div>
@@ -431,7 +431,7 @@
     <!-- ===== PANTALLA 3: CLIENTES ===== -->
     <div class="screen" id="screen-clientes">
       <div class="clientes-container">
-        <input class="search-box" id="search-cliente" type="text" placeholder="Buscar cliente..." />
+        <input class="search-box" id="search-cliente" type="text" placeholder="Buscar cliente..." onkeydown="if(event.key==='Enter')buscarClientes()"/>
         <div class="search-row">
           <input class="search-box" id="search-desde" type="date" style="font-size:13px"/>
           <input class="search-box" id="search-hasta" type="date" style="font-size:13px"/>
