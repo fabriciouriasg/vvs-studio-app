@@ -521,24 +521,11 @@
 const SECRET_TOKEN = 'Negocio2026$';
 let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
 
-// Helper: extraer HH:MM de cualquier formato de hora
+// Helper: extraer HH:MM - backend ya envia formato limpio
 function extraerHora(raw) {
-  if (!raw || raw === 'undefined' || raw === 'null') return '';
+  if (!raw || raw === 'undefined' || raw === 'null' || raw === '') return '';
   var s = String(raw).trim();
-  // Formato HH:MM directo
-  if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
-  // Formato Date ISO con T: 1899-12-30T16:30:00.000Z
-  if (s.indexOf('T') !== -1) {
-    var tPart = s.split('T')[1];
-    if (tPart) {
-      var parts = tPart.split(':');
-      var hh = parseInt(parts[0]);
-      var mm = parts[1] || '00';
-      // Apps Script guarda horas locales en UTC-6, ajustar
-      hh = (hh + 18) % 24; // +18 = -6 en UTC
-      return String(hh).padStart(2,'0') + ':' + mm;
-    }
-  }
+  if (s.length >= 5 && s.indexOf(':') !== -1) return s.substring(0, 5);
   return '';
 }
 
@@ -1308,7 +1295,7 @@ function renderDetalleEvento(ev) {
     return '<option value="' + s + '"' + (s === ev.estado ? ' selected' : '') + '>' + s + '</option>';
   }).join('');
 
-  var horaDisplay = extraerHora(String(ev.hora || ''));
+  var horaDisplay = ev.hora ? String(ev.hora).substring(0,5) : '';
 
   document.getElementById('evento-modal-sheet').innerHTML =
     '<div class="evento-modal-header" style="position:relative">' +
