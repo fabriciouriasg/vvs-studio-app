@@ -1317,31 +1317,31 @@ function renderResumen(resumen, resEventos) {
       html += '<div style="display:flex;justify-content:space-between;padding:6px 16px;background:var(--beige-light);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">';
       html += '<span>Cliente · Servicio · Fecha</span><span>Límite 15 días hábiles</span></div>';
       porEditar.forEach(function(ev) {
-        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
-        html += '<div style="font-weight:500;color:var(--black-soft);margin-bottom:3px">' + ev.cliente + '</div>';
         var limDate = calcularFechaLimite(ev.fecha);
         var restantes = limDate ? diasRestantes(limDate) : null;
         var limLabel = '';
         var limColor = 'var(--text-muted)';
         var limWeight = '400';
         if (restantes !== null) {
+          var fechaLimCorta = fmtFechaCorta(limDate);
           if (restantes < 0) {
-            limLabel = 'Venció hace ' + Math.abs(restantes) + ' día' + (Math.abs(restantes)!==1?'s':'') + ' ⚠️';
+            limLabel = fechaLimCorta + ' · ' + Math.abs(restantes) + 'd ⚠️';
             limColor = '#c0392b'; limWeight = '600';
           } else if (restantes === 0) {
-            limLabel = '¡Vence hoy! ⚠️';
+            limLabel = fechaLimCorta + ' · hoy ⚠️';
             limColor = '#c0392b'; limWeight = '600';
           } else if (restantes <= 3) {
-            limLabel = 'Vence ' + fmtFechaCorta(limDate) + ' · ' + restantes + ' día' + (restantes!==1?'s':'');
+            limLabel = fechaLimCorta + ' · ' + restantes + 'd';
             limColor = '#e67e22'; limWeight = '500';
           } else {
-            limLabel = 'Vence ' + fmtFechaCorta(limDate) + ' · ' + restantes + ' días';
+            limLabel = fechaLimCorta + ' · ' + restantes + 'd';
           }
         }
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;width:100%">';
-        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + '</span>';
-        html += '<span style="font-size:11px;color:' + limColor + ';font-weight:' + limWeight + ';text-align:right;white-space:nowrap;margin-left:8px">' + limLabel + '</span>';
-        html += '</div>';
+        // Fecha sin año
+        var fechaSinAnio = fmtFecha(ev.fecha).replace(/\s*\d{4}/, '');
+        html += '<div style="padding:8px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;align-items:center;font-size:12px;cursor:pointer;gap:8px" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<span style="color:var(--black-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>' + ev.cliente + '</strong> · ' + ev.paquete.split(' - ')[0] + ' · ' + fechaSinAnio + '</span>';
+        html += '<span style="font-size:11px;color:' + limColor + ';font-weight:' + limWeight + ';white-space:nowrap;flex-shrink:0">' + limLabel + '</span>';
       });
       html += '</div>';
     }
