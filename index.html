@@ -1229,7 +1229,14 @@ function renderLog(registros) {
   window._logRegistros.forEach(function(r) {
     var div = document.createElement('div');
     div.className = 'log-item';
-    div.innerHTML = '<div class="log-left"><div class="log-cat">'+r.categoria+'</div><div class="log-sub">'+(r.subcategoria||r.nota||'')+'</div></div><div class="log-right"><div class="log-monto">'+fmtMXN(r.monto)+'</div><div class="log-fecha">'+r.fecha+'</div></div><button class="log-delete" title="Eliminar">✕</button>';
+    // Find cliente name from todosEventos if id_evento exists
+    var clienteNombre = '';
+    if (r.id_evento && todosEventos.length) {
+      var evMatch = todosEventos.filter(function(e) { return e.id_evento === r.id_evento; });
+      if (evMatch.length) clienteNombre = evMatch[0].cliente;
+    }
+    var subLabel = clienteNombre ? clienteNombre + (r.subcategoria ? ' · ' + r.subcategoria : '') : (r.subcategoria || r.nota || '');
+    div.innerHTML = '<div class="log-left"><div class="log-cat">'+r.categoria+'</div><div class="log-sub">'+subLabel+'</div></div><div class="log-right"><div class="log-monto">'+fmtMXN(r.monto)+'</div><div class="log-fecha">'+r.fecha+'</div></div><button class="log-delete" title="Eliminar">✕</button>';
     var btn = div.querySelector('.log-delete');
     (function(id,ts,cat,monto){
       btn.addEventListener('click',function(e){
@@ -2493,7 +2500,11 @@ async function generarContrato() {
     var data = await res.json();
     if (!data.ok) { alert('Error al obtener datos del contrato: ' + (data.error||'desconocido')); return; }
     var html = buildContratoHTML(data.evento, data.textos);
-    descargarPDF(html, 'Recibo_' + (data.evento.folio || data.evento.cliente) + '.pdf');
+    var ev = data.evento;
+    var tipoCorto = (ev.paquete || '').split(' - ')[0];
+    var fechaCorta = fmtFecha(ev.fecha_evento).replace(/\s*\d{4}/, '');
+    var nombrePDF = (ev.cliente + ' ' + tipoCorto + ' ' + fechaCorta).replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '').trim() + '.pdf';
+    descargarPDF(html, nombrePDF);
   } catch(e) {
     alert('Error al generar contrato: ' + e.message);
   }
