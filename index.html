@@ -1229,12 +1229,7 @@ function renderLog(registros) {
   window._logRegistros.forEach(function(r) {
     var div = document.createElement('div');
     div.className = 'log-item';
-    // Find cliente name from todosEventos if id_evento exists
-    var clienteNombre = '';
-    if (r.id_evento && todosEventos.length) {
-      var evMatch = todosEventos.filter(function(e) { return e.id_evento === r.id_evento; });
-      if (evMatch.length) clienteNombre = evMatch[0].cliente;
-    }
+    var clienteNombre = r.cliente || '';
     var subLabel = clienteNombre ? clienteNombre + (r.subcategoria ? ' · ' + r.subcategoria : '') : (r.subcategoria || r.nota || '');
     div.innerHTML = '<div class="log-left"><div class="log-cat">'+r.categoria+'</div><div class="log-sub">'+subLabel+'</div></div><div class="log-right"><div class="log-monto">'+fmtMXN(r.monto)+'</div><div class="log-fecha">'+r.fecha+'</div></div><button class="log-delete" title="Eliminar">✕</button>';
     var btn = div.querySelector('.log-delete');
@@ -1334,6 +1329,7 @@ function renderResumen(resumen, resEventos) {
       html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEditar.length + '</span></div>';
       html += '<div style="display:flex;justify-content:space-between;padding:6px 16px;background:var(--beige-light);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">';
       html += '<span>Cliente · Servicio · Fecha</span><span>Límite 15 días hábiles</span></div>';
+      html += '<div style="display:flex;flex-direction:column;width:100%">';
       porEditar.forEach(function(ev) {
         var limDate = calcularFechaLimite(ev.fecha);
         var restantes = limDate ? diasRestantes(limDate) : null;
@@ -1357,10 +1353,11 @@ function renderResumen(resumen, resEventos) {
         }
         // Fecha sin año
         var fechaSinAnio = fmtFecha(ev.fecha).replace(/\s*\d{4}/, '');
-        html += '<div style="padding:8px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;align-items:center;font-size:12px;cursor:pointer;gap:8px" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<div style="padding:8px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;align-items:center;font-size:12px;cursor:pointer;gap:8px;width:100%;box-sizing:border-box" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
         html += '<span style="color:var(--black-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>' + ev.cliente + '</strong> · ' + ev.paquete.split(' - ')[0] + ' · ' + fechaSinAnio + '</span>';
         html += '<span style="font-size:11px;color:' + limColor + ';font-weight:' + limWeight + ';white-space:nowrap;flex-shrink:0">' + limLabel + '</span>';
       });
+      html += '</div>';
       html += '</div>';
     }
 
