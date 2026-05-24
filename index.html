@@ -386,6 +386,7 @@
         <!-- Panel crear nuevo -->
         <div id="panel-nuevo">
           <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente *" oninput="buscarClienteSugerido()"/>
+          <input class="input-field" id="ev-telefono" type="tel" inputmode="tel" placeholder="Teléfono WhatsApp * (10 dígitos)"/>
           <input class="input-field" id="ev-email" type="email" inputmode="email" placeholder="Correo electrónico (opcional)"/>
           <div id="ev-cliente-sugerencias" style="display:none;background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;overflow:hidden"></div>
           <div style="margin-bottom:6px">
@@ -635,6 +636,8 @@
     <input type="date" id="edit-fecha" class="modal-input"/>
     <div class="modal-label">Hora</div>
     <input type="time" id="edit-hora" class="modal-input"/>
+    <div class="modal-label">Teléfono WhatsApp</div>
+    <input type="tel" id="edit-telefono" class="modal-input" inputmode="tel" placeholder="10 dígitos"/>
     <div class="modal-label">Correo electrónico</div>
     <input type="email" id="edit-email" class="modal-input" inputmode="email" placeholder="correo@ejemplo.com"/>
     <div class="modal-label">Notas</div>
@@ -1100,6 +1103,12 @@ async function registrar() {
         btn.disabled = false;
         return;
       }
+      var evTelefono = document.getElementById('ev-telefono') ? document.getElementById('ev-telefono').value.trim().replace(/\D/g,'') : '';
+      if (modoEvento === 'nuevo' && !evTelefono) {
+        mostrarFeedback('El teléfono WhatsApp es obligatorio', 'error');
+        btn.disabled = false;
+        return;
+      }
       if (modoEvento === 'ligar' && !eventoLigadoId) {
         mostrarFeedback('Selecciona un evento existente', 'error');
         btn.disabled = false;
@@ -1117,9 +1126,10 @@ async function registrar() {
         // CREAR nuevo evento
         const precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
         var evEmail = document.getElementById('ev-email') ? document.getElementById('ev-email').value.trim() : '';
+        var evTelPayload = document.getElementById('ev-telefono') ? document.getElementById('ev-telefono').value.trim().replace(/\D/g,'') : '';
         const eventoPayload = {
           token: SECRET_TOKEN, action: 'crearEvento',
-          cliente: evCliente, email: evEmail, categoria: cat.nombre,
+          cliente: evCliente, email: evEmail, telefono: evTelPayload, categoria: cat.nombre,
           paquete: subcatLabel || cat.nombre,
           fecha_evento: evFecha, hora: evHora,
           precio_base: precioBase, extras: [],
@@ -1165,6 +1175,7 @@ function resetForm() {
   document.getElementById('nota').value = '';
   document.getElementById('ev-cliente').value = '';
   if (document.getElementById('ev-email')) document.getElementById('ev-email').value = '';
+  if (document.getElementById('ev-telefono')) document.getElementById('ev-telefono').value = '';
   document.getElementById('ev-fecha').value = '';
   document.getElementById('ev-hora').value = '';
   document.getElementById('ev-pago-inicial').value = '';
@@ -1735,7 +1746,8 @@ function renderDetalleEvento(ev) {
       '<button class="close-modal-btn" onclick="cerrarDetalleEvento()">✕</button>' +
       '<div class="evento-modal-cliente">' + ev.cliente + '</div>' +
       '<div class="evento-modal-sub">' + ev.paquete + ' · ' + fmtFecha(ev.fecha_evento) + (horaDisplay ? ' · ' + horaDisplay : '') + '</div>' +
-      (ev.email ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">✉️ ' + ev.email + '</div>' : '') +
+      (ev.telefono ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📱 ' + ev.telefono + '</div>' : '') +
+      (ev.email ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">✉️ ' + ev.email + '</div>' : '') +
       (ev.folio ? '<div style="font-size:11px;color:var(--beige-deeper);margin-top:4px;letter-spacing:.08em">' + ev.folio + '</div>' : '') +
       '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>' +
     '</div>' +
@@ -1757,7 +1769,8 @@ function renderDetalleEvento(ev) {
         '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
         '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
         '<button class="btn-accion" onclick="openModalEditar()">✏️ Editar</button>' +
-        '<button class="btn-accion" onclick="generarContrato()">📄 Contrato</button>' +
+        '<button class="btn-accion" onclick="generarContrato()">📄 Recibo</button>' +
+        (ev.telefono ? '<button class="btn-accion" style="background:#25D366;color:white;border-color:#25D366" onclick="enviarWhatsApp()">💬 WhatsApp</button>' : '') +
         (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha</button>' : '') +
         (ev.categoria === 'Anticipos' ? '<button class="btn-accion" style="grid-column:1/-1;background:var(--brown-soft);color:var(--white);border-color:var(--brown-soft)" onclick="openModalConvertir()">🔄 Convertir a Evento / Sesión</button>' : '') +
         '<button class="btn-accion" style="grid-column:1/-1;color:var(--error);border-color:var(--error)" onclick="eliminarEvento()">🗑️ Eliminar evento</button>' +
@@ -2403,6 +2416,7 @@ function openModalEditar() {
   document.getElementById('edit-fecha').value = eventoDetalleActual.fecha_evento || '';
   document.getElementById('edit-hora').value = eventoDetalleActual.hora || '';
   document.getElementById('edit-notas').value = eventoDetalleActual.notas || '';
+  if (document.getElementById('edit-telefono')) document.getElementById('edit-telefono').value = eventoDetalleActual.telefono || '';
   if (document.getElementById('edit-email')) document.getElementById('edit-email').value = eventoDetalleActual.email || '';
   document.getElementById('modal-editar').classList.add('open');
 }
@@ -2416,6 +2430,7 @@ async function guardarEdicion() {
     action: 'actualizarEvento',
     id_evento: eventoModalIdActual,
     cliente: cliente,
+    telefono: document.getElementById('edit-telefono') ? document.getElementById('edit-telefono').value.trim().replace(/\D/g,'') : '',
     email: document.getElementById('edit-email') ? document.getElementById('edit-email').value.trim() : '',
     precio_base: parseFloat(document.getElementById('edit-precio').value) || eventoDetalleActual.precio_base,
     fecha_evento: document.getElementById('edit-fecha').value,
@@ -2478,7 +2493,7 @@ async function generarContrato() {
     var data = await res.json();
     if (!data.ok) { alert('Error al obtener datos del contrato: ' + (data.error||'desconocido')); return; }
     var html = buildContratoHTML(data.evento, data.textos);
-    descargarPDF(html, 'Contrato_' + (data.evento.folio || data.evento.cliente) + '.html');
+    descargarPDF(html, 'Recibo_' + (data.evento.folio || data.evento.cliente) + '.pdf');
   } catch(e) {
     alert('Error al generar contrato: ' + e.message);
   }
@@ -2566,38 +2581,62 @@ function buildContratoHTML(ev, textos) {
 
     (disclaimers ? '<div class="section"><div class="section-title">Términos del Servicio</div><div class="policy"><ul>' + disclaimers + '</ul></div></div>' : '') +
 
-    '<div class="firma">' +
-    '<div class="firma-box"><div style="height:50px"></div><div class="firma-line">Vanessa Velasco<br>Fotógrafa</div></div>' +
-    '<div class="firma-box"><div style="height:50px"></div><div class="firma-line">' + ev.cliente + '<br>Cliente</div></div>' +
-    '</div>' +
+
 
     '<div class="footer">' + (textos.pie_pagina||'Gracias por confiar en Vanessa Velasco Fotografía Familiar') + '</div>' +
     '</body></html>';
 }
 
 function descargarPDF(html, filename) {
-  try {
-    // Try standard download first
-    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1500);
-  } catch(e) {
-    // Fallback for Safari iOS: open in new tab
-    var newTab = window.open('', '_blank');
-    if (newTab) {
-      newTab.document.write(html);
-      newTab.document.close();
-    } else {
-      // Last resort: data URI
-      var encoded = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-      window.location.href = encoded;
+  // Open in new tab and trigger print dialog for PDF saving
+  var newTab = window.open('', '_blank');
+  if (newTab) {
+    // Add print-on-load script to the HTML
+    var printScript = '<scr' + 'ipt>window.onload=function(){window.print();}</scr' + 'ipt>';
+    var htmlConPrint = html.replace('</body>', printScript + '</body>');
+    newTab.document.write(htmlConPrint);
+    newTab.document.close();
+  } else {
+    // Fallback: download as HTML if popup blocked
+    try {
+      var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1500);
+    } catch(e) {
+      alert('Para guardar como PDF: usa el botón Compartir del navegador y selecciona Imprimir o Guardar como PDF');
     }
   }
+}
+
+// ============================================================
+// WHATSAPP
+// ============================================================
+function enviarWhatsApp() {
+  if (!eventoDetalleActual) return;
+  var ev = eventoDetalleActual;
+  var tel = String(ev.telefono || '').replace(/[^0-9]/g, '');
+  if (tel.length === 10) tel = '52' + tel;
+  var saldo = ev.total - ev.pagado;
+  var lines = [
+    'Hola ' + ev.cliente + ', te comparto el resumen de tu servicio con *Vanessa Velasco Fotografia Familiar*:',
+    '',
+    '📸 *Servicio:* ' + ev.paquete,
+    '📅 *Fecha:* ' + fmtFecha(ev.fecha_evento) + (ev.hora ? ' a las ' + extraerHora(ev.hora) : ''),
+    '💰 *Total:* ' + fmtMXN(ev.total),
+    '✅ *Pagado:* ' + fmtMXN(ev.pagado),
+    saldo > 0 ? '💳 *Saldo pendiente:* ' + fmtMXN(saldo) : '✓ *Saldo:* Cubierto',
+    ev.folio ? ('📋 Folio: ' + ev.folio) : '',
+    '',
+    'Gracias por confiar en nosotros!'
+  ];
+  var msg = lines.filter(function(l) { return l !== ''; }).join('\n');
+  var url = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
