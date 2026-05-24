@@ -2476,11 +2476,11 @@ async function generarContrato() {
   try {
     var res = await fetch(SCRIPT_URL + '?action=getContrato&id_evento=' + encodeURIComponent(eventoModalIdActual) + '&token=' + encodeURIComponent(SECRET_TOKEN));
     var data = await res.json();
-    if (!data.ok) { alert('Error: ' + (data.error||'desconocido')); return; }
+    if (!data.ok) { alert('Error al obtener datos del contrato: ' + (data.error||'desconocido')); return; }
     var html = buildContratoHTML(data.evento, data.textos);
     descargarPDF(html, 'Contrato_' + (data.evento.folio || data.evento.cliente) + '.html');
   } catch(e) {
-    alert('Sin conexion para generar el contrato');
+    alert('Error al generar contrato: ' + e.message);
   }
   if (btn) { btn.textContent = '📄 Contrato'; btn.disabled = false; }
 }
@@ -2576,14 +2576,28 @@ function buildContratoHTML(ev, textos) {
 }
 
 function descargarPDF(html, filename) {
-  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  try {
+    // Try standard download first
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  } catch(e) {
+    // Fallback for Safari iOS: open in new tab
+    var newTab = window.open('', '_blank');
+    if (newTab) {
+      newTab.document.write(html);
+      newTab.document.close();
+    } else {
+      // Last resort: data URI
+      var encoded = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+      window.location.href = encoded;
+    }
+  }
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
