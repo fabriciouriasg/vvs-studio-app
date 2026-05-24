@@ -1284,15 +1284,33 @@ function renderResumen(resumen, resEventos) {
     html += '<div style="margin-bottom:20px">';
     html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Por hacer</div>';
 
+    // Calculate dias habiles
+    function diasHabilesDesde(fechaStr) {
+      if (!fechaStr) return null;
+      var inicio = new Date(fechaStr + 'T00:00:00');
+      var hoy = new Date(); hoy.setHours(0,0,0,0);
+      var dias = 0;
+      var cursor = new Date(inicio);
+      while (cursor <= hoy) {
+        var dow = cursor.getDay();
+        if (dow !== 0 && dow !== 6) dias++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return dias;
+    }
+
     if (porEditar.length) {
       html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">';
       html += '<div style="background:var(--brown-soft);color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
-      html += '<span style="font-size:13px;font-weight:500">✏️ Por editar</span>';
+      html += '<span style="font-size:13px;font-weight:500">✏️ Por editar <span style="font-size:10px;opacity:.8">(límite 15 días hábiles)</span></span>';
       html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEditar.length + '</span></div>';
       porEditar.forEach(function(ev) {
         html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
         html += '<span style="color:var(--black-soft)">' + ev.cliente + '</span>';
-        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + '</span></div>';
+        var dias = diasHabilesDesde(ev.fecha);
+        var diasColor = dias > 15 ? '#c0392b' : dias > 10 ? '#e67e22' : 'var(--text-muted)';
+        var diasLabel = dias !== null ? ' · <span style="color:' + diasColor + ';font-weight:' + (dias > 15 ? '600' : '400') + '">' + dias + ' días háb.' + (dias > 15 ? ' ⚠️' : '') + '</span>' : '';
+        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + diasLabel + '</span></div>';
       });
       html += '</div>';
     }
@@ -1609,6 +1627,7 @@ function renderClientes(clientes) {
         '<div><div class="cliente-nombre">' + c.cliente + '</div>' +
         '<div class="cliente-cat">' + c.categoria + ' · ' + fmtFecha(c.fecha_evento) + hora + '</div>' +
         (c.email ? '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">✉️ ' + c.email + '</div>' : '') +
+        (c.folio ? '<div style="font-size:10px;color:var(--beige-deeper);margin-top:2px;letter-spacing:.06em">' + c.folio + '</div>' : '') +
         '</div>' +
         '<div><div class="cliente-pago">' + fmtMXN(c.pagado) + ' / ' + fmtMXN(c.total) + '</div>' +
         '<div class="cliente-pago-sub">' + (saldo > 0 ? 'Saldo: ' + fmtMXN(saldo) : '✓ Cubierto') + '</div></div>' +
@@ -1686,6 +1705,7 @@ function renderDetalleEvento(ev) {
       '<div class="evento-modal-cliente">' + ev.cliente + '</div>' +
       '<div class="evento-modal-sub">' + ev.paquete + ' · ' + fmtFecha(ev.fecha_evento) + (horaDisplay ? ' · ' + horaDisplay : '') + '</div>' +
       (ev.email ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">✉️ ' + ev.email + '</div>' : '') +
+      (ev.folio ? '<div style="font-size:11px;color:var(--beige-deeper);margin-top:4px;letter-spacing:.08em">' + ev.folio + '</div>' : '') +
       '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>' +
     '</div>' +
     '<div class="evento-modal-body">' +
@@ -1706,6 +1726,7 @@ function renderDetalleEvento(ev) {
         '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
         '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
         '<button class="btn-accion" onclick="openModalEditar()">✏️ Editar</button>' +
+        '<button class="btn-accion" onclick="generarContrato()">📄 Contrato</button>' +
         (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha</button>' : '') +
         (ev.categoria === 'Anticipos' ? '<button class="btn-accion" style="grid-column:1/-1;background:var(--brown-soft);color:var(--white);border-color:var(--brown-soft)" onclick="openModalConvertir()">🔄 Convertir a Evento / Sesión</button>' : '') +
         '<button class="btn-accion" style="grid-column:1/-1;color:var(--error);border-color:var(--error)" onclick="eliminarEvento()">🗑️ Eliminar evento</button>' +
@@ -2411,6 +2432,127 @@ async function confirmarEliminarEvento() {
     } else { alert('Error: ' + (data.error||'desconocido')); }
   } catch(e) { alert('Sin conexion'); }
   btn.textContent = 'Eliminar todo'; btn.disabled = false;
+}
+
+// ============================================================
+// GENERAR CONTRATO PDF
+// ============================================================
+async function generarContrato() {
+  if (!eventoModalIdActual || !SCRIPT_URL) return;
+  var btn = document.querySelector('[onclick="generarContrato()"]');
+  if (btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
+
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getContrato&id_evento=' + encodeURIComponent(eventoModalIdActual) + '&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    if (!data.ok) { alert('Error: ' + (data.error||'desconocido')); return; }
+    var html = buildContratoHTML(data.evento, data.textos);
+    descargarPDF(html, 'Contrato_' + (data.evento.folio || data.evento.cliente) + '.html');
+  } catch(e) {
+    alert('Sin conexion para generar el contrato');
+  }
+  if (btn) { btn.textContent = '📄 Contrato'; btn.disabled = false; }
+}
+
+function buildContratoHTML(ev, textos) {
+  var saldo = ev.total - ev.pagado;
+  var fechaHoy = new Date().toLocaleDateString('es-MX', {year:'numeric',month:'long',day:'numeric'});
+
+  var extrasHtml = '';
+  if (ev.extras && ev.extras.length) {
+    extrasHtml = '<tr><td colspan="2" style="padding:4px 0;font-size:12px;color:#666">Extras:</td></tr>';
+    ev.extras.forEach(function(ex) {
+      extrasHtml += '<tr><td style="padding:2px 0 2px 12px;font-size:12px;color:#666">+ ' + ex.descripcion + '</td><td style="text-align:right;font-size:12px;color:#666">' + fmtMXN(ex.monto) + '</td></tr>';
+    });
+  }
+
+  var descHtml = '';
+  if (ev.descuento_tipo && ev.descuento_valor > 0) {
+    var dLabel = ev.descuento_tipo === 'porcentaje' ? ev.descuento_valor + '%' : fmtMXN(ev.descuento_valor);
+    descHtml = '<tr><td style="padding:4px 0;font-size:13px;color:#27ae60">Descuento</td><td style="text-align:right;font-size:13px;color:#27ae60">- ' + dLabel + '</td></tr>';
+  }
+
+  var disclaimers = [
+    textos.disclaimer_entrega,
+    textos.disclaimer_fotos,
+    textos.disclaimer_archivos,
+    textos.disclaimer_derechos,
+    textos.disclaimer_uso
+  ].filter(Boolean).map(function(d) {
+    return '<li style="margin-bottom:6px">' + d + '</li>';
+  }).join('');
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+    '<style>body{font-family:Georgia,serif;max-width:600px;margin:40px auto;padding:20px;color:#1a1410}' +
+    'h1{font-size:22px;letter-spacing:.04em;margin-bottom:4px}' +
+    '.sub{color:#7a6a58;font-size:13px;margin-bottom:30px}' +
+    '.folio{font-size:11px;color:#c4ae96;letter-spacing:.1em;margin-bottom:20px}' +
+    'table{width:100%;border-collapse:collapse}' +
+    '.section{margin:24px 0;padding:16px;background:#f9f6f2;border-radius:8px}' +
+    '.section-title{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#8b7355;margin-bottom:12px;font-family:sans-serif}' +
+    '.total-row td{font-size:16px;font-weight:bold;padding-top:8px;border-top:1px solid #d4c4b0}' +
+    '.saldo-row td{color:#c0392b;font-size:15px}' +
+    '.saldo-ok td{color:#27ae60;font-size:15px}' +
+    '.policy{font-size:12px;line-height:1.7;color:#5c4a32}' +
+    'ul{padding-left:18px;margin:0}' +
+    '.footer{margin-top:40px;text-align:center;font-size:12px;color:#8b7355;border-top:1px solid #d4c4b0;padding-top:16px}' +
+    '.firma{margin-top:60px;display:flex;justify-content:space-between}' +
+    '.firma-box{text-align:center;width:45%}' +
+    '.firma-line{border-top:1px solid #1a1410;padding-top:8px;font-size:12px;color:#5c4a32}' +
+    '@media print{body{margin:0;padding:10px}}' +
+    '</style></head><body>' +
+    '<div style="text-align:center;margin-bottom:8px">' +
+    '<h1>Vanessa Velasco Fotografía Familiar</h1>' +
+    '<div class="sub">Contrato de Servicios Fotográficos</div>' +
+    '</div>' +
+    '<div class="folio" style="text-align:right">Folio: ' + (ev.folio||'—') + ' &nbsp;·&nbsp; Fecha: ' + fechaHoy + '</div>' +
+
+    '<div class="section">' +
+    '<div class="section-title">Datos del Cliente</div>' +
+    '<table><tr><td style="padding:4px 0;font-size:13px">Cliente</td><td style="text-align:right;font-size:13px"><strong>' + ev.cliente + '</strong></td></tr>' +
+    (ev.email ? '<tr><td style="padding:4px 0;font-size:13px;color:#666">Correo</td><td style="text-align:right;font-size:13px;color:#666">' + ev.email + '</td></tr>' : '') +
+    '</table></div>' +
+
+    '<div class="section">' +
+    '<div class="section-title">Servicio Contratado</div>' +
+    '<table>' +
+    '<tr><td style="padding:4px 0;font-size:13px">Servicio</td><td style="text-align:right;font-size:13px"><strong>' + ev.paquete + '</strong></td></tr>' +
+    '<tr><td style="padding:4px 0;font-size:13px">Fecha</td><td style="text-align:right;font-size:13px">' + fmtFecha(ev.fecha_evento) + (ev.hora ? ' · ' + ev.hora : '') + '</td></tr>' +
+    (ev.notas ? '<tr><td style="padding:4px 0;font-size:12px;color:#666">Notas</td><td style="text-align:right;font-size:12px;color:#666">' + ev.notas + '</td></tr>' : '') +
+    '</table></div>' +
+
+    '<div class="section">' +
+    '<div class="section-title">Resumen de Pago</div>' +
+    '<table>' +
+    '<tr><td style="padding:4px 0;font-size:13px">Precio base</td><td style="text-align:right;font-size:13px">' + fmtMXN(ev.precio_base) + '</td></tr>' +
+    extrasHtml + descHtml +
+    '<tr class="total-row"><td>Total</td><td style="text-align:right">' + fmtMXN(ev.total) + '</td></tr>' +
+    '<tr><td style="padding:4px 0;font-size:13px;color:#666">Anticipo recibido</td><td style="text-align:right;font-size:13px;color:#666">' + fmtMXN(ev.pagado) + '</td></tr>' +
+    '<tr class="' + (saldo <= 0 ? 'saldo-ok' : 'saldo-row') + '"><td>Saldo pendiente</td><td style="text-align:right">' + (saldo <= 0 ? '✓ Cubierto' : fmtMXN(saldo)) + '</td></tr>' +
+    '</table></div>' +
+
+    (textos.politica_cancelacion ? '<div class="section"><div class="section-title">Política de Cancelación</div><div class="policy">' + textos.politica_cancelacion + '</div></div>' : '') +
+
+    (disclaimers ? '<div class="section"><div class="section-title">Términos del Servicio</div><div class="policy"><ul>' + disclaimers + '</ul></div></div>' : '') +
+
+    '<div class="firma">' +
+    '<div class="firma-box"><div style="height:50px"></div><div class="firma-line">Vanessa Velasco<br>Fotógrafa</div></div>' +
+    '<div class="firma-box"><div style="height:50px"></div><div class="firma-line">' + ev.cliente + '<br>Cliente</div></div>' +
+    '</div>' +
+
+    '<div class="footer">' + (textos.pie_pagina||'Gracias por confiar en Vanessa Velasco Fotografía Familiar') + '</div>' +
+    '</body></html>';
+}
+
+function descargarPDF(html, filename) {
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
