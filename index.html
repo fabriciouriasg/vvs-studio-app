@@ -1322,7 +1322,7 @@ function renderResumen(resumen, resEventos) {
     }
 
     if (porEditar.length) {
-      html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">';
+      html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow);width:100%">';
       html += '<div style="background:var(--brown-soft);color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
       html += '<span style="font-size:13px;font-weight:500">✏️ Por editar</span>';
       html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEditar.length + '</span></div>';
@@ -1351,9 +1351,12 @@ function renderResumen(resumen, resEventos) {
         }
         // Fecha sin año
         var fechaSinAnio = fmtFecha(ev.fecha).replace(/\s*\d{4}/, '');
-        html += '<div style="padding:8px 16px;border-bottom:1px solid var(--beige-light);display:table;width:100%;font-size:12px;cursor:pointer;table-layout:fixed" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
-        html += '<span style="display:table-cell;color:var(--black-soft);overflow:hidden;text-overflow:ellipsis"><strong>' + ev.cliente + '</strong> · ' + ev.paquete.split(' - ')[0] + ' · ' + fechaSinAnio + '</span>';
-        html += '<span style="display:table-cell;font-size:11px;color:' + limColor + ';font-weight:' + limWeight + ';white-space:nowrap;text-align:right;width:120px">' + limLabel + '</span>';
+        html += '<div style="padding:8px 16px;border-bottom:1px solid var(--beige-light);font-size:12px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">';
+        html += '<span style="color:var(--black-soft);flex:1;min-width:0"><strong>' + ev.cliente + '</strong> · ' + ev.paquete.split(' - ')[0] + ' · ' + fechaSinAnio + '</span>';
+        html += '<span style="font-size:11px;color:' + limColor + ';font-weight:' + limWeight + ';white-space:nowrap;flex-shrink:0">' + limLabel + '</span>';
+        html += '</div>';
+        html += '</div>';
       });
       html += '</div>';
     }
