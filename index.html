@@ -1284,33 +1284,64 @@ function renderResumen(resumen, resEventos) {
     html += '<div style="margin-bottom:20px">';
     html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Por hacer</div>';
 
-    // Calculate dias habiles
-    function diasHabilesDesde(fechaStr) {
+    // Calculate fecha limite (+15 dias habiles desde fecha evento)
+    function calcularFechaLimite(fechaStr) {
       if (!fechaStr) return null;
-      var inicio = new Date(fechaStr + 'T00:00:00');
-      var hoy = new Date(); hoy.setHours(0,0,0,0);
-      var dias = 0;
-      var cursor = new Date(inicio);
-      while (cursor <= hoy) {
+      var cursor = new Date(fechaStr + 'T00:00:00');
+      cursor.setDate(cursor.getDate() + 1); // start day after event
+      var diasHabiles = 0;
+      while (diasHabiles < 15) {
         var dow = cursor.getDay();
-        if (dow !== 0 && dow !== 6) dias++;
-        cursor.setDate(cursor.getDate() + 1);
+        if (dow !== 0 && dow !== 6) diasHabiles++;
+        if (diasHabiles < 15) cursor.setDate(cursor.getDate() + 1);
       }
-      return dias;
+      return cursor;
+    }
+
+    function diasRestantes(fechaLimite) {
+      var hoy = new Date(); hoy.setHours(0,0,0,0);
+      var diff = fechaLimite.getTime() - hoy.getTime();
+      return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    }
+
+    function fmtFechaCorta(date) {
+      var meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      return date.getDate() + ' ' + meses[date.getMonth()];
     }
 
     if (porEditar.length) {
       html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow)">';
       html += '<div style="background:var(--brown-soft);color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
-      html += '<span style="font-size:13px;font-weight:500">✏️ Por editar <span style="font-size:10px;opacity:.8">(límite 15 días hábiles)</span></span>';
+      html += '<span style="font-size:13px;font-weight:500">✏️ Por editar</span>';
       html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEditar.length + '</span></div>';
+      html += '<div style="display:flex;justify-content:space-between;padding:6px 16px;background:var(--beige-light);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">';
+      html += '<span>Cliente · Servicio · Fecha</span><span>Límite 15 días hábiles</span></div>';
       porEditar.forEach(function(ev) {
-        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
-        html += '<span style="color:var(--black-soft)">' + ev.cliente + '</span>';
-        var dias = diasHabilesDesde(ev.fecha);
-        var diasColor = dias > 15 ? '#c0392b' : dias > 10 ? '#e67e22' : 'var(--text-muted)';
-        var diasLabel = dias !== null ? ' · <span style="color:' + diasColor + ';font-weight:' + (dias > 15 ? '600' : '400') + '">' + dias + ' días háb.' + (dias > 15 ? ' ⚠️' : '') + '</span>' : '';
-        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + diasLabel + '</span></div>';
+        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<div style="font-weight:500;color:var(--black-soft);margin-bottom:3px">' + ev.cliente + '</div>';
+        var limDate = calcularFechaLimite(ev.fecha);
+        var restantes = limDate ? diasRestantes(limDate) : null;
+        var limLabel = '';
+        var limColor = 'var(--text-muted)';
+        var limWeight = '400';
+        if (restantes !== null) {
+          if (restantes < 0) {
+            limLabel = 'Venció hace ' + Math.abs(restantes) + ' día' + (Math.abs(restantes)!==1?'s':'') + ' ⚠️';
+            limColor = '#c0392b'; limWeight = '600';
+          } else if (restantes === 0) {
+            limLabel = '¡Vence hoy! ⚠️';
+            limColor = '#c0392b'; limWeight = '600';
+          } else if (restantes <= 3) {
+            limLabel = 'Vence ' + fmtFechaCorta(limDate) + ' · ' + restantes + ' día' + (restantes!==1?'s':'');
+            limColor = '#e67e22'; limWeight = '500';
+          } else {
+            limLabel = 'Vence ' + fmtFechaCorta(limDate) + ' · ' + restantes + ' días';
+          }
+        }
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;width:100%">';
+        html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + '</span>';
+        html += '<span style="font-size:11px;color:' + limColor + ';font-weight:' + limWeight + ';text-align:right;white-space:nowrap;margin-left:8px">' + limLabel + '</span>';
+        html += '</div>';
       });
       html += '</div>';
     }
@@ -1321,8 +1352,8 @@ function renderResumen(resumen, resEventos) {
       html += '<span style="font-size:13px;font-weight:500">📦 Por entregar</span>';
       html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + porEntregar.length + '</span></div>';
       porEntregar.forEach(function(ev) {
-        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);display:flex;justify-content:space-between;font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
-        html += '<span style="color:var(--black-soft)">' + ev.cliente + '</span>';
+        html += '<div style="padding:10px 16px;border-bottom:1px solid var(--beige-light);font-size:13px;cursor:pointer" data-cliente="' + ev.cliente + '" data-fecha="' + ev.fecha + '" onclick="buscarYAbrirEvento(this)">';
+        html += '<div style="font-weight:500;color:var(--black-soft);margin-bottom:3px">' + ev.cliente + '</div>';
         html += '<span style="color:var(--text-muted)">' + ev.paquete.split(' - ')[0] + ' · ' + fmtFecha(ev.fecha) + '</span></div>';
       });
       html += '</div>';
