@@ -1560,10 +1560,13 @@ function renderResumen(resumen, resEventos) {
     };
     resEv.forEach(function(r) {
       var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
+      var mesId = 'resumen-mes-' + r.mes.replace(/\s/g,'');
       html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">';
-      html += '<div style="background:' + (esCurrent ? 'var(--brown-dark)' : 'var(--black)') + ';color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
+      // Header clickeable
+      html += '<div style="background:' + (esCurrent ? 'var(--brown-dark)' : 'var(--black)') + ';color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleEventosMes(\'' + r.mes + '\',\'' + mesId + '\')">';
       html += '<span style="font-family:Cormorant Garamond,serif;font-size:16px">' + r.mes + ' 2026' + (esCurrent ? ' ●' : '') + '</span>';
-      html += '<span style="font-family:Cormorant Garamond,serif;font-size:18px">' + r.total + ' evento' + (r.total !== 1 ? 's' : '') + '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:12px"><span style="font-family:Cormorant Garamond,serif;font-size:18px">' + r.total + ' evento' + (r.total !== 1 ? 's' : '') + '</span><span style="font-size:12px;opacity:.6" id="arrow-' + mesId + '">▼</span></div></div>';
+      // Desglose por estado
       html += '<div style="padding:8px 16px">';
       var estadosOrden = ['Agendado','Cubierto','Editado','Entregado','Cancelado'];
       estadosOrden.forEach(function(est) {
@@ -1573,7 +1576,13 @@ function renderResumen(resumen, resEventos) {
         html += '<div><span style="font-size:13px;color:var(--text-main)">' + est + '</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + estadoDesc[est] + '</span></div>';
         html += '<span style="font-size:15px;font-weight:500;color:var(--brown-dark)">' + count + '</span></div>';
       });
-      html += '</div></div>';
+      html += '</div>';
+      // Panel expandible con lista de eventos
+      html += '<div id="' + mesId + '" style="display:none;border-top:1px solid var(--beige-dark)">';
+      html += '<div style="padding:10px 16px 4px;font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Todos los eventos</div>';
+      html += '<div id="' + mesId + '-list" style="padding:0 16px 14px"><div style="color:var(--text-muted);font-size:13px;padding:12px 0;text-align:center">Cargando...</div></div>';
+      html += '</div>';
+      html += '</div>';
     });
   }
 
@@ -1581,6 +1590,93 @@ function renderResumen(resumen, resEventos) {
 
   if (!html) html = '<div class="resumen-loading">Sin datos aun</div>';
   el.innerHTML = html;
+}
+
+// ============================================================
+// EVENTOS POR MES - expandir lista al click
+// ============================================================
+var _mesExpandido = null;
+
+async function toggleEventosMes(mes, mesId) {
+  var panel = document.getElementById(mesId);
+  var arrow = document.getElementById('arrow-' + mesId);
+  if (!panel) return;
+
+  // Si ya está abierto, cerrar
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    if (arrow) arrow.textContent = '▼';
+    _mesExpandido = null;
+    return;
+  }
+
+  // Cerrar cualquier otro abierto
+  if (_mesExpandido && _mesExpandido !== mesId) {
+    var prevPanel = document.getElementById(_mesExpandido);
+    var prevArrow = document.getElementById('arrow-' + _mesExpandido);
+    if (prevPanel) prevPanel.style.display = 'none';
+    if (prevArrow) prevArrow.textContent = '▼';
+  }
+
+  panel.style.display = 'block';
+  if (arrow) arrow.textContent = '▲';
+  _mesExpandido = mesId;
+
+  // Obtener eventos — usar todosEventos si ya están cargados, si no pedir
+  var eventos = todosEventos;
+  if (!eventos || !eventos.length) {
+    try {
+      var res = await fetch(SCRIPT_URL + '?action=getEventos&token=' + encodeURIComponent(SECRET_TOKEN));
+      var data = await res.json();
+      eventos = data.eventos || [];
+      todosEventos = eventos;
+    } catch(e) { eventos = []; }
+  }
+
+  // Filtrar por mes
+  var mesesNombres = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var eventosMes = eventos.filter(function(ev) {
+    if (!ev.fecha_evento) return false;
+    var m = parseInt(ev.fecha_evento.split('-')[1]);
+    return mesesNombres[m] === mes && ev.estado !== 'Cancelado';
+  });
+
+  // Ordenar por fecha
+  eventosMes.sort(function(a, b) { return a.fecha_evento > b.fecha_evento ? 1 : -1; });
+
+  var listEl = document.getElementById(mesId + '-list');
+  if (!listEl) return;
+
+  if (!eventosMes.length) {
+    listEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;text-align:center;font-style:italic">Sin eventos para este mes</div>';
+    return;
+  }
+
+  listEl.innerHTML = '';
+  eventosMes.forEach(function(ev) {
+    var saldo = ev.total - ev.pagado;
+    var pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
+    var fechaCorta = fmtFecha(ev.fecha_evento).replace(/\s*\d{4}/, '');
+    var horaStr = ev.hora && ev.hora.indexOf('1899') === -1 ? ' · ' + ev.hora.substring(0,5) : '';
+    var div = document.createElement('div');
+    div.style.cssText = 'padding:10px 0;border-bottom:1px solid var(--beige-light);cursor:pointer';
+    div.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:13px;font-weight:500;color:var(--black-soft)">' + ev.cliente + '</div>' +
+          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (ev.paquete||'').split(' - ')[0] + ' · ' + fechaCorta + horaStr + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-top:5px">' +
+            '<div style="flex:1;height:3px;background:var(--beige-dark);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + pagoPct + '%;background:var(--brown-soft);border-radius:2px"></div></div>' +
+            '<span style="font-size:10px;color:var(--text-muted);white-space:nowrap">' + fmtMXN(ev.pagado) + '/' + fmtMXN(ev.total) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="flex-shrink:0;text-align:right">' +
+          '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:500;background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span>' +
+        '</div>' +
+      '</div>';
+    div.addEventListener('click', function() { abrirDetalleEvento(ev.id_evento); });
+    listEl.appendChild(div);
+  });
 }
 
 async function buscarYAbrirEvento(el) {
@@ -1849,9 +1945,6 @@ function mostrarEventosDia(fecha) {
   if (eventos.length) {
     html += '<div class="seccion-titulo" style="margin-top:14px;margin-bottom:6px">Clientes</div>';
     html += '<div class="dia-eventos-cards" id="dia-cards-container"></div>';
-  } else if (!bloqueado && !personales.length) {
-    panel.style.display = 'none';
-    return;
   }
 
   panel.innerHTML = html;
@@ -2022,7 +2115,7 @@ function renderDetalleEvento(ev) {
     '</div>' +
     '<div class="evento-modal-body">' +
       '<div class="seccion-titulo">Resumen financiero</div>' +
-      '<div class="detalle-row"><span class="detalle-label">Precio base</span><span class="detalle-valor">' + fmtMXN(ev.precio_base) + '</span></div>' +
+      '<div class="detalle-row"><span class="detalle-label">Precio paquete</span><span class="detalle-valor">' + fmtMXN(ev.precio_base) + '</span></div>' +
       descHtml +
       '<div class="detalle-row"><span class="detalle-label">Total</span><span class="detalle-total">' + fmtMXN(ev.total) + '</span></div>' +
       '<div class="detalle-row"><span class="detalle-label">Pagado</span><span class="detalle-valor">' + fmtMXN(ev.pagado) + '</span></div>' +
@@ -2836,18 +2929,19 @@ function buildContratoHTML(ev, textos) {
     '<table>' +
     '<tr><td style="padding:4px 0;font-size:13px">Servicio</td><td style="text-align:right;font-size:13px"><strong>' + ev.paquete + '</strong></td></tr>' +
     '<tr><td style="padding:4px 0;font-size:13px">Fecha</td><td style="text-align:right;font-size:13px">' + fmtFecha(ev.fecha_evento) + (ev.hora ? ' · ' + ev.hora : '') + '</td></tr>' +
-    (ev.notas ? '<tr><td style="padding:4px 0;font-size:12px;color:#666">Notas</td><td style="text-align:right;font-size:12px;color:#666">' + ev.notas + '</td></tr>' : '') +
     '</table></div>' +
 
     '<div class="section">' +
     '<div class="section-title">Resumen de Pago</div>' +
     '<table>' +
-    '<tr><td style="padding:4px 0;font-size:13px">Precio base</td><td style="text-align:right;font-size:13px">' + fmtMXN(ev.precio_base) + '</td></tr>' +
+    '<tr><td style="padding:4px 0;font-size:13px">Precio paquete</td><td style="text-align:right;font-size:13px">' + fmtMXN(ev.precio_base) + '</td></tr>' +
     extrasHtml + descHtml +
     '<tr class="total-row"><td>Total</td><td style="text-align:right">' + fmtMXN(ev.total) + '</td></tr>' +
     '<tr><td style="padding:4px 0;font-size:13px;color:#666">Anticipo recibido</td><td style="text-align:right;font-size:13px;color:#666">' + fmtMXN(ev.pagado) + '</td></tr>' +
     '<tr class="' + (saldo <= 0 ? 'saldo-ok' : 'saldo-row') + '"><td>Saldo pendiente</td><td style="text-align:right">' + (saldo <= 0 ? '✓ Cubierto' : fmtMXN(saldo)) + '</td></tr>' +
-    '</table></div>' +
+    '</table>' +
+    (saldo > 0 ? '<div style="margin-top:10px;font-size:11px;color:#8b6a1a;font-style:italic">* Liquidar en efectivo o transferencia un día antes o el día del ' + (ev.categoria === 'Sesiones' ? 'sesión' : 'evento') + '</div>' : '') +
+    '</div>' +
 
     (textos.politica_cancelacion ? '<div class="section"><div class="section-title">Política de Cancelación</div><div class="policy">' + textos.politica_cancelacion + '</div></div>' : '') +
 
