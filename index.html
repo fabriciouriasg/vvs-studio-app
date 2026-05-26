@@ -1813,8 +1813,14 @@ async function registrar() {
     // Registrar ingreso solo si hay monto > 0
     if (monto > 0) {
       if (!selectedCat) { mostrarFeedback('Selecciona una categoria', 'error'); btn.disabled = false; return; }
+      // Si se creó un evento y el pago es parcial → es anticipo
+      var precioTotalEvento = precioBase; // precio del paquete seleccionado
+      var catIngreso = cat.nombre;
+      if (idEvento && monto < precioTotalEvento) {
+        catIngreso = 'Anticipos';
+      }
       const payload = {
-        token: SECRET_TOKEN, monto, categoria: cat.nombre,
+        token: SECRET_TOKEN, monto, categoria: catIngreso,
         subcategoria: subcatLabel, fecha, nota: notaFinal,
         quien: 'Vanessa', id_evento: idEvento
       };
