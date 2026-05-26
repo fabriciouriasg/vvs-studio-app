@@ -2016,6 +2016,21 @@ function renderResumen(resumen, resEventos) {
       return date.getDate() + ' ' + meses[date.getMonth()];
     }
 
+    // Ordenar por fecha límite ascendente (vencidos primero)
+    porEditar.sort(function(a, b) {
+      var limA = calcularFechaLimite(a.fecha);
+      var limB = calcularFechaLimite(b.fecha);
+      if (!limA) return 1;
+      if (!limB) return -1;
+      return limA.getTime() - limB.getTime();
+    });
+    porEntregar.sort(function(a, b) {
+      var limA = calcularFechaLimite(a.fecha);
+      var limB = calcularFechaLimite(b.fecha);
+      if (!limA) return 1;
+      if (!limB) return -1;
+      return limA.getTime() - limB.getTime();
+    });
     if (porEditar.length) {
       html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow);width:100%">';
       html += '<div style="background:var(--brown-soft);color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center">';
