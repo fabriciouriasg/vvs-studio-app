@@ -654,9 +654,17 @@
   <div class="modal-sheet">
     <div class="modal-title">Agregar extra</div>
     <div class="modal-label">Descripción</div>
-    <input type="text" id="extra-desc" class="modal-input" placeholder="Ej: Fotos adicionales"/>
-    <div class="modal-label">Monto</div>
-    <input type="number" id="extra-monto" class="modal-input" inputmode="decimal" placeholder="0.00"/>
+    <input type="text" id="extra-desc" class="modal-input" placeholder="Ej: Álbum 20x20, Fotos físicas..."/>
+    <div class="modal-label">Tipo</div>
+    <select id="extra-tipo" class="modal-input" style="appearance:none;-webkit-appearance:none" onchange="toggleExtraMonto()">
+      <option value="adicional">Adicional (cliente paga)</option>
+      <option value="incluido">Incluido en paquete ($0)</option>
+      <option value="parcial">Parcial (cliente paga excedente)</option>
+    </select>
+    <div id="extra-monto-row">
+      <div class="modal-label">Monto</div>
+      <input type="number" id="extra-monto" class="modal-input" inputmode="decimal" placeholder="0.00"/>
+    </div>
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closeModalExtra()">Cancelar</button>
       <button class="btn-modal-save" onclick="guardarExtra()">Agregar</button>
@@ -2250,15 +2258,50 @@ function renderDetalleEvento(ev) {
   var saldo = ev.total - ev.pagado;
   var saldoCubierto = saldo <= 0;
 
+  var ESTATUS_EXTRA = ['Pedido','Conf. Fotos','En Proceso','Listo','Entregado'];
   var extrasHtml = '';
+  var _extrasId = 'extras-' + ev.id_evento;
+  // Header plegable
+  extrasHtml += '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:4px 0" onclick="toggleExtrasPanel(\'' + _extrasId + '\')">' +
+    '<span style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)">Extras</span>' +
+    '<div style="display:flex;align-items:center;gap:8px">' +
+      (ev.extras && ev.extras.length ? '<span style="font-size:11px;color:var(--text-muted)">' + ev.extras.length + ' extra' + (ev.extras.length > 1 ? 's' : '') + '</span>' : '') +
+      '<span style="font-size:12px;color:var(--text-muted)" id="arrow-' + _extrasId + '">▼</span>' +
+    '</div>' +
+  '</div>';
+  extrasHtml += '<div id="' + _extrasId + '" style="display:none">';
   if (ev.extras && ev.extras.length) {
     for (var i = 0; i < ev.extras.length; i++) {
       var ex = ev.extras[i];
-      extrasHtml += '<div class="extras-item"><span>' + ex.descripcion + '</span><div style="display:flex;align-items:center;gap:8px"><span>' + fmtMXN(ex.monto) + '</span><button class="btn-extra-delete" onclick="eliminarExtra(\'' + ev.id_evento + '\',' + i + ')">✕</button></div></div>';
+      var exTipo = ex.tipo || 'adicional';
+      var exEstatus = ex.estatus || 'Pedido';
+      var tipoBadge = exTipo === 'incluido'
+        ? '<span style="font-size:10px;background:#e8f5e9;color:#2e7d32;border-radius:999px;padding:1px 8px">Incluido</span>'
+        : exTipo === 'parcial'
+          ? '<span style="font-size:10px;background:#e3f2fd;color:#1565c0;border-radius:999px;padding:1px 8px">Parcial</span>'
+          : '<span style="font-size:10px;background:#fff3e0;color:#e65100;border-radius:999px;padding:1px 8px">Adicional</span>';
+      var estatusPills = ESTATUS_EXTRA.map(function(es) {
+        var esActivo = es === exEstatus;
+        return '<button onclick="cambiarEstatusExtra(\'' + ev.id_evento + '\',' + i + ',\'' + es + '\')" style="background:' + (esActivo ? 'var(--brown-soft)' : 'transparent') + ';color:' + (esActivo ? 'var(--white)' : 'var(--text-muted)') + ';border:1px solid ' + (esActivo ? 'var(--brown-soft)' : 'var(--beige-dark)') + ';border-radius:999px;padding:3px 8px;font-family:Jost,sans-serif;font-size:10px;cursor:pointer;white-space:nowrap">' + es + '</button>';
+      }).join('');
+      extrasHtml += '<div style="border:0.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:10px 12px;margin-top:8px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">' +
+          '<div><div style="font-size:13px;font-weight:500;color:var(--black)">' + ex.descripcion + '</div>' +
+          '<div style="margin-top:3px">' + tipoBadge + '</div></div>' +
+          '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span style="font-size:13px;font-weight:500">' + (ex.monto > 0 ? fmtMXN(ex.monto) : '$0') + '</span>' +
+            '<button class="btn-extra-delete" onclick="eliminarExtra(\'' + ev.id_evento + '\',' + i + ')">✕</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">' + estatusPills + '</div>' +
+      '</div>';
     }
+    extrasHtml += '<button onclick="openModalExtra()" style="margin-top:8px;width:100%;background:transparent;border:1px dashed var(--beige-dark);border-radius:var(--radius-sm);padding:8px;font-family:Jost,sans-serif;font-size:12px;color:var(--text-muted);cursor:pointer">+ Agregar extra</button>';
   } else {
-    extrasHtml = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin extras</div>';
+    extrasHtml += '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin extras</div>';
+    extrasHtml += '<button onclick="openModalExtra()" style="margin-top:4px;width:100%;background:transparent;border:1px dashed var(--beige-dark);border-radius:var(--radius-sm);padding:8px;font-family:Jost,sans-serif;font-size:12px;color:var(--text-muted);cursor:pointer">+ Agregar extra</button>';
   }
+  extrasHtml += '</div>';
 
   var pagosHtml = '';
   if (ev.pagos && ev.pagos.length) {
@@ -2276,11 +2319,21 @@ function renderDetalleEvento(ev) {
     descHtml = '<div class="detalle-row"><span class="detalle-label">Descuento</span><span class="detalle-valor" style="color:var(--success)">- ' + label + '</span></div>';
   }
 
-  // Reglas de transicion de estados
-  var estadosPermitidos = getEstadosPermitidos(ev.estado, ev.fecha_evento);
-  var estadoOptions = estadosPermitidos.map(function(s) {
-    return '<option value="' + s.valor + '"' + (s.valor === ev.estado ? ' selected' : '') + (s.disabled ? ' disabled' : '') + '>' + s.label + '</option>';
+  var ESTADOS_LISTA = ['Agendado','Cubierto','Editado','Entregado','Cancelado'];
+  var estadoPills = ESTADOS_LISTA.map(function(s) {
+    var activo = s === ev.estado;
+    var colorMap = {Agendado:'var(--estado-agendado)',Cubierto:'var(--estado-cubierto)',Editado:'var(--estado-editado)',Entregado:'var(--estado-entregado)',Cancelado:'var(--estado-cancelado)'};
+    var bg = activo ? colorMap[s] : 'transparent';
+    var color = activo ? 'var(--white)' : 'var(--text-muted)';
+    var border = activo ? colorMap[s] : 'var(--beige-dark)';
+    return '<button onclick="validarCambioEstado(\'' + ev.id_evento + '\',\'' + s + '\',' + ev.pagado + ',' + ev.total + ')" style="background:' + bg + ';color:' + color + ';border:1.5px solid ' + border + ';border-radius:999px;padding:5px 12px;font-family:Jost,sans-serif;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap">' + s + '</button>';
   }).join('');
+
+  // Badge extras pendientes
+  var extrasPendientes = (ev.extras || []).filter(function(ex) {
+    var est = ex.estatus || 'Pedido';
+    return est !== 'Entregado';
+  }).length;
 
   var horaDisplay = ev.hora ? String(ev.hora).substring(0,5) : '';
 
@@ -2292,7 +2345,10 @@ function renderDetalleEvento(ev) {
       (ev.telefono ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📱 ' + ev.telefono + '</div>' : '') +
       (ev.email ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">✉️ ' + ev.email + '</div>' : '') +
       (ev.folio ? '<div style="font-size:11px;color:var(--beige-deeper);margin-top:4px;letter-spacing:.08em">' + ev.folio + '</div>' : '') +
-      '<div style="margin-top:8px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>' +
+      '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">' +
+        '<span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span>' +
+        (extrasPendientes > 0 ? '<span style="background:#f0c04022;color:#8b6a00;border-radius:999px;padding:2px 10px;font-size:10px;font-weight:500">' + extrasPendientes + ' extra' + (extrasPendientes > 1 ? 's' : '') + ' pendiente' + (extrasPendientes > 1 ? 's' : '') + '</span>' : '') +
+      '</div>' +
     '</div>' +
     '<div class="evento-modal-body">' +
       '<div class="seccion-titulo">Resumen financiero</div>' +
@@ -2301,15 +2357,14 @@ function renderDetalleEvento(ev) {
       '<div class="detalle-row"><span class="detalle-label">Total</span><span class="detalle-total">' + fmtMXN(ev.total) + '</span></div>' +
       '<div class="detalle-row"><span class="detalle-label">Pagado</span><span class="detalle-valor">' + fmtMXN(ev.pagado) + '</span></div>' +
       '<div class="detalle-row"><span class="detalle-label">Saldo</span><span class="detalle-valor detalle-saldo ' + (saldoCubierto?'cubierto':'') + '">' + (saldoCubierto ? '✓ Liquidado' : fmtMXN(saldo)) + '</span></div>' +
-      '<div class="seccion-titulo">Extras</div>' +
       extrasHtml +
       '<div class="seccion-titulo">Historial de pagos</div>' +
       pagosHtml +
       '<div class="seccion-titulo">Estado</div>' +
-      '<select class="estado-select" onchange="validarCambioEstado(\'' + ev.id_evento + '\', this.value, ' + ev.pagado + ', ' + ev.total + ')">' + estadoOptions + '</select>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">' + estadoPills + '</div>' +
       '<div class="acciones-grid" style="margin-top:20px">' +
         '<button class="btn-accion primary" onclick="openModalPago()">Registrar pago</button>' +
-        '<button class="btn-accion" onclick="openModalExtra()">Agregar extra</button>' +
+        
         '<button class="btn-accion" onclick="openModalDescuento()">Descuento</button>' +
         '<button class="btn-accion" onclick="openModalEditar()">✏️ Editar</button>' +
         '<button class="btn-accion" onclick="generarContrato()">📄 Recibo</button>' +
@@ -2339,14 +2394,41 @@ function closeModalExtra() {
   document.getElementById('modal-extra').classList.remove('open');
   document.getElementById('extra-desc').value = '';
   document.getElementById('extra-monto').value = '';
+  document.getElementById('extra-tipo').value = 'adicional';
+  document.getElementById('extra-monto-row').style.display = 'block';
+}
+
+function toggleExtraMonto() {
+  var tipo = document.getElementById('extra-tipo').value;
+  var row = document.getElementById('extra-monto-row');
+  if (tipo === 'incluido') { row.style.display = 'none'; document.getElementById('extra-monto').value = '0'; }
+  else { row.style.display = 'block'; }
+}
+
+function toggleExtrasPanel(id) {
+  var panel = document.getElementById(id);
+  var arrow = document.getElementById('arrow-' + id);
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▼' : '▲';
+}
+
+async function cambiarEstatusExtra(idEvento, idx, nuevoEstatus) {
+  if (!SCRIPT_URL) return;
+  await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({token:SECRET_TOKEN, action:'actualizarEstatusExtra', id_evento:idEvento, extra_idx:idx, estatus:nuevoEstatus})});
+  abrirDetalleEvento(idEvento);
+  calCargado = false;
 }
 
 async function guardarExtra() {
   var desc = document.getElementById('extra-desc').value.trim();
-  var monto = parseFloat(document.getElementById('extra-monto').value) || 0;
-  if (!desc || !monto || !eventoModalIdActual) return;
+  var tipo = document.getElementById('extra-tipo').value;
+  var monto = tipo === 'incluido' ? 0 : (parseFloat(document.getElementById('extra-monto').value) || 0);
+  if (!desc || !eventoModalIdActual) return;
   await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:eventoModalIdActual,descripcion:desc,monto:monto})});
+    body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:eventoModalIdActual,descripcion:desc,monto:monto,tipo:tipo,estatus:'Pedido'})});
   closeModalExtra();
   abrirDetalleEvento(eventoModalIdActual);
   calCargado = false;
