@@ -302,6 +302,13 @@
     .seg-btn.proxima{width:100%;background:var(--beige-light);border:1.5px solid var(--beige-dark);color:var(--text-muted);font-size:12px}
     .seg-counter{font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px}
 
+    /* OFFLINE BADGE */
+    #offline-badge{position:fixed;top:54px;left:0;right:0;z-index:98;text-align:center;font-size:11px;font-weight:500;padding:4px 0;transition:all .3s;display:none}
+    #offline-badge.offline{display:block;background:#f5edec;color:var(--error);border-bottom:1px solid #d4b8b8}
+    #offline-badge.syncing{display:block;background:#e8f5e9;color:#2e7d32;border-bottom:1px solid #b8d4b8}
+    #offline-badge.pending{display:block;background:#fff8e1;color:#8b6a00;border-bottom:1px solid #f0c040}
+    .tab-nav-wrap{top:52px!important}
+
     /* BANNER */
     #nuevo-banner{display:none;position:fixed;top:0;left:0;right:0;background:var(--brown-soft);color:var(--white);text-align:center;padding:14px 16px;font-size:14px;font-weight:500;z-index:999;animation:slideDown .3s ease}
     @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
@@ -339,6 +346,7 @@
 <body>
 
 <div id="nuevo-banner">📸 Nuevo ingreso registrado</div>
+<div id="offline-badge"></div>
 
 <!-- HEADER -->
 <div class="header">
@@ -791,6 +799,178 @@
 // CONFIG
 // ============================================================
 const SECRET_TOKEN = 'Negocio2026$';
+
+// ============================================================
+// SISTEMA OFFLINE — IndexedDB + Cola de sincronización
+// ============================================================
+var _offlineDB = null;
+var _isOnline = navigator.onLine;
+var _syncInProgress = false;
+var _pendingCount = 0;
+
+function initOfflineDB() {
+  return new Promise(function(resolve) {
+    var req = indexedDB.open('VVStudio', 2);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('cache')) {
+        db.createObjectStore('cache', {keyPath: 'key'});
+      }
+      if (!db.objectStoreNames.contains('queue')) {
+        var qs = db.createObjectStore('queue', {keyPath: 'id', autoIncrement: true});
+        qs.createIndex('ts', 'ts');
+      }
+    };
+    req.onsuccess = function(e) { _offlineDB = e.target.result; resolve(); };
+    req.onerror = function() { resolve(); };
+  });
+}
+
+function cacheSet(key, value) {
+  if (!_offlineDB) return;
+  try {
+    var tx = _offlineDB.transaction('cache', 'readwrite');
+    tx.objectStore('cache').put({key: key, value: value, ts: Date.now()});
+  } catch(e) {}
+}
+
+function cacheGet(key) {
+  return new Promise(function(resolve) {
+    if (!_offlineDB) { resolve(null); return; }
+    try {
+      var tx = _offlineDB.transaction('cache', 'readonly');
+      var req = tx.objectStore('cache').get(key);
+      req.onsuccess = function() { resolve(req.result ? req.result : null); };
+      req.onerror = function() { resolve(null); };
+    } catch(e) { resolve(null); }
+  });
+}
+
+function queueAdd(action) {
+  return new Promise(function(resolve) {
+    if (!_offlineDB) { resolve(null); return; }
+    try {
+      action.ts = Date.now();
+      action.synced = false;
+      var tx = _offlineDB.transaction('queue', 'readwrite');
+      var req = tx.objectStore('queue').add(action);
+      req.onsuccess = function() { _pendingCount++; updateOfflineBadge(); resolve(req.result); };
+      req.onerror = function() { resolve(null); };
+    } catch(e) { resolve(null); }
+  });
+}
+
+function queueGetAll() {
+  return new Promise(function(resolve) {
+    if (!_offlineDB) { resolve([]); return; }
+    try {
+      var tx = _offlineDB.transaction('queue', 'readonly');
+      var req = tx.objectStore('queue').getAll();
+      req.onsuccess = function() { resolve(req.result || []); };
+      req.onerror = function() { resolve([]); };
+    } catch(e) { resolve([]); }
+  });
+}
+
+function queueDelete(id) {
+  return new Promise(function(resolve) {
+    if (!_offlineDB) { resolve(); return; }
+    try {
+      var tx = _offlineDB.transaction('queue', 'readwrite');
+      tx.objectStore('queue').delete(id);
+      tx.oncomplete = function() { resolve(); };
+    } catch(e) { resolve(); }
+  });
+}
+
+function updateOfflineBadge() {
+  var badge = document.getElementById('offline-badge');
+  if (!badge) return;
+  if (_syncInProgress) {
+    badge.className = 'syncing';
+    badge.textContent = '↻ Sincronizando...';
+  } else if (!_isOnline) {
+    badge.className = 'offline';
+    badge.textContent = _pendingCount > 0
+      ? 'Sin conexión · ' + _pendingCount + ' acción' + (_pendingCount > 1 ? 'es' : '') + ' pendiente' + (_pendingCount > 1 ? 's' : '')
+      : 'Sin conexión · datos en caché';
+  } else if (_pendingCount > 0) {
+    badge.className = 'pending';
+    badge.textContent = '⏳ Sincronizando ' + _pendingCount + ' acción' + (_pendingCount > 1 ? 'es' : '') + '...';
+  } else {
+    badge.className = '';
+    badge.style.display = 'none';
+    return;
+  }
+  badge.style.display = 'block';
+}
+
+async function syncQueue() {
+  if (_syncInProgress || !_isOnline || !SCRIPT_URL) return;
+  var items = await queueGetAll();
+  if (!items.length) { _pendingCount = 0; updateOfflineBadge(); return; }
+  _syncInProgress = true;
+  updateOfflineBadge();
+  var synced = 0;
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    try {
+      var method = item.method || 'POST';
+      var res;
+      if (method === 'GET') {
+        res = await fetch(item.url);
+      } else {
+        res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(item.body)});
+      }
+      if (res.ok) {
+        await queueDelete(item.id);
+        synced++;
+      }
+    } catch(e) { break; }
+  }
+  _syncInProgress = false;
+  _pendingCount = Math.max(0, items.length - synced);
+  updateOfflineBadge();
+  if (synced > 0) {
+    calCargado = false; resumenCargado = false;
+    cargarLog(); cargarAcumulados();
+    if (currentTab === 1) cargarCalendario();
+    if (currentTab === 2) cargarResumen();
+  }
+}
+
+async function offlineFetch(url, options, cacheKey, queuePayload) {
+  if (_isOnline) {
+    try {
+      var res = await fetch(url, options);
+      var data = await res.json();
+      if (cacheKey && data.ok !== false) cacheSet(cacheKey, data);
+      return data;
+    } catch(e) {
+      // Caída de red — usar caché
+    }
+  }
+  // Sin conexión
+  if (queuePayload && options && options.method === 'POST') {
+    await queueAdd(queuePayload);
+    return { ok: true, offline: true };
+  }
+  if (cacheKey) {
+    var cached = await cacheGet(cacheKey);
+    if (cached) { cached.value._fromCache = true; cached.value._cacheTs = cached.ts; return cached.value; }
+  }
+  return { ok: false, offline: true, error: 'Sin conexión y sin caché' };
+}
+
+window.addEventListener('online', function() {
+  _isOnline = true;
+  updateOfflineBadge();
+  syncQueue();
+});
+window.addEventListener('offline', function() {
+  _isOnline = false;
+  updateOfflineBadge();
+});
 let SCRIPT_URL = localStorage.getItem('vvs_script_url') || '';
 
 // Helper: extraer HH:MM - backend ya envia formato limpio
@@ -1442,9 +1622,9 @@ async function registrar() {
         subcategoria: subcatLabel, fecha, nota: notaFinal,
         quien: 'Vanessa', id_evento: idEvento
       };
-      const res = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
-      const data = await res.json();
-      if (!data.ok) { mostrarFeedback(`Error: ${data.error || 'Intenta de nuevo'}`, 'error'); btn.disabled = false; return; }
+      var regData = await offlineFetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)},
+        null, {body: payload});
+      if (!regData.ok && !regData.offline) { mostrarFeedback(`Error: ${regData.error || 'Intenta de nuevo'}`, 'error'); btn.disabled = false; return; }
     }
 
     // Si hay datos de outsourcing, registrarlos en el Sheet
@@ -1514,11 +1694,13 @@ function mostrarFeedback(msg, tipo) {
 // ============================================================
 async function cargarLog() {
   if (!SCRIPT_URL) { document.getElementById('log-list').innerHTML = '<div class="empty-log">Configura el script en ⚙️</div>'; return; }
-  try {
-    const res = await fetch(`${SCRIPT_URL}?action=getLog&token=${encodeURIComponent(SECRET_TOKEN)}`);
-    const data = await res.json();
+  var data = await offlineFetch(SCRIPT_URL + '?action=getLog&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_log', null);
+  if (data.ok !== false) {
     renderLog(data.registros || []);
-  } catch(e) { document.getElementById('log-list').innerHTML = '<div class="empty-log">Sin conexion</div>'; }
+    if (data._fromCache) mostrarBadgeCache('log-list', data._cacheTs);
+  } else {
+    document.getElementById('log-list').innerHTML = '<div class="empty-log">Sin conexión</div>';
+  }
 }
 
 function renderLog(registros) {
@@ -1563,14 +1745,14 @@ async function cargarAcumulados() {
 // ============================================================
 async function cargarResumen() {
   if (!SCRIPT_URL) { document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Configura el script en ⚙️</div>'; return; }
-  try {
-    const [resIngresos, resEventos] = await Promise.all([
-      fetch(SCRIPT_URL + '?action=getResumen&token=' + encodeURIComponent(SECRET_TOKEN)).then(r => r.json()),
-      fetch(SCRIPT_URL + '?action=getResumenEventos&token=' + encodeURIComponent(SECRET_TOKEN)).then(r => r.json())
-    ]);
+  var resIngresos = await offlineFetch(SCRIPT_URL + '?action=getResumen&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_resumen', null);
+  var resEventos = await offlineFetch(SCRIPT_URL + '?action=getResumenEventos&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_resumen_ev', null);
+  if (resIngresos && resIngresos.resumen) {
     renderResumen(resIngresos.resumen || [], resEventos);
     resumenCargado = true;
-  } catch(e) { document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Sin conexion</div>'; }
+  } else {
+    document.getElementById('resumen-content').innerHTML = '<div class="resumen-loading">Sin conexión</div>';
+  }
 }
 
 function renderResumen(resumen, resEventos) {
@@ -1828,14 +2010,10 @@ async function buscarYAbrirEvento(el) {
 // ============================================================
 async function cargarCalendario() {
   if (!SCRIPT_URL) { renderCalendario([]); return; }
-  try {
-    const [resEventos, resFechas] = await Promise.all([
-      fetch(`${SCRIPT_URL}?action=getEventos&token=${encodeURIComponent(SECRET_TOKEN)}`).then(r=>r.json()),
-      fetch(`${SCRIPT_URL}?action=getFechasEspeciales&token=${encodeURIComponent(SECRET_TOKEN)}`).then(r=>r.json()).catch(()=>({ok:false,fechas:[]}))
-    ]);
-    todosEventos = resEventos.eventos || [];
-    fechasEspeciales = (resFechas.ok && resFechas.fechas) ? resFechas.fechas : [];
-  } catch(e) { todosEventos = []; fechasEspeciales = []; }
+  var resEventos = await offlineFetch(SCRIPT_URL + '?action=getEventos&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_eventos', null);
+  var resFechas = await offlineFetch(SCRIPT_URL + '?action=getFechasEspeciales&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_fechas', null);
+  todosEventos = (resEventos && resEventos.eventos) ? resEventos.eventos : [];
+  fechasEspeciales = (resFechas && resFechas.ok && resFechas.fechas) ? resFechas.fechas : [];
   renderCalendario(todosEventos);
   renderPendientes(todosEventos);
   calCargado = true;
@@ -2393,8 +2571,8 @@ function cerrarDetalleEvento() {
 
 async function cambiarEstado(idEvento, nuevoEstado) {
   if (!SCRIPT_URL) return;
-  await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({token:SECRET_TOKEN,action:'actualizarEvento',id_evento:idEvento,estado:nuevoEstado})});
+  var body = {token:SECRET_TOKEN,action:'actualizarEvento',id_evento:idEvento,estado:nuevoEstado};
+  await offlineFetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}, null, {body:body});
   calCargado = false;
 }
 
@@ -2486,7 +2664,7 @@ async function guardarPago() {
     quien: 'Vanessa',
     id_evento: eventoModalIdActual
   };
-  await fetch(SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+  await offlineFetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)}, null, {body:payload});
   closeModalPago();
   abrirDetalleEvento(eventoModalIdActual);
   cargarLog(); cargarAcumulados();
@@ -2555,6 +2733,16 @@ function seleccionarEventoExistente(ev) {
     (ev.fecha_evento ? fmtFecha(ev.fecha_evento) : 'Sin fecha') +
     ' &nbsp;|&nbsp; Saldo: <strong>' + fmtMXN(saldo) + '</strong>';
   info.style.display = 'block';
+}
+
+function mostrarBadgeCache(containerId, ts) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  var hora = ts ? new Date(ts).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+  var badge = document.createElement('div');
+  badge.style.cssText = 'font-size:11px;color:var(--text-muted);text-align:center;padding:6px 0;font-style:italic';
+  badge.textContent = '📴 Modo sin conexión · datos al ' + hora;
+  el.insertBefore(badge, el.firstChild);
 }
 
 // ============================================================
@@ -3243,7 +3431,7 @@ function buildContratoHTML(ev, textos) {
     '.firma{margin-top:60px;display:flex;justify-content:space-between}' +
     '.firma-box{text-align:center;width:45%}' +
     '.firma-line{border-top:1px solid #1a1410;padding-top:8px;font-size:12px;color:#5c4a32}' +
-    '@media print{body{margin:0;padding:10px}}' +
+    '@media print{body{margin:0;padding:10px}@page{margin:10mm;size:auto}}' +
     '</style></head><body>' +
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
     '<div><h1>Vanessa Velasco Fotografía Familiar</h1><div class="sub">Recibo de Servicios Fotográficos</div></div>' +
