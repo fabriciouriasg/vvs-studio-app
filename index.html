@@ -3890,23 +3890,53 @@ async function generarYDescargarPDF() {
     var margin_mm = 10;
     var contentW_mm = pageW_mm - margin_mm * 2;
 
-    // Calcular cuántas páginas necesitamos
+    // Altura de página en px (equivalente a A4 con márgenes)
     var totalH_px = canvas.height;
     var pageH_px = Math.floor(canvas.width * (pageH_mm - margin_mm * 2) / contentW_mm);
-    var totalPages = Math.ceil(totalH_px / pageH_px);
 
-    for (var page = 0; page < totalPages; page++) {
+    // Encontrar puntos de corte seguros — buscar líneas blancas entre secciones
+    function encontrarCorteSeguros(canvas, pageH_px) {
+      var ctx = canvas.getContext('2d');
+      var cortes = [0];
+      var cursor = 0;
+      while (cursor + pageH_px < canvas.height) {
+        var ideal = cursor + pageH_px;
+        var encontrado = false;
+        // Buscar hacia arriba hasta 120px una fila completamente blanca
+        for (var y = ideal; y > ideal - 120; y--) {
+          var pixels = ctx.getImageData(0, y, canvas.width, 1).data;
+          var esBlanca = true;
+          for (var p = 0; p < pixels.length; p += 4) {
+            if (pixels[p] < 240 || pixels[p+1] < 240 || pixels[p+2] < 240) {
+              esBlanca = false; break;
+            }
+          }
+          if (esBlanca) { cortes.push(y); cursor = y; encontrado = true; break; }
+        }
+        if (!encontrado) { cortes.push(ideal); cursor = ideal; }
+      }
+      cortes.push(canvas.height);
+      return cortes;
+    }
+
+    var cortes = encontrarCorteSeguros(canvas, pageH_px);
+
+    for (var page = 0; page < cortes.length - 1; page++) {
       if (page > 0) pdf.addPage();
+      var yInicio = cortes[page];
+      var yFin = cortes[page + 1];
+      var alturaSlice = yFin - yInicio;
 
-      // Cortar el canvas en rebanadas de altura pageH_px
       var sliceCanvas = document.createElement('canvas');
       sliceCanvas.width = canvas.width;
-      sliceCanvas.height = Math.min(pageH_px, totalH_px - page * pageH_px);
-      var ctx = sliceCanvas.getContext('2d');
-      ctx.drawImage(canvas, 0, -page * pageH_px);
+      sliceCanvas.height = alturaSlice;
+      var ctx2 = sliceCanvas.getContext('2d');
+      ctx2.fillStyle = '#ffffff';
+      ctx2.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx2.drawImage(canvas, 0, -yInicio);
 
-      var imgSlice = sliceCanvas.toDataURL('image/jpeg', 0.92);
-      var sliceH_mm = (sliceCanvas.height / canvas.width) * contentW_mm;
+      var imgSlice = sliceCanvas.toDataURL('image/jpeg', 0.95);
+      var sliceH_mm = (alturaSlice / canvas.width) * contentW_mm;
       pdf.addImage(imgSlice, 'JPEG', margin_mm, margin_mm, contentW_mm, sliceH_mm);
     }
 
