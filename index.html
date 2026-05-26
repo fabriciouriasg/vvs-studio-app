@@ -1844,9 +1844,12 @@ async function registrar() {
       if (idEvento && monto < precioTotalEvento) {
         catIngreso = 'Anticipos';
       }
+      // Fecha de cobro: si es pago de evento nuevo usar HOY (fecha de recepción real)
+      // Si es registro libre (sin evento), usar la fecha del campo
+      var fechaCobro = idEvento ? HOY : fecha;
       const payload = {
         token: SECRET_TOKEN, monto, categoria: catIngreso,
-        subcategoria: subcatLabel, fecha, nota: notaFinal,
+        subcategoria: subcatLabel, fecha: fechaCobro, nota: notaFinal,
         quien: 'Vanessa', id_evento: idEvento
       };
       var regData = await offlineFetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)},
@@ -1864,9 +1867,11 @@ async function registrar() {
       delete window._outsourcingData;
     }
 
+    var folioMsg = '';
+    if (!idEvento && regData && regData.folio) folioMsg = ' · Folio: ' + regData.folio;
     const msg = idEvento
       ? `✓ Evento creado${monto > 0 ? ' + pago registrado' : ' (sin pago inicial)'}`
-      : `✓ Registrado: ${fmtMXN(monto)}`;
+      : `✓ Registrado: ${fmtMXN(monto)}${folioMsg}`;
     mostrarFeedback(msg, 'success');
     resetForm();
     // Invalidar caché de eventos para que el detalle cargue datos frescos
