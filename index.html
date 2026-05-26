@@ -179,7 +179,7 @@
     .dia-dot.evento{background:var(--cat-evento)}
     .dia-dot.sesion{background:var(--cat-sesion)}
     .dia-dot.otro{background:var(--beige-deeper)}
-    .dia-dot.customizado{background:#7F77DD}
+    .dia-dot.personalizado{background:#7F77DD}
 
     /* Vista mes individual */
     .mes-detail{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--beige-light);z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
@@ -500,7 +500,7 @@
           <!-- PANEL CUSTOMIZADO -->
           <div id="custom-precio-panel" style="display:none">
             <div style="background:var(--beige-mid);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--text-muted)">
-              ✨ Servicio customizado — captura el precio acordado manualmente
+              ✨ Servicio personalizado — captura el precio acordado manualmente
             </div>
             <input class="input-field" id="custom-descripcion" type="text" placeholder="Descripción del servicio *"/>
             <input class="input-field" id="custom-precio" type="number" inputmode="decimal" placeholder="Precio total acordado *" step="0.01" min="0" oninput="actualizarPrecioCustom()"/>
@@ -1144,7 +1144,8 @@ const ANIO_ACTUAL = _hoy.getFullYear();
 function generarMesesConfig() {
   var meses = [];
   var fecha = new Date(_hoy.getFullYear(), _hoy.getMonth(), 1);
-  for (var i = 0; i < 14; i++) {
+  var finAnio = new Date(_hoy.getFullYear(), 11, 1); // Diciembre del año actual
+  while (fecha <= finAnio) {
     meses.push({
       nombre: NOMBRES_MESES[fecha.getMonth()],
       anio:   fecha.getFullYear(),
@@ -1161,8 +1162,7 @@ var CATEGORIAS = {
   eventos:     { nombre:'Eventos',     fila:4, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
   sesiones:    { nombre:'Sesiones',    fila:5, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
   anticipos:   { nombre:'Anticipos',   fila:6, subcats:[], tags:['Evento','Sesion','Pedido especial'] },
-  otros:       { nombre:'Otros',       fila:7, subcats:[], tags:['Album','Fotos extra','Galeria extra','Impresion','Otro','Respaldo','USB'] },
-  customizado: { nombre:'Customizado', fila:8, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
+  personalizado: { nombre:'Personalizado', fila:7, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
 };
 
 // Fallback prices in case Sheet is unavailable
@@ -1300,7 +1300,7 @@ function catColor(cat) {
   const c = cat.toLowerCase();
   if (c === 'eventos') return 'evento';
   if (c === 'sesiones') return 'sesion';
-  if (c === 'customizado') return 'customizado';
+  if (c === 'personalizado') return 'personalizado';
   return 'otro';
 }
 
@@ -1723,7 +1723,7 @@ async function registrar() {
         btn.disabled = false;
         return;
       }
-      if (esCustomizado) {
+      if (esPersonalizado) {
         var cDesc = document.getElementById('custom-descripcion') ? document.getElementById('custom-descripcion').value.trim() : '';
         var cPrecio = document.getElementById('custom-precio') ? parseFloat(document.getElementById('custom-precio').value)||0 : 0;
         if (!cDesc) { mostrarFeedback('La descripción del servicio es obligatoria', 'error'); btn.disabled = false; return; }
@@ -1744,7 +1744,7 @@ async function registrar() {
         // LIGAR a evento existente
         idEvento = eventoLigadoId;
         // Si es Otros, agregar como extra al evento
-        if (esOtros && monto > 0) {
+        if (false && monto > 0) {
           await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
             body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:idEvento,descripcion:subcatLabel||notaFinal||'Otro',monto:monto})});
         }
@@ -1757,11 +1757,11 @@ async function registrar() {
         var customDesc = document.getElementById('custom-descripcion') ? document.getElementById('custom-descripcion').value.trim() : '';
         var customPrecio = document.getElementById('custom-precio') ? parseFloat(document.getElementById('custom-precio').value)||0 : 0;
         var customEntregables = document.getElementById('custom-entregables') ? document.getElementById('custom-entregables').value.trim() : '';
-        if (esCustomizado && customPrecio > 0) precioBase = customPrecio;
-        var paqueteFinal = esCustomizado ? (customDesc || 'Servicio Customizado') : (subcatLabel || cat.nombre);
+        if (esPersonalizado && customPrecio > 0) precioBase = customPrecio;
+        var paqueteFinal = esPersonalizado ? (customDesc || 'Servicio Customizado') : (subcatLabel || cat.nombre);
         var customCosto = document.getElementById('custom-costo') ? parseFloat(document.getElementById('custom-costo').value)||0 : 0;
         var notasCustom = notaFinal;
-        if (esCustomizado) {
+        if (esPersonalizado) {
           if (customEntregables) notasCustom += (notasCustom ? ' | ' : '') + 'Entregables: ' + customEntregables;
           if (customCosto > 0) notasCustom += (notasCustom ? ' | ' : '') + 'COSTO_INTERNO:' + customCosto;
         }
@@ -1847,7 +1847,7 @@ function resetForm() {
   if (document.getElementById('ev-seleccionado-info')) document.getElementById('ev-seleccionado-info').style.display = 'none';
   if (document.getElementById('ev-existente-resultados')) document.getElementById('ev-existente-resultados').style.display = 'none';
   eventoLigadoId = null;
-  modoEvento = 'nuevo'; esCustomizado = false;
+  modoEvento = 'nuevo'; esPersonalizado = false;
   setDefaultFecha();
   if (window._outsourcingData) delete window._outsourcingData;
   var cp = document.getElementById('custom-precio-panel');
@@ -2231,12 +2231,17 @@ function renderCalendario(eventos) {
 function crearMesMini(mc, eventosMes) {
   const div = document.createElement('div');
   div.className = 'mes-card';
-  div.onclick = () => abrirMesDetail(mc);
 
-  // Header
+  // Determinar si el mes ya pasó
+  var esPasado = (mc.anio < ANIO_ACTUAL) || (mc.anio === ANIO_ACTUAL && mc.mes < (new Date().getMonth() + 1));
+  var esActual = (mc.anio === ANIO_ACTUAL && mc.mes === (new Date().getMonth() + 1));
+
+  // Header - clickeable para plegar/desplegar si es pasado, o abrir detalle
   const header = document.createElement('div');
   header.className = 'mes-card-header';
-  header.innerHTML = `<span class="mes-card-nombre">${mc.nombre}</span><span class="mes-card-count">${eventosMes.length ? eventosMes.length + ' evento' + (eventosMes.length > 1 ? 's' : '') : ''}</span>`;
+  const countLabel = eventosMes.length ? eventosMes.length + ' evento' + (eventosMes.length > 1 ? 's' : '') : '';
+  const arrowHtml = esPasado ? '<span style="font-size:11px;color:var(--text-muted);margin-left:6px" class="mes-fold-arrow">▶</span>' : '';
+  header.innerHTML = '<span class="mes-card-nombre">' + mc.nombre + (esPasado ? ' <span style="font-size:11px;color:var(--text-muted)">' + mc.anio + '</span>' : '') + '</span><div style="display:flex;align-items:center;gap:4px"><span class="mes-card-count">' + countLabel + '</span>' + arrowHtml + '</div>';
   div.appendChild(header);
 
   // Mini grid
@@ -2284,6 +2289,25 @@ function crearMesMini(mc, eventosMes) {
     grid.appendChild(diaEl);
   }
   div.appendChild(grid);
+
+  // Si es mes pasado, colapsar grid por defecto y manejar click
+  if (esPasado) {
+    grid.style.display = 'none';
+    header.style.cursor = 'pointer';
+    header.addEventListener('click', function() {
+      var isOpen = grid.style.display !== 'none';
+      grid.style.display = isOpen ? 'none' : 'grid';
+      var arrow = header.querySelector('.mes-fold-arrow');
+      if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+    });
+  } else {
+    div.onclick = () => abrirMesDetail(mc);
+    // Para mes actual y futuros, click en header abre detalle
+    header.style.cursor = 'pointer';
+    // Pero el grid también debe abrir detalle
+    grid.style.cursor = 'pointer';
+  }
+
   return div;
 }
 
@@ -2852,22 +2876,21 @@ async function guardarPago() {
 // ============================================================
 var modoEvento = 'nuevo'; // 'nuevo' | 'ligar'
 var eventoLigadoId = null;
-var esOtros = false;
-var esCustomizado = false;
+var esPersonalizado = false;
 
 function actualizarModoEvento(key) {
-  esOtros = (key === 'otros');
-  esCustomizado = (key === 'customizado');
+  esPersonalizado = (key === 'personalizado');
+  
   var titulo = document.getElementById('evento-form-title');
   if (key === 'anticipos') titulo.textContent = '💰 Datos del evento (anticipo)';
-  else if (key === 'otros') titulo.textContent = '📦 Ligar a evento';
-  else if (key === 'customizado') titulo.textContent = '✨ Servicio customizado';
+
+  else if (key === 'personalizado') titulo.textContent = '✨ Servicio personalizado';
   else titulo.textContent = '📅 Datos del evento';
   // Mostrar/ocultar campos customizado
   var customPanel = document.getElementById('custom-precio-panel');
-  if (customPanel) customPanel.style.display = esCustomizado ? 'block' : 'none';
+  if (customPanel) customPanel.style.display = esPersonalizado ? 'block' : 'none';
   // Ocultar subcats si es customizado
-  if (esCustomizado) {
+  if (esPersonalizado) {
     document.getElementById('subcats-wrapper').classList.remove('visible');
     document.getElementById('extra-hora-row').style.display = 'none';
   }
@@ -3740,16 +3763,20 @@ var FIN_PIN = localStorage.getItem('vvs_pin') || '1234';
 
 // ── PIN ──────────────────────────────────────────────────────
 function abrirPIN(label, callback) {
-  _pinCallback = callback;
+  // Guardar callback en variable global accesible
+  window._pinCallbackFn = callback;
   _pinActual = '';
-  document.getElementById('pin-accion-label').textContent = label;
-  document.getElementById('pin-error').textContent = '';
+  var labelEl = document.getElementById('pin-accion-label');
+  var errorEl = document.getElementById('pin-error');
+  if (labelEl) labelEl.textContent = label;
+  if (errorEl) errorEl.textContent = '';
   actualizarPuntosPIN();
   document.getElementById('modal-pin').classList.add('open');
 }
 function cerrarPIN() {
   document.getElementById('modal-pin').classList.remove('open');
-  _pinCallback = null; _pinActual = '';
+  window._pinCallbackFn = null;
+  _pinActual = '';
 }
 function pinDigit(d) {
   if (_pinActual.length >= 4) return;
@@ -3758,10 +3785,12 @@ function pinDigit(d) {
   if (_pinActual.length === 4) {
     setTimeout(function() {
       if (_pinActual === FIN_PIN) {
+        var cb = window._pinCallbackFn;
         cerrarPIN();
-        if (_pinCallback) _pinCallback();
+        if (cb) cb();
       } else {
-        document.getElementById('pin-error').textContent = 'PIN incorrecto';
+        var errorEl = document.getElementById('pin-error');
+        if (errorEl) errorEl.textContent = 'PIN incorrecto';
         _pinActual = '';
         actualizarPuntosPIN();
       }
@@ -3784,15 +3813,17 @@ async function cargarFinanzas() {
   if (!SCRIPT_URL) { document.getElementById('finanzas-content').innerHTML = '<div class="resumen-loading">Configura el script en ⚙️</div>'; return; }
   document.getElementById('finanzas-content').innerHTML = '<div class="resumen-loading">Cargando...</div>';
   try {
-    var [resEv, resGF, resGV] = await Promise.all([
+    var [resEv, resGF, resGV, resLog] = await Promise.all([
       offlineFetch(SCRIPT_URL + '?action=getEventos&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_eventos', null),
       offlineFetch(SCRIPT_URL + '?action=getGastosFijos&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_gf', null),
-      offlineFetch(SCRIPT_URL + '?action=getGastosVariables&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_gv', null)
+      offlineFetch(SCRIPT_URL + '?action=getGastosVariables&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_gv', null),
+      offlineFetch(SCRIPT_URL + '?action=getLogCompleto&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_log_fin', null)
     ]);
     _finanzasData = {
       eventos: (resEv && resEv.eventos) ? resEv.eventos : [],
       gastosFijos: (resGF && resGF.gastos) ? resGF.gastos : [],
-      gastosVariables: (resGV && resGV.gastos) ? resGV.gastos : []
+      gastosVariables: (resGV && resGV.gastos) ? resGV.gastos : [],
+      logRegistros: (resLog && resLog.registros) ? resLog.registros : []
     };
     renderFinanzas();
   } catch(e) {
@@ -3811,16 +3842,20 @@ function renderFinanzas() {
   var anioActual = hoy.getFullYear();
   var prefMes = anioActual + '-' + String(mesActual).padStart(2,'0');
 
-  // Calcular totales mes actual
-  var evsMes = eventos.filter(function(e) {
-    return e.fecha_evento && e.fecha_evento.startsWith(prefMes) && e.estado !== 'Cancelado';
+  var logRegistros = _finanzasData.logRegistros || [];
+
+  // Calcular totales mes actual por fecha de COBRO (Log_Ingresos), no por fecha de evento
+  var logMes = logRegistros.filter(function(r) {
+    return r.fecha && r.fecha.startsWith(prefMes);
   });
-  var ingresoEventos = 0, ingresoSesiones = 0;
-  evsMes.forEach(function(e) {
-    if (e.categoria === 'Eventos') ingresoEventos += e.pagado || 0;
-    else if (e.categoria === 'Sesiones') ingresoSesiones += e.pagado || 0;
+  var ingresoEventos = 0, ingresoSesiones = 0, ingresoPersonalizado = 0;
+  logMes.forEach(function(r) {
+    var cat = (r.categoria || '').toLowerCase();
+    if (cat === 'eventos') ingresoEventos += r.monto || 0;
+    else if (cat === 'sesiones') ingresoSesiones += r.monto || 0;
+    else if (cat === 'personalizado') ingresoPersonalizado += r.monto || 0;
   });
-  var ingresoTotal = ingresoEventos + ingresoSesiones;
+  var ingresoTotal = ingresoEventos + ingresoSesiones + ingresoPersonalizado;
   var totalGF = gastosFijos.reduce(function(s,g) { return s + (parseFloat(g.monto)||0); }, 0);
   var totalGV = gastosVariables.filter(function(g) {
     return g.mes === NOMBRES_MESES[mesActual-1];
@@ -3881,7 +3916,10 @@ function renderFinanzas() {
     var mAnio = mFecha.getFullYear();
     var mPref = mAnio + '-' + String(mFecha.getMonth()+1).padStart(2,'0');
     var mEvs = eventos.filter(function(e) { return e.fecha_evento && e.fecha_evento.startsWith(mPref) && e.estado !== 'Cancelado'; });
-    var confirmado = mEvs.reduce(function(s,e) { return s + (e.pagado||0); }, 0);
+    // Confirmado = lo ya cobrado según Log en ese mes
+    var logMesProy = logRegistros.filter(function(r) { return r.fecha && r.fecha.startsWith(mPref); });
+    var confirmado = logMesProy.reduce(function(s,r) { return s + (r.monto||0); }, 0);
+    // Proyectado = saldos pendientes de eventos de ese mes
     var proyectado = mEvs.reduce(function(s,e) { return s + Math.max(0, (e.total||0) - (e.pagado||0)); }, 0);
     var totalProy = confirmado + proyectado;
     var pctConf = totalProy > 0 ? Math.round((confirmado/totalProy)*100) : 0;
@@ -3925,7 +3963,7 @@ function renderFinanzas() {
     gastosFijos.forEach(function(g, idx) {
       html += '<div class="fin-gasto-row"><span>' + g.descripcion + '</span>';
       html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:500">' + fmtMXN(g.monto) + '</span>';
-      html += '<span class="fin-lock" data-gid="' + g.id + '" onclick="abrirPIN(\'Eliminar gasto fijo\', function(){ eliminarGastoFijo(this.dataset.gid) }.bind(this))">🔒</span></div></div>';
+      html += '<span class="fin-lock" data-gid="' + g.id + '" onclick="window._pinGastoId=this.dataset.gid;abrirPIN(\'Eliminar gasto fijo\',function(){eliminarGastoFijo(window._pinGastoId)})">🔒</span></div></div>';
     });
   } else {
     html += '<div style="font-size:13px;color:var(--text-muted);padding:4px 0">Sin gastos fijos</div>';
@@ -3941,7 +3979,7 @@ function renderFinanzas() {
       html += '<div class="fin-gasto-row"><div><div style="font-size:13px">' + g.descripcion + '</div>';
       html += '<div style="font-size:11px;color:var(--text-muted)">' + g.categoria + '</div></div>';
       html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:500">' + fmtMXN(g.monto) + '</span>';
-      html += '<span class="fin-lock" data-gid="' + g.id + '" onclick="abrirPIN(\'Eliminar gasto variable\', function(){ eliminarGastoVariable(this.dataset.gid) }.bind(this))">🔒</span></div></div>';
+      html += '<span class="fin-lock" data-gid="' + g.id + '" onclick="window._pinGastoId=this.dataset.gid;abrirPIN(\'Eliminar gasto variable\',function(){eliminarGastoVariable(window._pinGastoId)})">🔒</span></div></div>';
     });
   } else {
     html += '<div style="font-size:13px;color:var(--text-muted);padding:4px 0">Sin gastos variables este mes</div>';
