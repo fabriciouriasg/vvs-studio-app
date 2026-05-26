@@ -415,7 +415,7 @@
         <!-- Panel crear nuevo -->
         <div id="panel-nuevo">
           <input class="input-field" id="ev-cliente" type="text" placeholder="Nombre del cliente *" oninput="buscarClienteSugerido()"/>
-          <input class="input-field" id="ev-telefono" type="tel" inputmode="tel" placeholder="Teléfono WhatsApp * (10 dígitos)"/>
+          <input class="input-field" id="ev-telefono" type="tel" inputmode="tel" placeholder="Teléfono WhatsApp * (con o sin +52)"/>
           <input class="input-field" id="ev-email" type="email" inputmode="email" placeholder="Correo electrónico (opcional)"/>
           <div id="ev-cliente-sugerencias" style="display:none;background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius-sm);margin-top:-8px;margin-bottom:10px;overflow:hidden"></div>
           <div style="margin-bottom:6px">
@@ -945,6 +945,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   setTimeout(validarFolios, 4000);
 });
 
+function normalizarTel(raw) {
+  var digits = String(raw || '').replace(/\D/g, '');
+  // Quitar 52 inicial si viene con 12 dígitos (ej: 524871011569)
+  if (digits.length === 12 && digits.startsWith('52')) digits = digits.substring(2);
+  // Quitar 1 inicial si viene con 11 dígitos (ej: 14871011569)
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.substring(1);
+  return digits;
+}
+
 function setDefaultFecha() {
   document.getElementById('fecha').value = HOY;
   const evFecha = document.getElementById('ev-fecha');
@@ -1384,7 +1393,7 @@ async function registrar() {
         btn.disabled = false;
         return;
       }
-      var evTelefono = document.getElementById('ev-telefono') ? document.getElementById('ev-telefono').value.trim().replace(/\D/g,'') : '';
+      var evTelefono = document.getElementById('ev-telefono') ? normalizarTel(document.getElementById('ev-telefono').value) : '';
       if (modoEvento === 'nuevo' && !evTelefono) {
         mostrarFeedback('El teléfono WhatsApp es obligatorio', 'error');
         btn.disabled = false;
@@ -1407,7 +1416,7 @@ async function registrar() {
         // CREAR nuevo evento
         const precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
         var evEmail = document.getElementById('ev-email') ? document.getElementById('ev-email').value.trim() : '';
-        var evTelPayload = document.getElementById('ev-telefono') ? document.getElementById('ev-telefono').value.trim().replace(/\D/g,'') : '';
+        var evTelPayload = document.getElementById('ev-telefono') ? normalizarTel(document.getElementById('ev-telefono').value) : '';
         const eventoPayload = {
           token: SECRET_TOKEN, action: 'crearEvento',
           cliente: evCliente, email: evEmail, telefono: evTelPayload, categoria: cat.nombre,
@@ -3106,7 +3115,7 @@ async function guardarEdicion() {
     action: 'actualizarEvento',
     id_evento: eventoModalIdActual,
     cliente: cliente,
-    telefono: document.getElementById('edit-telefono') ? document.getElementById('edit-telefono').value.trim().replace(/\D/g,'') : '',
+    telefono: document.getElementById('edit-telefono') ? normalizarTel(document.getElementById('edit-telefono').value) : '',
     email: document.getElementById('edit-email') ? document.getElementById('edit-email').value.trim() : '',
     precio_base: parseFloat(document.getElementById('edit-precio').value) || eventoDetalleActual.precio_base,
     fecha_evento: document.getElementById('edit-fecha').value,
@@ -3326,7 +3335,7 @@ function cerrarPDFModal() {
 function enviarWhatsApp() {
   if (!eventoDetalleActual) return;
   var ev = eventoDetalleActual;
-  var tel = String(ev.telefono || '').replace(/[^0-9]/g, '');
+  var tel = normalizarTel(ev.telefono);
   if (tel.length === 10) tel = '52' + tel;
   var saldo = ev.total - ev.pagado;
   var lines = [
