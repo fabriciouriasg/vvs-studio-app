@@ -3851,97 +3851,92 @@ async function generarYDescargarPDF() {
       });
     }
 
-    // A4 en px a 96dpi: 794 x 1123
+    // A4 en px a 96dpi: 794px ancho
     var A4_W = 794;
-    var A4_H = 1123;
 
-    // Renderizar contenido del recibo en contenedor oculto con ancho A4
+    // Extraer estilos y body del recibo
     var styleMatch = window._pdfHtml.match(/<style>([\s\S]*?)<\/style>/i);
     var bodyMatch  = window._pdfHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     var recipeStyle = styleMatch ? '<style>' + styleMatch[1] + '</style>' : '';
     var recipeBody  = bodyMatch  ? bodyMatch[1] : window._pdfHtml;
 
+    // Renderizar en contenedor oculto A4
     var container = document.createElement('div');
     container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4_W + 'px;background:#fff;padding:40px;box-sizing:border-box';
     container.innerHTML = recipeStyle + recipeBody;
-    document.body.appendChild(container);
 
-    await new Promise(function(r) { setTimeout(r, 600); });
-
-    // Capturar canvas completo
-    var canvas = await html2canvas(container, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      scrollX: 0, scrollY: 0,
-      windowWidth: A4_W + 80,
-      width: A4_W,
-      height: container.scrollHeight
+    // Agregar page-break-inside:avoid a todas las secciones del recibo
+    var secciones = container.querySelectorAll('.section, table, p, li, h1, h2, h3, .footer');
+    secciones.forEach(function(el) {
+      el.style.pageBreakInside = 'avoid';
+      el.style.breakInside = 'avoid';
     });
 
-    document.body.removeChild(container);
+    document.body.appendChild(container);
+    await new Promise(function(r) { setTimeout(r, 800); });
 
-    // Dimensiones en mm para jsPDF (A4 = 210 x 297mm)
+    // Capturar secciones individualmente para evitar cortes
     var jsPDF = window.jspdf.jsPDF;
     var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     var pageW_mm = 210;
     var pageH_mm = 297;
-    var margin_mm = 10;
+    var margin_mm = 12;
     var contentW_mm = pageW_mm - margin_mm * 2;
+    var contentH_mm = pageH_mm - margin_mm * 2;
+    var cursorY_mm = margin_mm;
+    var primeraImagen = true;
 
-    // Altura de página en px (equivalente a A4 con márgenes)
-    var totalH_px = canvas.height;
-    var pageH_px = Math.floor(canvas.width * (pageH_mm - margin_mm * 2) / contentW_mm);
+    // Obtener todos los elementos hijo directos del body del recibo
+    var elementos = Array.from(container.children);
+    // Si hay un solo wrapper, usar sus hijos
+    if (elementos.length === 1 && elementos[0].children.length > 0) {
+      elementos = Array.from(elementos[0].children);
+    }
 
-    // Encontrar puntos de corte seguros — buscar líneas blancas entre secciones
-    function encontrarCorteSeguros(canvas, pageH_px) {
-      var ctx = canvas.getContext('2d');
-      var cortes = [0];
-      var cursor = 0;
-      while (cursor + pageH_px < canvas.height) {
-        var ideal = cursor + pageH_px;
-        var encontrado = false;
-        // Buscar hacia arriba hasta 120px una fila completamente blanca
-        for (var y = ideal; y > ideal - 120; y--) {
-          var pixels = ctx.getImageData(0, y, canvas.width, 1).data;
-          var esBlanca = true;
-          for (var p = 0; p < pixels.length; p += 4) {
-            if (pixels[p] < 240 || pixels[p+1] < 240 || pixels[p+2] < 240) {
-              esBlanca = false; break;
-            }
-          }
-          if (esBlanca) { cortes.push(y); cursor = y; encontrado = true; break; }
-        }
-        if (!encontrado) { cortes.push(ideal); cursor = ideal; }
+    for (var ei = 0; ei < elementos.length; ei++) {
+      var el = elementos[ei];
+      if (!el || el.offsetHeight === 0) continue;
+
+      var elCanvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        scrollX: 0, scrollY: 0
+      });
+
+      var elW_mm = contentW_mm;
+      var elH_mm = (elCanvas.height / elCanvas.width) * elW_mm;
+
+      // Si no cabe en la página actual, nueva página
+      if (!primeraImagen && cursorY_mm + elH_mm > pageH_mm - margin_mm) {
+        pdf.addPage();
+        cursorY_mm = margin_mm;
       }
-      cortes.push(canvas.height);
-      return cortes;
+      primeraImagen = false;
+
+      var imgData = elCanvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(imgData, 'JPEG', margin_mm, cursorY_mm, elW_mm, elH_mm);
+      cursorY_mm += elH_mm + 2; // 2mm de espacio entre elementos
     }
 
-    var cortes = encontrarCorteSeguros(canvas, pageH_px);
+    document.body.removeChild(container);
 
-    for (var page = 0; page < cortes.length - 1; page++) {
-      if (page > 0) pdf.addPage();
-      var yInicio = cortes[page];
-      var yFin = cortes[page + 1];
-      var alturaSlice = yFin - yInicio;
-
-      var sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = alturaSlice;
-      var ctx2 = sliceCanvas.getContext('2d');
-      ctx2.fillStyle = '#ffffff';
-      ctx2.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      ctx2.drawImage(canvas, 0, -yInicio);
-
-      var imgSlice = sliceCanvas.toDataURL('image/jpeg', 0.95);
-      var sliceH_mm = (alturaSlice / canvas.width) * contentW_mm;
-      pdf.addImage(imgSlice, 'JPEG', margin_mm, margin_mm, contentW_mm, sliceH_mm);
-    }
-
+    // Guardar con nombre limpio — sin blob URL
     var filename = (window._pdfFilename || 'recibo').replace('.pdf','') + '.pdf';
-    pdf.save(filename);
+    // Usar output('blob') + URL.createObjectURL para nombre limpio en iOS
+    var pdfBlob = pdf.output('blob');
+    var blobUrl = URL.createObjectURL(pdfBlob);
+    var a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    }, 3000);
 
   } catch(e) {
     alert('Error al generar PDF: ' + e.message);
