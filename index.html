@@ -1758,6 +1758,7 @@ async function registrar() {
 
   try {
     let idEvento = '';
+    let precioBase = 0; // declarar en scope superior para acceso posterior
 
     const evCliente = document.getElementById('ev-cliente').value.trim();
     const evFecha = document.getElementById('ev-fecha').value;
@@ -1801,7 +1802,7 @@ async function registrar() {
         }
       } else if (modoEvento === 'nuevo' && evCliente) {
         // CREAR nuevo evento
-        const precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
+        precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
         var evEmail = document.getElementById('ev-email') ? document.getElementById('ev-email').value.trim() : '';
         var evTelPayload = document.getElementById('ev-telefono') ? normalizarTel(document.getElementById('ev-telefono').value) : '';
         // Para customizado, usar precio y descripción del panel custom
