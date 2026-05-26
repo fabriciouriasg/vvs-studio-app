@@ -2874,7 +2874,12 @@ async function guardarDescuento() {
   calCargado = false;
 }
 
-function openModalPago() { document.getElementById('modal-pago').classList.add('open'); }
+function openModalPago() {
+  if (!eventoDetalleActual) return;
+  document.getElementById('pago-monto').value = '';
+  document.getElementById('pago-nota').value = '';
+  document.getElementById('modal-pago').classList.add('open');
+}
 function closeModalPago() {
   document.getElementById('modal-pago').classList.remove('open');
   document.getElementById('pago-monto').value = '';
@@ -2885,13 +2890,25 @@ async function guardarPago() {
   var monto = parseFloat(document.getElementById('pago-monto').value) || 0;
   var nota = document.getElementById('pago-nota').value.trim();
   if (!monto || !eventoModalIdActual || !eventoDetalleActual) return;
+  // Categoría automática:
+  // - Sin pagos previos + monto parcial = Anticipos
+  // - Con pagos previos (abono) = categoría del evento
+  // - Monto que liquida saldo = categoría del evento
+  var saldoPendiente = (eventoDetalleActual.total || 0) - (eventoDetalleActual.pagado || 0);
+  var yaHayPagos = (eventoDetalleActual.pagado || 0) > 0;
+  var catPago;
+  if (!yaHayPagos && monto < saldoPendiente) {
+    catPago = 'Anticipos'; // Primer pago parcial = anticipo
+  } else {
+    catPago = eventoDetalleActual.categoria; // Abono o liquidación = categoría del evento
+  }
   var payload = {
     token: SECRET_TOKEN,
     monto: monto,
-    categoria: eventoDetalleActual.categoria,
+    categoria: catPago,
     subcategoria: eventoDetalleActual.paquete,
     fecha: HOY,
-    nota: nota || 'Pago',
+    nota: nota || (catPago === 'Anticipos' ? 'Anticipo' : 'Pago'),
     quien: 'Vanessa',
     id_evento: eventoModalIdActual
   };
