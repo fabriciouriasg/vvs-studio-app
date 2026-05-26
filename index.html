@@ -3827,47 +3827,34 @@ function descargarPDF(html, filename) {
   window._pdfHtml = html;
 }
 
-async function generarYDescargarPDF() {
-  var btn = document.getElementById('btn-gen-pdf');
-  if (btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
-
-  try {
-    // Cargar html2pdf si no está cargado
-    if (!window.html2pdf) {
-      await new Promise(function(resolve, reject) {
-        var script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    }
-
-    // Crear contenedor temporal con el HTML del recibo
-    var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:600px;background:#fff';
-    container.innerHTML = window._pdfHtml;
-    // Quitar el script de @media print que puede interferir
-    var scripts = container.querySelectorAll('script,style');
-    document.body.appendChild(container);
-
-    var opt = {
-      margin: [10, 10, 10, 10],
-      filename: window._pdfFilename || 'recibo.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'avoid-all' }
-    };
-
-    await html2pdf().set(opt).from(container).save();
-    document.body.removeChild(container);
-
-  } catch(e) {
-    alert('Error al generar PDF: ' + e.message);
+function generarYDescargarPDF() {
+  if (!window._pdfHtml) return;
+  // Inyectar regla CSS para suprimir URL en pie de página
+  var htmlConFix = window._pdfHtml.replace(
+    '@media print{body{margin:0;padding:10px}@page{margin:0;size:auto}}',
+    '@media print{body{margin:0;padding:10px}@page{margin:0;size:auto}} @media print{html,body{-webkit-print-color-adjust:exact}}'
+  );
+  // Crear blob URL — el navegador muestra "blob:" en lugar de la URL de GitHub
+  var blob = new Blob([htmlConFix], {type: 'text/html;charset=utf-8'});
+  var blobUrl = URL.createObjectURL(blob);
+  var win = window.open(blobUrl, '_blank');
+  if (!win) {
+    // Fallback: link de descarga
+    var a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = window._pdfFilename || 'recibo.pdf';
+    a.click();
+    return;
   }
-
-  if (btn) { btn.textContent = '⬇️ Descargar PDF'; btn.disabled = false; }
+  // Esperar a que cargue y luego imprimir
+  win.onload = function() {
+    setTimeout(function() {
+      win.focus();
+      win.print();
+      setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 5000);
+    }, 300);
+  };
+  setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 30000);
 }
 
 function cerrarPDFModal() {
