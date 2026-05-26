@@ -1161,8 +1161,8 @@ async function confirmarBloquearDia() {
       closeModalBloquearDia();
       calCargado = false;
       await recargarFechasEspeciales();
-      var mc = mesDetailActual;
-      if (mc) abrirMesDetail(mc);
+      renderizarGrillaMes();
+      if (diaSeleccionadoPanel) mostrarEventosDia(diaSeleccionadoPanel);
     } else { alert('Error del servidor: ' + (data.error||'desconocido')); }
   } catch(e) { alert('Error al conectar. Verifica que el Script esté desplegado y la URL sea correcta.\n\nDetalle: ' + e.message); }
   btn.textContent = 'Bloquear'; btn.disabled = false;
@@ -1199,8 +1199,8 @@ async function confirmarEventoPersonal() {
       closeModalEventoPersonal();
       calCargado = false;
       await recargarFechasEspeciales();
-      var mc = mesDetailActual;
-      if (mc) abrirMesDetail(mc);
+      renderizarGrillaMes();
+      if (diaSeleccionadoPanel) mostrarEventosDia(diaSeleccionadoPanel);
     } else { alert('Error del servidor: ' + (data.error||'desconocido')); }
   } catch(e) { alert('Error al conectar. Verifica que el Script esté desplegado y la URL sea correcta.\n\nDetalle: ' + e.message); }
   btn.textContent = 'Agregar'; btn.disabled = false;
@@ -1215,10 +1215,46 @@ async function eliminarFechaEspecial(id) {
     if (data.ok) {
       calCargado = false;
       await recargarFechasEspeciales();
-      var mc = mesDetailActual;
-      if (mc) abrirMesDetail(mc);
+      renderizarGrillaMes();
+      if (diaSeleccionadoPanel) mostrarEventosDia(diaSeleccionadoPanel);
     } else { alert('Error: ' + (data.error||'desconocido')); }
-  } catch(e) { alert('Sin conexion'); }
+  } catch(e) { alert('Error al conectar: ' + e.message); }
+}
+
+function renderizarGrillaMes() {
+  var mc = mesDetailActual;
+  if (!mc) return;
+  var grid = document.getElementById('mes-full-grid');
+  if (!grid) return;
+  var prefijo = mc.anio + '-' + String(mc.mes).padStart(2,'0');
+  var eventosMes = todosEventos.filter(function(e) { return e.fecha_evento && e.fecha_evento.startsWith(prefijo); });
+  var primerDia = new Date(mc.anio, mc.mes - 1, 1);
+  var diasMes = new Date(mc.anio, mc.mes, 0).getDate();
+  var dow = primerDia.getDay(); dow = dow === 0 ? 6 : dow - 1;
+  grid.innerHTML = '';
+  for (var i = 0; i < dow; i++) {
+    var empty = document.createElement('div'); empty.className = 'mes-full-dia vacio'; grid.appendChild(empty);
+  }
+  for (var d = 1; d <= diasMes; d++) {
+    var fechaStr = mc.anio + '-' + String(mc.mes).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var evsDelDia = eventosMes.filter(function(e) { return String(e.fecha_evento||'').substring(0,10) === fechaStr && e.estado !== 'Cancelado'; });
+    var bloqueado = fechasEspeciales.some(function(f) { return f.fecha === fechaStr && f.tipo === 'BLOQUEADO'; });
+    var personales = fechasEspeciales.filter(function(f) { return f.fecha === fechaStr && f.tipo === 'PERSONAL'; });
+    var diaEl = document.createElement('div');
+    var clases = 'mes-full-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
+    if (bloqueado) clases += ' bloqueado';
+    diaEl.className = clases;
+    var numEl = document.createElement('div'); numEl.className = 'dia-num'; numEl.textContent = d;
+    diaEl.appendChild(numEl);
+    if (!bloqueado && (evsDelDia.length || personales.length)) {
+      var dots = document.createElement('div'); dots.className = 'dia-full-dots';
+      evsDelDia.slice(0,4).forEach(function(ev) { var dot = document.createElement('div'); dot.className = 'dia-dot ' + catColor(ev.categoria); dots.appendChild(dot); });
+      personales.slice(0,1).forEach(function() { var dot = document.createElement('div'); dot.className = 'dia-dot personal'; dots.appendChild(dot); });
+      diaEl.appendChild(dots);
+    }
+    (function(fs) { diaEl.addEventListener('click', function() { mostrarEventosDia(fs); }); })(fechaStr);
+    grid.appendChild(diaEl);
+  }
 }
 
 async function recargarFechasEspeciales() {
@@ -2953,7 +2989,7 @@ function buildContratoHTML(ev, textos) {
     '.total-row td{font-size:16px;font-weight:bold;padding-top:8px;border-top:1px solid #d4c4b0}' +
     '.saldo-row td{color:#c0392b;font-size:15px}' +
     '.saldo-ok td{color:#27ae60;font-size:15px}' +
-    '.policy{font-size:12px;line-height:1.7;color:#5c4a32}' +
+    '.policy{font-size:12px;line-height:1.7;color:#5c4a32;text-align:justify}' +
     'ul{padding-left:18px;margin:0}' +
     '.footer{margin-top:40px;text-align:center;font-size:12px;color:#8b7355;border-top:1px solid #d4c4b0;padding-top:16px}' +
     '.firma{margin-top:60px;display:flex;justify-content:space-between}' +
