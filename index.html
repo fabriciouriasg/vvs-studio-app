@@ -40,8 +40,8 @@
 
     /* SCREENS */
     .screens-wrapper{position:fixed;top:96px;left:0;right:0;bottom:0;overflow:hidden}
-    .screens-track{display:flex;width:400%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1)}
-    .screen{width:25%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;background:var(--beige-light)}
+    .screens-track{display:flex;width:500%;height:100%;transition:transform .35s cubic-bezier(.4,0,.2,1)}
+    .screen{width:20%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;background:var(--beige-light)}
 
     /* CONTAINER */
     .container{max-width:480px;margin:0 auto;padding:20px 16px 100px}
@@ -179,6 +179,7 @@
     .dia-dot.evento{background:var(--cat-evento)}
     .dia-dot.sesion{background:var(--cat-sesion)}
     .dia-dot.otro{background:var(--beige-deeper)}
+    .dia-dot.customizado{background:#7F77DD}
 
     /* Vista mes individual */
     .mes-detail{display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:var(--beige-light);z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px}
@@ -329,6 +330,53 @@
     .personal-item:last-child{border-bottom:none}
     .personal-dot{width:8px;height:8px;border-radius:50%;background:#BE6942;flex-shrink:0}
     .personal-delete{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 6px;opacity:.6;margin-left:auto}
+    /* FINANZAS */
+    .fin-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+    .fin-metric{background:var(--white);border:0.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:12px;text-align:center}
+    .fin-metric-lbl{font-size:11px;color:var(--text-muted);margin-bottom:4px}
+    .fin-metric-val{font-size:16px;font-weight:500;color:var(--text-main)}
+    .fin-metric-val.green{color:var(--success)}
+    .fin-metric-val.red{color:var(--error)}
+    .fin-split-row{display:flex;gap:6px;margin-bottom:10px}
+    .fin-split-col{flex:1;background:var(--white);border:0.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:10px;text-align:center}
+    .fin-split-lbl{font-size:10px;color:var(--text-muted);margin-bottom:4px}
+    .fin-split-val{font-size:14px;font-weight:500;color:var(--text-main)}
+    .fin-split-sub{font-size:10px;color:var(--success);margin-top:2px}
+    .fin-pendiente{background:#BE69421a;border:1.5px solid #BE694260;border-radius:var(--radius);padding:14px 16px;margin-bottom:12px}
+    .fin-pendiente-badge{background:#BE6942;color:var(--white);border-radius:999px;padding:3px 10px;font-size:11px;font-weight:500;display:inline-block;margin-bottom:6px}
+    .fin-ev-row{padding:10px 0;border-bottom:0.5px solid #BE694225}
+    .fin-ev-row:last-child{border-bottom:none;padding-bottom:0}
+    .fin-pleg{background:var(--white);border:0.5px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+    .fin-pleg-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer}
+    .fin-pleg-body{border-top:0.5px solid var(--beige-dark);padding:12px 16px}
+    .fin-mes-card{background:var(--beige-light);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden}
+    .fin-mes-card:last-child{margin-bottom:0}
+    .fin-mes-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer}
+    .fin-mes-body{border-top:0.5px solid var(--beige-dark);padding:10px 12px}
+    .fin-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;margin:6px 0 3px}
+    .fin-bar-cafe{background:#8b7355}
+    .fin-bar-beige{background:#d4c4b0}
+    .fin-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--beige-dark);font-size:12px}
+    .fin-row:last-child{border-bottom:none}
+    .fin-sub-lbl{font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;display:block}
+    .fin-sub-lbl:first-child{margin-top:0}
+    .fin-gasto-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--beige-dark);font-size:13px}
+    .fin-gasto-row:last-child{border-bottom:none}
+    .fin-lock{background:var(--beige-light);border-radius:999px;padding:2px 8px;font-size:10px;color:var(--text-muted);border:0.5px solid var(--beige-dark)}
+    .fin-add-btn{width:100%;background:transparent;border:1px dashed var(--beige-dark);border-radius:var(--radius-sm);padding:7px;font-size:12px;color:var(--text-muted);cursor:pointer;margin-top:8px;text-align:center}
+    .fin-total-row{display:flex;justify-content:space-between;padding:8px 0 0;font-size:13px;border-top:0.5px solid var(--beige-dark);margin-top:8px}
+    .fin-ev-btns{display:flex;gap:8px;margin-top:8px}
+    .fin-btn-edit{flex:1;background:var(--beige-mid);color:var(--text-main);border:0.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:7px;font-size:12px;cursor:pointer;font-weight:500}
+    .fin-btn-aprobar{flex:1;background:var(--black);color:var(--white);border:none;border-radius:var(--radius-sm);padding:7px;font-size:12px;cursor:pointer;font-weight:500}
+    .fin-pin-overlay{display:none;position:fixed;inset:0;background:rgba(26,20,16,.5);z-index:600;align-items:center;justify-content:center}
+    .fin-pin-overlay.open{display:flex}
+    .fin-pin-sheet{background:var(--white);border-radius:var(--radius);padding:28px 24px;width:280px;text-align:center}
+    .fin-pin-dots{display:flex;justify-content:center;gap:12px;margin:16px 0}
+    .fin-pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--beige-dark);background:transparent}
+    .fin-pin-dot.filled{background:var(--black);border-color:var(--black)}
+    .fin-pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+    .fin-pin-btn{background:var(--beige-light);border:0.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:14px;font-size:18px;font-weight:500;cursor:pointer;color:var(--text-main)}
+
     .warning-bloqueado{background:#fff3e0;border:1.5px solid #ff9800;border-radius:var(--radius-sm);padding:14px 16px;font-size:14px;color:#e65100;text-align:center;margin-top:10px}
     .outsourcing-fields{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--beige-dark)}
     .outsourcing-fields.visible{display:block}
@@ -368,6 +416,7 @@
     <button class="tab-btn" onclick="switchTab(1)">Calendario</button>
     <button class="tab-btn" onclick="switchTab(2)">Resumen</button>
     <button class="tab-btn" onclick="switchTab(3)">Clientes</button>
+    <button class="tab-btn" onclick="switchTab(4)">Finanzas</button>
   </div>
 </div>
 
@@ -448,6 +497,19 @@
             <input class="input-field" id="ev-desc-valor" type="number" inputmode="decimal" placeholder="Valor" style="flex:1;margin-bottom:0" oninput="calcularDescuento()"/>
           </div>
           <div id="ev-desc-resultado" style="font-size:12px;color:var(--brown-soft);margin-top:4px;text-align:right;min-height:16px"></div>
+          <!-- PANEL CUSTOMIZADO -->
+          <div id="custom-precio-panel" style="display:none">
+            <div style="background:var(--beige-mid);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--text-muted)">
+              ✨ Servicio customizado — captura el precio acordado manualmente
+            </div>
+            <input class="input-field" id="custom-descripcion" type="text" placeholder="Descripción del servicio *"/>
+            <input class="input-field" id="custom-precio" type="number" inputmode="decimal" placeholder="Precio total acordado *" step="0.01" min="0" oninput="actualizarPrecioCustom()"/>
+            <div id="custom-precio-display" style="font-size:12px;color:var(--brown-soft);text-align:right;margin-top:-6px;margin-bottom:8px;min-height:16px"></div>
+            <input class="input-field" id="custom-entregables" type="text" placeholder="Entregables (ej: 100 fotos, video 3 min...)"/>
+            <div style="font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;margin-top:4px">Costo / Inversión (interno)</div>
+            <input class="input-field" id="custom-costo" type="number" inputmode="decimal" placeholder="Costo asociado al servicio $0" step="0.01" min="0"/>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:-6px;margin-bottom:8px">Solo visible internamente — no aparece en recibo ni WhatsApp</div>
+          </div>
         </div><!-- end panel-nuevo -->
         </div><!-- end evento-form -->
 
@@ -520,6 +582,13 @@
           <button class="btn-buscar" onclick="buscarClientes()">Buscar</button>
         </div>
         <div id="clientes-list"><div class="clientes-empty">Escribe un nombre o presiona Buscar</div></div>
+      </div>
+    </div>
+
+    <!-- ===== PANTALLA 4: FINANZAS ===== -->
+    <div class="screen" id="screen-finanzas">
+      <div class="container" id="finanzas-container">
+        <div id="finanzas-content"><div class="resumen-loading">Cargando finanzas...</div></div>
       </div>
     </div>
 
@@ -640,6 +709,74 @@
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closeModalEventoPersonal()">Cancelar</button>
       <button class="btn-modal-save" onclick="confirmarEventoPersonal()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="fin-pin-overlay" id="modal-pin" onclick="if(event.target===this)cerrarPIN()">
+  <div class="fin-pin-sheet">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;margin-bottom:4px">🔒 Ingresa tu PIN</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px" id="pin-accion-label">Acción protegida</div>
+    <div class="fin-pin-dots" id="pin-dots">
+      <div class="fin-pin-dot" id="pin-dot-0"></div>
+      <div class="fin-pin-dot" id="pin-dot-1"></div>
+      <div class="fin-pin-dot" id="pin-dot-2"></div>
+      <div class="fin-pin-dot" id="pin-dot-3"></div>
+    </div>
+    <div id="pin-error" style="font-size:12px;color:var(--error);min-height:16px;margin-bottom:4px"></div>
+    <div class="fin-pin-grid">
+      <button class="fin-pin-btn" onclick="pinDigit('1')">1</button>
+      <button class="fin-pin-btn" onclick="pinDigit('2')">2</button>
+      <button class="fin-pin-btn" onclick="pinDigit('3')">3</button>
+      <button class="fin-pin-btn" onclick="pinDigit('4')">4</button>
+      <button class="fin-pin-btn" onclick="pinDigit('5')">5</button>
+      <button class="fin-pin-btn" onclick="pinDigit('6')">6</button>
+      <button class="fin-pin-btn" onclick="pinDigit('7')">7</button>
+      <button class="fin-pin-btn" onclick="pinDigit('8')">8</button>
+      <button class="fin-pin-btn" onclick="pinDigit('9')">9</button>
+      <button class="fin-pin-btn" onclick="pinBorrar()" style="font-size:14px">⌫</button>
+      <button class="fin-pin-btn" onclick="pinDigit('0')">0</button>
+      <button class="fin-pin-btn" onclick="cerrarPIN()" style="font-size:12px;color:var(--text-muted)">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GASTO FIJO -->
+<div class="modal-overlay" id="modal-gasto-fijo" onclick="if(event.target===this)closeModalGastoFijo()">
+  <div class="modal-sheet">
+    <div class="modal-title">Gasto fijo</div>
+    <div class="modal-label">Descripción</div>
+    <input type="text" id="gasto-fijo-desc" class="modal-input" placeholder="Ej: Renta estudio"/>
+    <div class="modal-label">Monto mensual</div>
+    <input type="number" id="gasto-fijo-monto" class="modal-input" inputmode="decimal" placeholder="0.00"/>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalGastoFijo()">Cancelar</button>
+      <button class="btn-modal-save" onclick="guardarGastoFijo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GASTO VARIABLE -->
+<div class="modal-overlay" id="modal-gasto-variable" onclick="if(event.target===this)closeModalGastoVariable()">
+  <div class="modal-sheet">
+    <div class="modal-title">Gasto variable</div>
+    <div class="modal-label">Descripción</div>
+    <input type="text" id="gasto-var-desc" class="modal-input" placeholder="Ej: Gasolina"/>
+    <div class="modal-label">Categoría</div>
+    <select id="gasto-var-cat" class="modal-input" style="appearance:none;-webkit-appearance:none">
+      <option value="Transporte">Transporte</option>
+      <option value="Equipo y tecnología">Equipo y tecnología</option>
+      <option value="Materiales">Materiales</option>
+      <option value="Educación">Educación</option>
+      <option value="Alimentación">Alimentación</option>
+      <option value="Otros">Otros</option>
+    </select>
+    <div class="modal-label">Monto</div>
+    <input type="number" id="gasto-var-monto" class="modal-input" inputmode="decimal" placeholder="0.00"/>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalGastoVariable()">Cancelar</button>
+      <button class="btn-modal-save" onclick="guardarGastoVariable()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1021,10 +1158,11 @@ const MESES_CONFIG = generarMesesConfig();
 
 // CATEGORIAS - base structure, subcats populated from Sheet
 var CATEGORIAS = {
-  eventos:   { nombre:'Eventos',   fila:4, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
-  sesiones:  { nombre:'Sesiones',  fila:5, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
-  anticipos: { nombre:'Anticipos', fila:6, subcats:[], tags:['Evento','Sesion','Pedido especial'] },
-  otros:     { nombre:'Otros',     fila:7, subcats:[], tags:['Album','Fotos extra','Galeria extra','Impresion','Otro','Respaldo','USB'] },
+  eventos:     { nombre:'Eventos',     fila:4, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
+  sesiones:    { nombre:'Sesiones',    fila:5, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
+  anticipos:   { nombre:'Anticipos',   fila:6, subcats:[], tags:['Evento','Sesion','Pedido especial'] },
+  otros:       { nombre:'Otros',       fila:7, subcats:[], tags:['Album','Fotos extra','Galeria extra','Impresion','Otro','Respaldo','USB'] },
+  customizado: { nombre:'Customizado', fila:8, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
 };
 
 // Fallback prices in case Sheet is unavailable
@@ -1162,6 +1300,7 @@ function catColor(cat) {
   const c = cat.toLowerCase();
   if (c === 'eventos') return 'evento';
   if (c === 'sesiones') return 'sesion';
+  if (c === 'customizado') return 'customizado';
   return 'otro';
 }
 
@@ -1185,7 +1324,7 @@ function setupSwipe() {
     const dx = e.changedTouches[0].clientX - touchStartX;
     const dy = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx < 0 && currentTab < 3) switchTab(currentTab + 1);
+      if (dx < 0 && currentTab < 4) switchTab(currentTab + 1);
       if (dx > 0 && currentTab > 0) switchTab(currentTab - 1);
     }
   }, {passive:true});
@@ -1193,10 +1332,11 @@ function setupSwipe() {
 
 function switchTab(idx) {
   currentTab = idx;
-  document.getElementById('screens-track').style.transform = `translateX(-${idx * 25}%)`;
+  document.getElementById('screens-track').style.transform = `translateX(-${idx * 20}%)`;
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
   if (idx === 1 && !calCargado) cargarCalendario();
   if (idx === 2) { resumenCargado = false; cargarResumen(); }
+  if (idx === 4) cargarFinanzas();
 }
 
 // ============================================================
@@ -1280,6 +1420,15 @@ function selectSubcat(pillEl, group, paq) {
   }
 }
 
+function actualizarPrecioCustom() {
+  var precio = parseFloat(document.getElementById('custom-precio').value) || 0;
+  var disp = document.getElementById('custom-precio-display');
+  if (precio > 0) { disp.textContent = 'Precio: ' + fmtMXN(precio); }
+  else { disp.textContent = ''; }
+  // Pre-llenar monto display para referencia
+  document.getElementById('monto-display').textContent = precio > 0 ? 'Precio acordado: ' + fmtMXN(precio) : '';
+}
+
 function toggleExtraHora() {
   extraHoraActiva = document.getElementById('extra-hora-check').checked;
   if (selectedSubcat) {
@@ -1314,7 +1463,8 @@ function calcularDescuento() {
   if (!selectedSubcat) return;
   const tipo = document.getElementById('ev-desc-tipo').value;
   const valor = parseFloat(document.getElementById('ev-desc-valor').value) || 0;
-  const base = parseFloat(document.getElementById('monto').value) || selectedSubcat.precio;
+  // Siempre sobre precio base del paquete, no sobre el monto depositado
+  const base = selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0);
   let total = base;
   if (tipo === 'porcentaje') total = base * (1 - valor / 100);
   else total = base - valor;
@@ -1573,6 +1723,12 @@ async function registrar() {
         btn.disabled = false;
         return;
       }
+      if (esCustomizado) {
+        var cDesc = document.getElementById('custom-descripcion') ? document.getElementById('custom-descripcion').value.trim() : '';
+        var cPrecio = document.getElementById('custom-precio') ? parseFloat(document.getElementById('custom-precio').value)||0 : 0;
+        if (!cDesc) { mostrarFeedback('La descripción del servicio es obligatoria', 'error'); btn.disabled = false; return; }
+        if (!cPrecio) { mostrarFeedback('El precio del servicio es obligatorio', 'error'); btn.disabled = false; return; }
+      }
       var evTelefono = document.getElementById('ev-telefono') ? normalizarTel(document.getElementById('ev-telefono').value) : '';
       if (modoEvento === 'nuevo' && !evTelefono) {
         mostrarFeedback('El teléfono WhatsApp es obligatorio', 'error');
@@ -1597,16 +1753,29 @@ async function registrar() {
         const precioBase = selectedSubcat ? (selectedSubcat.precio + (extraHoraActiva ? extraHoraPrecio : 0)) : monto;
         var evEmail = document.getElementById('ev-email') ? document.getElementById('ev-email').value.trim() : '';
         var evTelPayload = document.getElementById('ev-telefono') ? normalizarTel(document.getElementById('ev-telefono').value) : '';
+        // Para customizado, usar precio y descripción del panel custom
+        var customDesc = document.getElementById('custom-descripcion') ? document.getElementById('custom-descripcion').value.trim() : '';
+        var customPrecio = document.getElementById('custom-precio') ? parseFloat(document.getElementById('custom-precio').value)||0 : 0;
+        var customEntregables = document.getElementById('custom-entregables') ? document.getElementById('custom-entregables').value.trim() : '';
+        if (esCustomizado && customPrecio > 0) precioBase = customPrecio;
+        var paqueteFinal = esCustomizado ? (customDesc || 'Servicio Customizado') : (subcatLabel || cat.nombre);
+        var customCosto = document.getElementById('custom-costo') ? parseFloat(document.getElementById('custom-costo').value)||0 : 0;
+        var notasCustom = notaFinal;
+        if (esCustomizado) {
+          if (customEntregables) notasCustom += (notasCustom ? ' | ' : '') + 'Entregables: ' + customEntregables;
+          if (customCosto > 0) notasCustom += (notasCustom ? ' | ' : '') + 'COSTO_INTERNO:' + customCosto;
+        }
+
         const eventoPayload = {
           token: SECRET_TOKEN, action: 'crearEvento',
           cliente: evCliente, email: evEmail, telefono: evTelPayload, categoria: cat.nombre,
-          paquete: subcatLabel || cat.nombre,
+          paquete: paqueteFinal,
           fecha_evento: evFecha, hora: evHora,
           precio_base: precioBase, extras: [],
           descuento_tipo: evDescCheck ? evDescTipo : '',
           descuento_valor: evDescCheck ? evDescValor : 0,
           pagado_inicial: 0,
-          estado: 'Agendado', notas: notaFinal
+          estado: 'Agendado', notas: notasCustom
         };
         const evRes = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(eventoPayload)});
         const evData = await evRes.json();
@@ -1678,9 +1847,16 @@ function resetForm() {
   if (document.getElementById('ev-seleccionado-info')) document.getElementById('ev-seleccionado-info').style.display = 'none';
   if (document.getElementById('ev-existente-resultados')) document.getElementById('ev-existente-resultados').style.display = 'none';
   eventoLigadoId = null;
-  modoEvento = 'nuevo';
+  modoEvento = 'nuevo'; esCustomizado = false;
   setDefaultFecha();
   if (window._outsourcingData) delete window._outsourcingData;
+  var cp = document.getElementById('custom-precio-panel');
+  if (cp) cp.style.display = 'none';
+  if (document.getElementById('custom-descripcion')) document.getElementById('custom-descripcion').value = '';
+  if (document.getElementById('custom-precio')) document.getElementById('custom-precio').value = '';
+  if (document.getElementById('custom-entregables')) document.getElementById('custom-entregables').value = '';
+  if (document.getElementById('custom-costo')) document.getElementById('custom-costo').value = '';
+  if (document.getElementById('custom-precio-display')) document.getElementById('custom-precio-display').textContent = '';
 }
 
 function mostrarFeedback(msg, tipo) {
@@ -2677,13 +2853,24 @@ async function guardarPago() {
 var modoEvento = 'nuevo'; // 'nuevo' | 'ligar'
 var eventoLigadoId = null;
 var esOtros = false;
+var esCustomizado = false;
 
 function actualizarModoEvento(key) {
   esOtros = (key === 'otros');
+  esCustomizado = (key === 'customizado');
   var titulo = document.getElementById('evento-form-title');
   if (key === 'anticipos') titulo.textContent = '💰 Datos del evento (anticipo)';
   else if (key === 'otros') titulo.textContent = '📦 Ligar a evento';
+  else if (key === 'customizado') titulo.textContent = '✨ Servicio customizado';
   else titulo.textContent = '📅 Datos del evento';
+  // Mostrar/ocultar campos customizado
+  var customPanel = document.getElementById('custom-precio-panel');
+  if (customPanel) customPanel.style.display = esCustomizado ? 'block' : 'none';
+  // Ocultar subcats si es customizado
+  if (esCustomizado) {
+    document.getElementById('subcats-wrapper').classList.remove('visible');
+    document.getElementById('extra-hora-row').style.display = 'none';
+  }
   // Reset modo
   setModoEvento('nuevo');
   eventoLigadoId = null;
@@ -3541,6 +3728,297 @@ function enviarWhatsApp() {
   var msg = lines.filter(function(l) { return l !== ''; }).join('\n');
   var url = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(msg);
   window.open(url, '_blank');
+}
+
+// ============================================================
+// FINANZAS
+// ============================================================
+var _finanzasData = null;
+var _pinCallback = null;
+var _pinActual = '';
+var FIN_PIN = localStorage.getItem('vvs_pin') || '1234';
+
+// ── PIN ──────────────────────────────────────────────────────
+function abrirPIN(label, callback) {
+  _pinCallback = callback;
+  _pinActual = '';
+  document.getElementById('pin-accion-label').textContent = label;
+  document.getElementById('pin-error').textContent = '';
+  actualizarPuntosPIN();
+  document.getElementById('modal-pin').classList.add('open');
+}
+function cerrarPIN() {
+  document.getElementById('modal-pin').classList.remove('open');
+  _pinCallback = null; _pinActual = '';
+}
+function pinDigit(d) {
+  if (_pinActual.length >= 4) return;
+  _pinActual += d;
+  actualizarPuntosPIN();
+  if (_pinActual.length === 4) {
+    setTimeout(function() {
+      if (_pinActual === FIN_PIN) {
+        cerrarPIN();
+        if (_pinCallback) _pinCallback();
+      } else {
+        document.getElementById('pin-error').textContent = 'PIN incorrecto';
+        _pinActual = '';
+        actualizarPuntosPIN();
+      }
+    }, 150);
+  }
+}
+function pinBorrar() {
+  _pinActual = _pinActual.slice(0, -1);
+  actualizarPuntosPIN();
+}
+function actualizarPuntosPIN() {
+  for (var i = 0; i < 4; i++) {
+    var dot = document.getElementById('pin-dot-' + i);
+    if (dot) dot.className = 'fin-pin-dot' + (i < _pinActual.length ? ' filled' : '');
+  }
+}
+
+// ── CARGAR FINANZAS ──────────────────────────────────────────
+async function cargarFinanzas() {
+  if (!SCRIPT_URL) { document.getElementById('finanzas-content').innerHTML = '<div class="resumen-loading">Configura el script en ⚙️</div>'; return; }
+  document.getElementById('finanzas-content').innerHTML = '<div class="resumen-loading">Cargando...</div>';
+  try {
+    var [resEv, resGF, resGV] = await Promise.all([
+      offlineFetch(SCRIPT_URL + '?action=getEventos&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_eventos', null),
+      offlineFetch(SCRIPT_URL + '?action=getGastosFijos&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_gf', null),
+      offlineFetch(SCRIPT_URL + '?action=getGastosVariables&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_gv', null)
+    ]);
+    _finanzasData = {
+      eventos: (resEv && resEv.eventos) ? resEv.eventos : [],
+      gastosFijos: (resGF && resGF.gastos) ? resGF.gastos : [],
+      gastosVariables: (resGV && resGV.gastos) ? resGV.gastos : []
+    };
+    renderFinanzas();
+  } catch(e) {
+    document.getElementById('finanzas-content').innerHTML = '<div class="resumen-loading">Sin conexión</div>';
+  }
+}
+
+function renderFinanzas() {
+  if (!_finanzasData) return;
+  var eventos = _finanzasData.eventos;
+  var gastosFijos = _finanzasData.gastosFijos;
+  var gastosVariables = _finanzasData.gastosVariables;
+
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var mesActual = hoy.getMonth() + 1;
+  var anioActual = hoy.getFullYear();
+  var prefMes = anioActual + '-' + String(mesActual).padStart(2,'0');
+
+  // Calcular totales mes actual
+  var evsMes = eventos.filter(function(e) {
+    return e.fecha_evento && e.fecha_evento.startsWith(prefMes) && e.estado !== 'Cancelado';
+  });
+  var ingresoEventos = 0, ingresoSesiones = 0;
+  evsMes.forEach(function(e) {
+    if (e.categoria === 'Eventos') ingresoEventos += e.pagado || 0;
+    else if (e.categoria === 'Sesiones') ingresoSesiones += e.pagado || 0;
+  });
+  var ingresoTotal = ingresoEventos + ingresoSesiones;
+  var totalGF = gastosFijos.reduce(function(s,g) { return s + (parseFloat(g.monto)||0); }, 0);
+  var totalGV = gastosVariables.filter(function(g) {
+    return g.mes === NOMBRES_MESES[mesActual-1];
+  }).reduce(function(s,g) { return s + (parseFloat(g.monto)||0); }, 0);
+  var inversion = totalGF + totalGV;
+  var ganancia = ingresoTotal - inversion;
+  var margen = ingresoTotal > 0 ? Math.round((ganancia / ingresoTotal) * 100) : 0;
+
+  // Eventos por validar (cubiertos/entregados sin aprobar financieramente)
+  var porValidar = eventos.filter(function(e) {
+    return (e.estado === 'Cubierto' || e.estado === 'Editado' || e.estado === 'Entregado') && !e.fin_aprobado;
+  });
+
+  var html = '';
+
+  // SECCIÓN 1: MES ACTUAL
+  html += '<div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">' + NOMBRES_MESES[mesActual-1] + ' ' + anioActual + ' — mes actual</div>';
+  html += '<div class="fin-metric-grid">';
+  html += '<div class="fin-metric"><div class="fin-metric-lbl">Ingreso total</div><div class="fin-metric-val">' + fmtMXN(ingresoTotal) + '</div></div>';
+  html += '<div class="fin-metric"><div class="fin-metric-lbl">Ganancia neta</div><div class="fin-metric-val ' + (ganancia >= 0 ? 'green' : 'red') + '">' + fmtMXN(ganancia) + '</div></div>';
+  html += '<div class="fin-metric"><div class="fin-metric-lbl">Inversión</div><div class="fin-metric-val red">' + fmtMXN(inversion) + '</div></div>';
+  html += '<div class="fin-metric"><div class="fin-metric-lbl">Margen</div><div class="fin-metric-val">' + margen + '%</div></div>';
+  html += '</div>';
+  html += '<div class="fin-split-row">';
+  html += '<div class="fin-split-col"><div class="fin-split-lbl">Eventos</div><div class="fin-split-val">' + fmtMXN(ingresoEventos) + '</div></div>';
+  html += '<div class="fin-split-col"><div class="fin-split-lbl">Sesiones</div><div class="fin-split-val">' + fmtMXN(ingresoSesiones) + '</div></div>';
+  html += '</div>';
+
+  // SECCIÓN 2: EVENTOS POR VALIDAR
+  if (porValidar.length) {
+    html += '<div class="fin-pendiente">';
+    html += '<span class="fin-pendiente-badge">' + porValidar.length + ' evento' + (porValidar.length > 1 ? 's' : '') + ' por validar</span>';
+    html += '<div style="font-size:12px;color:#712B13;margin-bottom:8px">Revisa y aprueba los gastos para reflejar la ganancia real</div>';
+    porValidar.forEach(function(ev) {
+      var fechaCorta = fmtFecha(ev.fecha_evento).replace(/\s*\d{4}/,'');
+      html += '<div class="fin-ev-row">';
+      html += '<div style="font-size:13px;font-weight:500;color:#1a1410">' + ev.cliente + '</div>';
+      html += '<div style="font-size:11px;color:#712B13;margin-top:2px">' + ev.paquete.split(' - ')[0] + ' · ' + fechaCorta + ' · Ingreso ' + fmtMXN(ev.pagado) + '</div>';
+      html += '<div class="fin-ev-btns">';
+      html += '<button class="fin-btn-edit" data-evid="' + ev.id_evento + '" onclick="abrirDetalleEvento(this.dataset.evid)">Actualizar</button>';
+      html += '<button class="fin-btn-aprobar" data-evid="' + ev.id_evento + '" onclick="aprobarEvento(this.dataset.evid)">Aprobar</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // SECCIÓN 3: PROYECCIÓN 3 MESES
+  html += '<div class="fin-pleg" id="pleg-proyeccion">';
+  html += '<div class="fin-pleg-header" id="hdr-pleg-proyeccion" onclick="toggleFinPleg(\"pleg-proyeccion\")">';
+  html += '<span style="font-size:13px;font-weight:500;color:var(--text-main)">Proyección — próximos 3 meses</span>';
+  html += '<span style="font-size:12px;color:var(--text-muted)" id="arrow-pleg-proyeccion">▼</span>';
+  html += '</div>';
+  html += '<div id="body-pleg-proyeccion" style="display:none;border-top:0.5px solid var(--beige-dark);padding:12px 16px">';
+
+  for (var mi = 0; mi < 3; mi++) {
+    var mFecha = new Date(anioActual, mesActual - 1 + mi, 1);
+    var mNombre = NOMBRES_MESES[mFecha.getMonth()];
+    var mAnio = mFecha.getFullYear();
+    var mPref = mAnio + '-' + String(mFecha.getMonth()+1).padStart(2,'0');
+    var mEvs = eventos.filter(function(e) { return e.fecha_evento && e.fecha_evento.startsWith(mPref) && e.estado !== 'Cancelado'; });
+    var confirmado = mEvs.reduce(function(s,e) { return s + (e.pagado||0); }, 0);
+    var proyectado = mEvs.reduce(function(s,e) { return s + Math.max(0, (e.total||0) - (e.pagado||0)); }, 0);
+    var totalProy = confirmado + proyectado;
+    var pctConf = totalProy > 0 ? Math.round((confirmado/totalProy)*100) : 0;
+    var pctProy = 100 - pctConf;
+    var gananciaProy = totalProy - totalGF - totalGV;
+    var mesId = 'pleg-mes-' + mi;
+
+    html += '<div class="fin-mes-card" id="' + mesId + '">';
+    html += '<div class="fin-mes-header" data-mesid="' + mesId + '" onclick="toggleFinMes(this.dataset.mesid)">';
+    html += '<div><div style="font-size:12px;font-weight:500;color:var(--text-main)">' + mNombre + ' ' + mAnio + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px"><span style="color:#8b7355;font-weight:500">' + fmtMXN(confirmado) + '</span> conf · <span style="color:#d4c4b0;font-weight:500">' + fmtMXN(proyectado) + '</span> proy</div></div>';
+    html += '<div style="display:flex;align-items:center;gap:6px">';
+    html += '<div style="display:flex;height:6px;border-radius:999px;overflow:hidden;width:50px">';
+    html += '<div style="width:' + pctConf + '%;background:#8b7355"></div><div style="width:' + pctProy + '%;background:#d4c4b0"></div></div>';
+    html += '<span style="font-size:11px;color:var(--text-muted)">▼</span></div></div>';
+    html += '<div id="body-' + mesId + '" style="display:none" class="fin-mes-body">';
+    html += '<div class="fin-bar"><div class="fin-bar-cafe" style="width:' + pctConf + '%"></div><div class="fin-bar-beige" style="width:' + pctProy + '%"></div></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:8px">';
+    html += '<span><span style="display:inline-block;width:8px;height:8px;background:#8b7355;border-radius:2px;margin-right:3px"></span>Confirmado ' + fmtMXN(confirmado) + '</span>';
+    html += '<span><span style="display:inline-block;width:8px;height:8px;background:#d4c4b0;border-radius:2px;margin-right:3px"></span>Proyectado ' + fmtMXN(proyectado) + '</span></div>';
+    html += '<div class="fin-row"><span class="muted" style="color:var(--text-muted)">Total proyectado</span><span style="font-weight:500">' + fmtMXN(totalProy) + '</span></div>';
+    html += '<div class="fin-row"><span style="color:var(--text-muted)">Gastos fijos</span><span style="color:var(--error)">−' + fmtMXN(totalGF) + '</span></div>';
+    html += '<div class="fin-row"><span style="color:var(--text-muted)">Gastos variables</span><span style="color:var(--error)">−' + fmtMXN(totalGV) + '</span></div>';
+    html += '<div class="fin-row"><span style="font-weight:500">Ganancia proyectada</span><span style="font-weight:500;color:' + (gananciaProy >= 0 ? 'var(--success)' : 'var(--error)') + '">' + (gananciaProy < 0 ? '−' : '') + fmtMXN(Math.abs(gananciaProy)) + '</span></div>';
+    html += '</div></div>';
+  }
+  html += '</div></div>';
+
+  // SECCIÓN 4: GASTOS
+  html += '<div class="fin-pleg" id="pleg-gastos">';
+  html += '<div class="fin-pleg-header" onclick="toggleFinPleg(\'pleg-gastos\')">';
+  html += '<div><span style="font-size:13px;font-weight:500;color:var(--text-main)">Gastos</span>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Total mes: <span style="font-weight:500;color:var(--error)">' + fmtMXN(inversion) + '</span></div></div>';
+  html += '<span style="font-size:12px;color:var(--text-muted)" id="arrow-pleg-gastos">▼</span></div>';
+  html += '<div id="body-pleg-gastos" style="display:none;border-top:0.5px solid var(--beige-dark);padding:12px 16px">';
+
+  // Gastos fijos
+  html += '<span class="fin-sub-lbl">Gastos fijos mensuales</span>';
+  html += '<div style="background:var(--beige-light);border-radius:var(--radius-sm);padding:10px 12px">';
+  if (gastosFijos.length) {
+    gastosFijos.forEach(function(g, idx) {
+      html += '<div class="fin-gasto-row"><span>' + g.descripcion + '</span>';
+      html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:500">' + fmtMXN(g.monto) + '</span>';
+      html += '<span class="fin-lock" data-gid="' + g.id + '" onclick="abrirPIN(\'Eliminar gasto fijo\', function(){ eliminarGastoFijo(this.dataset.gid) }.bind(this))">🔒</span></div></div>';
+    });
+  } else {
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:4px 0">Sin gastos fijos</div>';
+  }
+  html += '<button class="fin-add-btn" onclick="openModalGastoFijo()">+ Agregar gasto fijo</button></div>';
+
+  // Gastos variables
+  html += '<span class="fin-sub-lbl">Gastos variables del mes</span>';
+  html += '<div style="background:var(--beige-light);border-radius:var(--radius-sm);padding:10px 12px">';
+  var gvMes = gastosVariables.filter(function(g) { return g.mes === NOMBRES_MESES[mesActual-1]; });
+  if (gvMes.length) {
+    gvMes.forEach(function(g) {
+      html += '<div class="fin-gasto-row"><div><div style="font-size:13px">' + g.descripcion + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted)">' + g.categoria + '</div></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-weight:500">' + fmtMXN(g.monto) + '</span>';
+      html += '<span class="fin-lock" data-gid="' + g.id + '" onclick="abrirPIN(\'Eliminar gasto variable\', function(){ eliminarGastoVariable(this.dataset.gid) }.bind(this))">🔒</span></div></div>';
+    });
+  } else {
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:4px 0">Sin gastos variables este mes</div>';
+  }
+  html += '<button class="fin-add-btn" onclick="openModalGastoVariable()">+ Agregar gasto variable</button></div>';
+
+  // Total
+  html += '<div class="fin-total-row"><span style="font-weight:500">Total gastos del mes</span><span style="font-weight:500;color:var(--error)">' + fmtMXN(inversion) + '</span></div>';
+  html += '</div></div>';
+
+  document.getElementById('finanzas-content').innerHTML = html;
+}
+
+function toggleFinPleg(id) {
+  var body = document.getElementById('body-' + id);
+  var arrow = document.getElementById('arrow-' + id);
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (arrow) arrow.textContent = open ? '▼' : '▲';
+}
+
+function toggleFinMes(id) {
+  var body = document.getElementById('body-' + id);
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  // arrow is inside the header, find it
+  var header = document.querySelector('#' + id + ' .fin-mes-header');
+  if (header) {
+    var arrows = header.querySelectorAll('span');
+    arrows.forEach(function(s) { if (s.textContent === '▼' || s.textContent === '▲') s.textContent = open ? '▼' : '▲'; });
+  }
+}
+
+async function aprobarEvento(idEvento) {
+  if (!SCRIPT_URL) return;
+  await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({token:SECRET_TOKEN, action:'aprobarFinanzas', id_evento:idEvento})});
+  calCargado = false;
+  cargarFinanzas();
+}
+
+// Gastos fijos
+function openModalGastoFijo() { document.getElementById('gasto-fijo-desc').value=''; document.getElementById('gasto-fijo-monto').value=''; document.getElementById('modal-gasto-fijo').classList.add('open'); }
+function closeModalGastoFijo() { document.getElementById('modal-gasto-fijo').classList.remove('open'); }
+async function guardarGastoFijo() {
+  var desc = document.getElementById('gasto-fijo-desc').value.trim();
+  var monto = parseFloat(document.getElementById('gasto-fijo-monto').value) || 0;
+  if (!desc || !monto) return;
+  await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({token:SECRET_TOKEN, action:'agregarGastoFijo', descripcion:desc, monto:monto})});
+  closeModalGastoFijo(); cargarFinanzas();
+}
+async function eliminarGastoFijo(id) {
+  await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({token:SECRET_TOKEN, action:'eliminarGastoFijo', id:id})});
+  cargarFinanzas();
+}
+
+// Gastos variables
+function openModalGastoVariable() { document.getElementById('gasto-var-desc').value=''; document.getElementById('gasto-var-monto').value=''; document.getElementById('modal-gasto-variable').classList.add('open'); }
+function closeModalGastoVariable() { document.getElementById('modal-gasto-variable').classList.remove('open'); }
+async function guardarGastoVariable() {
+  var desc = document.getElementById('gasto-var-desc').value.trim();
+  var cat = document.getElementById('gasto-var-cat').value;
+  var monto = parseFloat(document.getElementById('gasto-var-monto').value) || 0;
+  if (!desc || !monto) return;
+  var mes = NOMBRES_MESES[new Date().getMonth()];
+  await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({token:SECRET_TOKEN, action:'agregarGastoVariable', descripcion:desc, categoria:cat, monto:monto, mes:mes})});
+  closeModalGastoVariable(); cargarFinanzas();
+}
+async function eliminarGastoVariable(id) {
+  await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({token:SECRET_TOKEN, action:'eliminarGastoVariable', id:id})});
+  cargarFinanzas();
 }
 
 function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
