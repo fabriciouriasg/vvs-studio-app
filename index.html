@@ -305,6 +305,25 @@
     /* BANNER */
     #nuevo-banner{display:none;position:fixed;top:0;left:0;right:0;background:var(--brown-soft);color:var(--white);text-align:center;padding:14px 16px;font-size:14px;font-weight:500;z-index:999;animation:slideDown .3s ease}
     @keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+
+    /* FECHAS ESPECIALES - dias bloqueados y eventos personales */
+    .mes-mini-dia.bloqueado{background:#4caf50 !important;border-radius:6px}
+    .mes-mini-dia.bloqueado .dia-num{color:#fff !important;font-weight:600}
+    .mes-full-dia.bloqueado{background:#4caf50 !important;border-radius:6px}
+    .mes-full-dia.bloqueado .dia-num{color:#fff !important;font-weight:600}
+    .mes-full-dia.bloqueado:active{background:#43a047 !important}
+    .dia-dot.personal{background:#4caf50}
+    .dia-panel-acciones{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .dia-panel-btn{flex:1;min-width:120px;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:10px 8px;font-family:'Jost',sans-serif;font-size:11px;font-weight:500;color:var(--text-main);cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .15s}
+    .dia-panel-btn:active{background:var(--beige-mid)}
+    .dia-panel-btn.primary{background:var(--black);color:var(--white);border-color:var(--black)}
+    .dia-panel-btn.danger{border-color:var(--error);color:var(--error)}
+    .personal-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--beige-light);font-size:13px}
+    .personal-item:last-child{border-bottom:none}
+    .personal-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;flex-shrink:0}
+    .personal-delete{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:2px 6px;opacity:.6;margin-left:auto}
+    .warning-bloqueado{background:#fff3e0;border:1.5px solid #ff9800;border-radius:var(--radius-sm);padding:14px 16px;font-size:14px;color:#e65100;text-align:center;margin-top:10px}
+    .warning-bloqueado strong{display:block;font-size:16px;margin-bottom:4px}
   </style>
 </head>
 <body>
@@ -544,6 +563,35 @@
     <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-ahora')">Capturar ahora</button>
     <button class="seg-btn tiempo" onclick="segConfirmar('tiempo-2')">En 2 horas</button>
     <button class="seg-btn proxima" onclick="segConfirmar('tiempo-proxima')">La próxima vez que abra la app</button>
+  </div>
+</div>
+
+<!-- BLOQUEAR DIA MODAL -->
+<div class="modal-overlay" id="modal-bloquear-dia" onclick="if(event.target===this)closeModalBloquearDia()">
+  <div class="modal-sheet">
+    <div class="modal-title">🔒 Bloquear día</div>
+    <div class="modal-label">Motivo (opcional)</div>
+    <input type="text" id="bloquear-motivo" class="modal-input" placeholder="Ej: Descanso, viaje..."/>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:-10px;margin-bottom:16px">Este día quedará bloqueado — no se podrán agendar clientes.</div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalBloquearDia()">Cancelar</button>
+      <button class="btn-modal-save" onclick="confirmarBloquearDia()">Bloquear</button>
+    </div>
+  </div>
+</div>
+
+<!-- EVENTO PERSONAL MODAL -->
+<div class="modal-overlay" id="modal-evento-personal" onclick="if(event.target===this)closeModalEventoPersonal()">
+  <div class="modal-sheet">
+    <div class="modal-title">📌 Evento personal</div>
+    <div class="modal-label">Hora de inicio</div>
+    <input type="time" id="personal-hora" class="modal-input"/>
+    <div class="modal-label">Motivo</div>
+    <input type="text" id="personal-motivo" class="modal-input" placeholder="Ej: Cita médica, reunión..."/>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModalEventoPersonal()">Cancelar</button>
+      <button class="btn-modal-save" onclick="confirmarEventoPersonal()">Agregar</button>
+    </div>
   </div>
 </div>
 
@@ -818,6 +866,10 @@ let resumenCargado = false, calCargado = false;
 let todosEventos = [];
 let eventoDetalleActual = null;
 let eventoModalIdActual = null;
+// Fechas especiales (bloqueados y personales)
+let fechasEspeciales = []; // [{id, fecha, tipo, motivo, hora_inicio}]
+let diaSeleccionadoPanel = null; // fecha string del dia actualmente en panel
+let mesDetailActual = null; // mes config actualmente abierto en detalle
 
 // ============================================================
 // INIT
@@ -1026,6 +1078,25 @@ async function checkFechaConflicto() {
   const fecha = document.getElementById('ev-fecha').value;
   const banner = document.getElementById('warning-fecha');
   if (!fecha || !SCRIPT_URL) { banner.classList.remove('visible'); return; }
+
+  // Verificar si el dia está bloqueado localmente
+  var bloqueado = fechasEspeciales.find(function(f) { return f.fecha === fecha && f.tipo === 'BLOQUEADO'; });
+  if (bloqueado) {
+    banner.innerHTML = '<strong>🔒 Día bloqueado</strong>Desbloquea el día desde el Calendario para poder agendar clientes en esta fecha.';
+    banner.classList.add('visible');
+    banner.style.background = '#fff3e0';
+    banner.style.borderColor = '#ff9800';
+    banner.style.color = '#e65100';
+    // Deshabilitar boton de registrar
+    document.getElementById('btn-registrar').disabled = true;
+    return;
+  }
+  // Restaurar estilo normal del banner
+  banner.style.background = '';
+  banner.style.borderColor = '';
+  banner.style.color = '';
+  document.getElementById('btn-registrar').disabled = false;
+
   try {
     const res = await fetch(`${SCRIPT_URL}?action=checkFecha&fecha=${fecha}&token=${encodeURIComponent(SECRET_TOKEN)}`);
     const data = await res.json();
@@ -1040,6 +1111,105 @@ async function checkFechaConflicto() {
       banner.classList.remove('visible');
     }
   } catch(e) { banner.classList.remove('visible'); }
+}
+
+// ============================================================
+// FECHAS ESPECIALES - BLOQUEO Y EVENTOS PERSONALES
+// ============================================================
+var _diaParaBloquear = null;
+var _diaParaPersonal = null;
+
+function openModalBloquearDia(fecha) {
+  _diaParaBloquear = fecha;
+  document.getElementById('bloquear-motivo').value = '';
+  document.getElementById('modal-bloquear-dia').classList.add('open');
+}
+function closeModalBloquearDia() {
+  document.getElementById('modal-bloquear-dia').classList.remove('open');
+  _diaParaBloquear = null;
+}
+
+async function confirmarBloquearDia() {
+  if (!_diaParaBloquear || !SCRIPT_URL) return;
+  var motivo = document.getElementById('bloquear-motivo').value.trim();
+  var btn = document.querySelector('#modal-bloquear-dia .btn-modal-save');
+  btn.textContent = 'Bloqueando...'; btn.disabled = true;
+  try {
+    var res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({token:SECRET_TOKEN, action:'bloquearFecha', fecha:_diaParaBloquear, motivo:motivo})});
+    var data = await res.json();
+    if (data.ok) {
+      closeModalBloquearDia();
+      calCargado = false;
+      await recargarFechasEspeciales();
+      // Volver a renderizar el mes actual
+      var mc = mesDetailActual;
+      if (mc) abrirMesDetail(mc);
+    } else { alert('Error: ' + (data.error||'desconocido')); }
+  } catch(e) { alert('Sin conexion'); }
+  btn.textContent = 'Bloquear'; btn.disabled = false;
+}
+
+async function desbloquearDia(id) {
+  if (!confirm('¿Desbloquear este día?')) return;
+  await eliminarFechaEspecial(id);
+}
+
+function openModalEventoPersonal(fecha) {
+  _diaParaPersonal = fecha;
+  document.getElementById('personal-hora').value = '';
+  document.getElementById('personal-motivo').value = '';
+  document.getElementById('modal-evento-personal').classList.add('open');
+}
+function closeModalEventoPersonal() {
+  document.getElementById('modal-evento-personal').classList.remove('open');
+  _diaParaPersonal = null;
+}
+
+async function confirmarEventoPersonal() {
+  if (!_diaParaPersonal || !SCRIPT_URL) return;
+  var hora = document.getElementById('personal-hora').value;
+  var motivo = document.getElementById('personal-motivo').value.trim();
+  if (!motivo) { alert('Escribe un motivo'); return; }
+  var btn = document.querySelector('#modal-evento-personal .btn-modal-save');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+  try {
+    var res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({token:SECRET_TOKEN, action:'agregarEventoPersonal', fecha:_diaParaPersonal, hora_inicio:hora, motivo:motivo})});
+    var data = await res.json();
+    if (data.ok) {
+      closeModalEventoPersonal();
+      calCargado = false;
+      await recargarFechasEspeciales();
+      var mc = mesDetailActual;
+      if (mc) abrirMesDetail(mc);
+    } else { alert('Error: ' + (data.error||'desconocido')); }
+  } catch(e) { alert('Sin conexion'); }
+  btn.textContent = 'Agregar'; btn.disabled = false;
+}
+
+async function eliminarFechaEspecial(id) {
+  if (!SCRIPT_URL) return;
+  try {
+    var res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
+      body: JSON.stringify({token:SECRET_TOKEN, action:'eliminarFechaEspecial', id:id})});
+    var data = await res.json();
+    if (data.ok) {
+      calCargado = false;
+      await recargarFechasEspeciales();
+      var mc = mesDetailActual;
+      if (mc) abrirMesDetail(mc);
+    } else { alert('Error: ' + (data.error||'desconocido')); }
+  } catch(e) { alert('Sin conexion'); }
+}
+
+async function recargarFechasEspeciales() {
+  if (!SCRIPT_URL) return;
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getFechasEspeciales&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    fechasEspeciales = (data.ok && data.fechas) ? data.fechas : [];
+  } catch(e) {}
 }
 
 async function buscarClienteSugerido() {
@@ -1433,10 +1603,13 @@ async function buscarYAbrirEvento(el) {
 async function cargarCalendario() {
   if (!SCRIPT_URL) { renderCalendario([]); return; }
   try {
-    const res = await fetch(`${SCRIPT_URL}?action=getEventos&token=${encodeURIComponent(SECRET_TOKEN)}`);
-    const data = await res.json();
-    todosEventos = data.eventos || [];
-  } catch(e) { todosEventos = []; }
+    const [resEventos, resFechas] = await Promise.all([
+      fetch(`${SCRIPT_URL}?action=getEventos&token=${encodeURIComponent(SECRET_TOKEN)}`).then(r=>r.json()),
+      fetch(`${SCRIPT_URL}?action=getFechasEspeciales&token=${encodeURIComponent(SECRET_TOKEN)}`).then(r=>r.json()).catch(()=>({ok:false,fechas:[]}))
+    ]);
+    todosEventos = resEventos.eventos || [];
+    fechasEspeciales = (resFechas.ok && resFechas.fechas) ? resFechas.fechas : [];
+  } catch(e) { todosEventos = []; fechasEspeciales = []; }
   renderCalendario(todosEventos);
   renderPendientes(todosEventos);
   calCargado = true;
@@ -1507,14 +1680,23 @@ function crearMesMini(mc, eventosMes) {
   for (let d = 1; d <= diasMes; d++) {
     const fechaStr = `${mc.anio}-${String(mc.mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const evsDelDia = eventosMes.filter(e => e.fecha_evento === fechaStr);
+    const bloqueado = fechasEspeciales.some(f => f.fecha === fechaStr && f.tipo === 'BLOQUEADO');
+    const personales = fechasEspeciales.filter(f => f.fecha === fechaStr && f.tipo === 'PERSONAL');
     const diaEl = document.createElement('div');
-    diaEl.className = 'mes-mini-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
+    let clases = 'mes-mini-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
+    if (bloqueado) clases += ' bloqueado';
+    diaEl.className = clases;
     diaEl.textContent = d;
-    if (evsDelDia.length) {
+    if (!bloqueado && (evsDelDia.length || personales.length)) {
       const dots = document.createElement('div'); dots.className = 'dia-dots';
       evsDelDia.slice(0,3).forEach(ev => {
         const dot = document.createElement('div');
         dot.className = 'dia-dot ' + catColor(ev.categoria);
+        dots.appendChild(dot);
+      });
+      personales.slice(0,1).forEach(() => {
+        const dot = document.createElement('div');
+        dot.className = 'dia-dot personal';
         dots.appendChild(dot);
       });
       diaEl.appendChild(dots);
@@ -1529,6 +1711,7 @@ function crearMesMini(mc, eventosMes) {
 // MES DETAIL
 // ============================================================
 function abrirMesDetail(mc) {
+  mesDetailActual = mc;
   document.getElementById('cal-view-highlevel').style.display = 'none';
   document.getElementById('cal-view-mes').style.display = 'block';
   document.getElementById('cal-view-mes').scrollTop = 0;
@@ -1556,14 +1739,22 @@ function abrirMesDetail(mc) {
       const f = String(e.fecha_evento || '').trim().substring(0,10);
       return f === fechaStr && e.estado !== 'Cancelado';
     });
+    const bloqueado = fechasEspeciales.some(f => f.fecha === fechaStr && f.tipo === 'BLOQUEADO');
+    const personales = fechasEspeciales.filter(f => f.fecha === fechaStr && f.tipo === 'PERSONAL');
     const diaEl = document.createElement('div');
-    diaEl.className = 'mes-full-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
+    let clases = 'mes-full-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
+    if (bloqueado) clases += ' bloqueado';
+    diaEl.className = clases;
     const numEl = document.createElement('div'); numEl.className = 'dia-num'; numEl.textContent = d;
     diaEl.appendChild(numEl);
-    if (evsDelDia.length) {
+    if (!bloqueado && (evsDelDia.length || personales.length)) {
       const dots = document.createElement('div'); dots.className = 'dia-full-dots';
       evsDelDia.slice(0,4).forEach(ev => {
         const dot = document.createElement('div'); dot.className = 'dia-dot ' + catColor(ev.categoria);
+        dots.appendChild(dot);
+      });
+      personales.slice(0,1).forEach(() => {
+        const dot = document.createElement('div'); dot.className = 'dia-dot personal';
         dots.appendChild(dot);
       });
       diaEl.appendChild(dots);
@@ -1576,6 +1767,13 @@ function abrirMesDetail(mc) {
 
   document.getElementById('dia-eventos-panel').style.display = 'none';
   document.getElementById('mes-detail').classList.add('visible');
+  // Si hay un dia seleccionado, re-abrir su panel
+  if (diaSeleccionadoPanel) {
+    var prefijoDia = `${mc.anio}-${String(mc.mes).padStart(2,'0')}`;
+    if (diaSeleccionadoPanel.startsWith(prefijoDia)) {
+      setTimeout(function() { mostrarEventosDia(diaSeleccionadoPanel); }, 50);
+    }
+  }
 }
 
 function filtrarCalendario() {
@@ -1595,39 +1793,106 @@ function cerrarMesDetail() {
   var panel = document.getElementById('dia-eventos-panel');
   panel.style.display = 'none';
   panel.innerHTML = '';
+  diaSeleccionadoPanel = null;
+  mesDetailActual = null;
   document.getElementById('cal-view-mes').style.display = 'none';
   document.getElementById('cal-view-highlevel').style.display = 'block';
   document.getElementById('cal-view-highlevel').scrollTop = 0;
 }
 
 function mostrarEventosDia(fecha) {
+  diaSeleccionadoPanel = fecha;
   var panel = document.getElementById('dia-eventos-panel');
   var eventos = todosEventos.filter(function(e) {
     return String(e.fecha_evento || '').substring(0,10) === fecha && e.estado !== 'Cancelado';
   });
-  if (!eventos.length) { panel.style.display = 'none'; return; }
+  var bloqueado = fechasEspeciales.find(function(f) { return f.fecha === fecha && f.tipo === 'BLOQUEADO'; });
+  var personales = fechasEspeciales.filter(function(f) { return f.fecha === fecha && f.tipo === 'PERSONAL'; });
+
   panel.style.display = 'block';
-  panel.innerHTML = '<div class="dia-eventos-titulo">' + fmtFecha(fecha) + '</div><div class="dia-eventos-cards" id="dia-cards-container"></div>';
-  var cardsContainer = document.getElementById('dia-cards-container');
-  for (var i = 0; i < eventos.length; i++) {
-    (function(ev) {
-      var pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
-      var horaStr = ev.hora && String(ev.hora).indexOf('1899') === -1 ? String(ev.hora).substring(0,5) : '';
-      var card = document.createElement('div');
-      card.className = 'evento-card';
-      card.innerHTML =
-        '<div class="evento-card-hora">' + (horaStr || 'Sin hora') + '</div>' +
-        '<div class="evento-card-cliente">' + ev.cliente + '</div>' +
-        '<div class="evento-card-sub">' + ev.paquete + '</div>' +
-        '<div class="evento-card-pago">' +
-          '<div class="pago-bar-wrap"><div class="pago-bar" style="width:' + pagoPct + '%"></div></div>' +
-          '<span class="pago-texto">' + fmtMXN(ev.pagado) + '/' + fmtMXN(ev.total) + '</span>' +
-        '</div>' +
-        '<div style="margin-top:6px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>';
-      card.addEventListener('click', function() { abrirDetalleEvento(ev.id_evento); });
-      cardsContainer.appendChild(card);
-    })(eventos[i]);
+
+  var html = '<div class="dia-eventos-titulo">' + fmtFecha(fecha) + '</div>';
+
+  // Botones de accion del dia
+  html += '<div class="dia-panel-acciones">';
+  if (!bloqueado) {
+    html += '<button class="dia-panel-btn primary" onclick="irANuevoClienteDia(\'' + fecha + '\')">+ Nuevo cliente</button>';
+    html += '<button class="dia-panel-btn" onclick="openModalBloquearDia(\'' + fecha + '\')">🔒 Bloquear día</button>';
+  } else {
+    html += '<button class="dia-panel-btn danger" onclick="desbloquearDia(\'' + bloqueado.id + '\')">🔓 Desbloquear día</button>';
   }
+  html += '<button class="dia-panel-btn" onclick="openModalEventoPersonal(\'' + fecha + '\')">📌 Evento personal</button>';
+  html += '</div>';
+
+  // Warning si bloqueado
+  if (bloqueado) {
+    html += '<div class="warning-bloqueado"><strong>🔒 Día bloqueado</strong>' +
+      (bloqueado.motivo ? bloqueado.motivo : 'Sin motivo registrado') +
+      '</div>';
+  }
+
+  // Eventos personales
+  if (personales.length) {
+    html += '<div class="seccion-titulo" style="margin-top:14px;margin-bottom:6px">Eventos personales</div>';
+    html += '<div id="panel-personales-list">';
+    personales.forEach(function(p) {
+      html += '<div class="personal-item">' +
+        '<div class="personal-dot"></div>' +
+        '<span>' + (p.hora_inicio ? p.hora_inicio + ' · ' : '') + (p.motivo || 'Sin motivo') + '</span>' +
+        '<button class="personal-delete" onclick="eliminarFechaEspecial(\'' + p.id + '\')">✕</button>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Clientes del dia
+  if (eventos.length) {
+    html += '<div class="seccion-titulo" style="margin-top:14px;margin-bottom:6px">Clientes</div>';
+    html += '<div class="dia-eventos-cards" id="dia-cards-container"></div>';
+  } else if (!bloqueado && !personales.length) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.innerHTML = html;
+
+  // Render tarjetas de clientes
+  if (eventos.length) {
+    var cardsContainer = document.getElementById('dia-cards-container');
+    for (var i = 0; i < eventos.length; i++) {
+      (function(ev) {
+        var pagoPct = ev.total > 0 ? Math.min(100, (ev.pagado / ev.total) * 100) : 0;
+        var horaStr = ev.hora && String(ev.hora).indexOf('1899') === -1 ? String(ev.hora).substring(0,5) : '';
+        var card = document.createElement('div');
+        card.className = 'evento-card';
+        card.innerHTML =
+          '<div class="evento-card-hora">' + (horaStr || 'Sin hora') + '</div>' +
+          '<div class="evento-card-cliente">' + ev.cliente + '</div>' +
+          '<div class="evento-card-sub">' + ev.paquete + '</div>' +
+          '<div class="evento-card-pago">' +
+            '<div class="pago-bar-wrap"><div class="pago-bar" style="width:' + pagoPct + '%"></div></div>' +
+            '<span class="pago-texto">' + fmtMXN(ev.pagado) + '/' + fmtMXN(ev.total) + '</span>' +
+          '</div>' +
+          '<div style="margin-top:6px"><span class="estado-badge" style="background:' + estadoColor(ev.estado) + '22;color:' + estadoColor(ev.estado) + '">' + ev.estado + '</span></div>';
+        card.addEventListener('click', function() { abrirDetalleEvento(ev.id_evento); });
+        cardsContainer.appendChild(card);
+      })(eventos[i]);
+    }
+  }
+}
+
+function irANuevoClienteDia(fecha) {
+  // Verificar si el día está bloqueado
+  var bloqueado = fechasEspeciales.find(function(f) { return f.fecha === fecha && f.tipo === 'BLOQUEADO'; });
+  if (bloqueado) {
+    alert('🔒 Día bloqueado\n\nDesbloquea el día primero para poder agendar clientes.');
+    return;
+  }
+  switchTab(0);
+  setTimeout(function() {
+    var evFecha = document.getElementById('ev-fecha');
+    if (evFecha) { evFecha.value = fecha; checkFechaConflicto(); }
+  }, 300);
 }
 
 // ============================================================
