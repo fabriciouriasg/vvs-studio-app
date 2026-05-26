@@ -3088,16 +3088,16 @@ function enviarWhatsApp() {
   if (tel.length === 10) tel = '52' + tel;
   var saldo = ev.total - ev.pagado;
   var lines = [
-    'Hola ' + ev.cliente + ', te comparto el resumen de tu servicio con *Vanessa Velasco Fotografia Familiar*:',
+    'Hola ' + ev.cliente + ', te comparto el resumen de tu servicio:',
     '',
-    '📸 *Servicio:* ' + ev.paquete,
-    '📅 *Fecha:* ' + fmtFecha(ev.fecha_evento) + (ev.hora ? ' a las ' + extraerHora(ev.hora) : ''),
-    '💰 *Total:* ' + fmtMXN(ev.total),
-    '✅ *Pagado:* ' + fmtMXN(ev.pagado),
-    saldo > 0 ? '💳 *Saldo pendiente:* ' + fmtMXN(saldo) : '✓ *Saldo:* Liquidado',
+    '📸 Servicio: ' + ev.paquete,
+    '📅 Fecha: ' + fmtFecha(ev.fecha_evento) + (ev.hora ? ' a las ' + extraerHora(ev.hora) : ''),
+    '💰 Total: ' + fmtMXN(ev.total),
+    '✅ Pagado: ' + fmtMXN(ev.pagado),
+    saldo > 0 ? '💳 Saldo pendiente: ' + fmtMXN(saldo) : '✓ Saldo: Liquidado',
     ev.folio ? ('📋 Folio: ' + ev.folio) : '',
     '',
-    'Gracias por confiar en nosotros!'
+    '¡Vamos a crear algo muy bonito juntos!'
   ];
   var msg = lines.filter(function(l) { return l !== ''; }).join('\n');
   var url = 'https://wa.me/' + tel + '?text=' + encodeURIComponent(msg);
