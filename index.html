@@ -500,7 +500,7 @@
           <!-- PANEL CUSTOMIZADO -->
           <div id="custom-precio-panel" style="display:none">
             <div style="background:var(--beige-mid);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--text-muted)">
-              ✨ Servicio personalizado — captura el precio acordado manualmente
+              ✨ Servicio libre — o selecciona una opción arriba
             </div>
             <input class="input-field" id="custom-descripcion" type="text" placeholder="Descripción del servicio *"/>
             <input class="input-field" id="custom-precio" type="number" inputmode="decimal" placeholder="Precio total acordado *" step="0.01" min="0" oninput="actualizarPrecioCustom()"/>
@@ -1162,7 +1162,7 @@ var CATEGORIAS = {
   eventos:     { nombre:'Eventos',     fila:4, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
   sesiones:    { nombre:'Sesiones',    fila:5, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
   anticipos:   { nombre:'Anticipos',   fila:6, subcats:[], tags:['Evento','Sesion','Pedido especial'] },
-  personalizado: { nombre:'Personalizado', fila:7, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'] },
+  personalizado: { nombre:'Personalizado/Extra', fila:7, subcats:[], tags:['Efectivo','Transferencia','Tarjeta'], opciones:['Fotos extra','USB','Impresión','Álbum','Respaldo','Otro'] },
 };
 
 // Fallback prices in case Sheet is unavailable
@@ -1383,6 +1383,21 @@ function renderSubcats(key) {
   const wrapper = document.getElementById('subcats-wrapper');
   const grid = document.getElementById('subcats-grid');
   grid.innerHTML = '';
+
+  // Opciones de Personalizado/Extra — burbujas sin precio fijo
+  if (cat.opciones && cat.opciones.length) {
+    const row = document.createElement('div'); row.className = 'subcat-row';
+    cat.opciones.forEach(function(opcion) {
+      const pill = document.createElement('button'); pill.className = 'subcat-pill';
+      pill.innerHTML = '<span class="pill-name">' + opcion + '</span>';
+      pill.onclick = function() { selectOpcionPersonal(pill, opcion); };
+      row.appendChild(pill);
+    });
+    grid.appendChild(row);
+    wrapper.classList.add('visible');
+    return;
+  }
+
   if (!cat.subcats || !cat.subcats.length) { wrapper.classList.remove('visible'); return; }
   cat.subcats.forEach(group => {
     const groupEl = document.createElement('div');
@@ -1399,6 +1414,18 @@ function renderSubcats(key) {
     groupEl.appendChild(row); grid.appendChild(groupEl);
   });
   wrapper.classList.add('visible');
+}
+
+function selectOpcionPersonal(pillEl, opcion) {
+  document.querySelectorAll('.subcat-pill').forEach(p => p.classList.remove('selected'));
+  pillEl.classList.add('selected');
+  // Precio libre — dejar el campo de monto vacío pero guardar la opción como subcategoría
+  selectedSubcat = { grupo: 'Personalizado/Extra', paquete: opcion, precio: 0 };
+  document.getElementById('monto').value = '';
+  document.getElementById('monto-display').textContent = opcion + ' — captura el monto manualmente';
+  document.getElementById('monto-display').style.color = 'var(--text-muted)';
+  document.getElementById('extra-hora-row').style.display = 'none';
+  extraHoraActiva = false;
 }
 
 function selectSubcat(pillEl, group, paq) {
@@ -1942,10 +1969,14 @@ function renderResumen(resumen, resEventos) {
     html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Ingresos por mes</div>';
     resumen.forEach(function(r) {
       var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
-      var cats = Object.entries(r.categorias).map(function(e) {
+      // Solo mostrar categorías con monto > 0 (o todas si es mes actual)
+      var cats = Object.entries(r.categorias).filter(function(e) {
+        return e[1] > 0 || esCurrent;
+      }).map(function(e) {
         return '<div class="resumen-cat-row"><span>' + e[0] + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
       }).join('');
-      html += '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' ' + ANIO_ACTUAL + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
+      var mesAnio = r.anio || ANIO_ACTUAL;
+      html += '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' ' + mesAnio + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
     });
   }
 
@@ -2891,7 +2922,7 @@ function actualizarModoEvento(key) {
   if (customPanel) customPanel.style.display = esPersonalizado ? 'block' : 'none';
   // Ocultar subcats si es customizado
   if (esPersonalizado) {
-    document.getElementById('subcats-wrapper').classList.remove('visible');
+    // Mostrar opciones como burbujas — renderSubcats lo maneja
     document.getElementById('extra-hora-row').style.display = 'none';
   }
   // Reset modo
