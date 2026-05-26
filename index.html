@@ -3828,21 +3828,76 @@ function descargarPDF(html, filename) {
   window._pdfHtml = html;
 }
 
-function generarYDescargarPDF() {
-  if (!window._pdfHtml) return;
-  var iframe = document.getElementById('pdf-iframe');
-  if (!iframe) return;
-  // Usar srcdoc en el iframe existente y llamar print desde él
-  // Safari no imprime URL cuando el documento viene de srcdoc
-  iframe.onload = function() {
-    iframe.onload = null;
-    try {
-      iframe.focus();
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    } catch(e) {}
-  };
-  iframe.srcdoc = window._pdfHtml;
+async function generarYDescargarPDF() {
+  var btn = document.getElementById('btn-gen-pdf');
+  if (btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
+
+  try {
+    // Cargar html2canvas si no está cargado
+    if (!window.html2canvas) {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    // Renderizar el HTML del recibo en un div oculto
+    var container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:600px;background:#fff;padding:0;margin:0';
+    // Extraer solo el body del HTML del recibo
+    var bodyMatch = window._pdfHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    container.innerHTML = bodyMatch ? bodyMatch[1] : window._pdfHtml;
+    document.body.appendChild(container);
+
+    // Esperar a que se renderice
+    await new Promise(function(r) { setTimeout(r, 300); });
+
+    var canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: 600,
+      windowWidth: 600
+    });
+
+    document.body.removeChild(container);
+
+    // Convertir canvas a imagen y descargar
+    var imgData = canvas.toDataURL('image/png');
+    var filename = (window._pdfFilename || 'recibo').replace('.pdf', '') + '.png';
+
+    // En iOS: abrir imagen en nueva pestaña para guardar al carrete
+    // En otros: descargar directamente
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      var win = window.open('', '_blank');
+      if (win) {
+        win.document.write('<html><head><title>' + filename + '</title>' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+          '<style>body{margin:0;background:#1a1410;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}' +
+          'img{max-width:100%;border-radius:8px}' +
+          'p{color:#c4ae96;font-family:sans-serif;font-size:13px;text-align:center;margin:0}' +
+          '</style></head><body>' +
+          '<p>Mantén presionada la imagen para guardarla</p>' +
+          '<img src="' + imgData + '" />' +
+          '</body></html>');
+        win.document.close();
+      }
+    } else {
+      var a = document.createElement('a');
+      a.href = imgData;
+      a.download = filename;
+      a.click();
+    }
+
+  } catch(e) {
+    alert('Error al generar imagen: ' + e.message);
+  }
+
+  if (btn) { btn.textContent = '⬇️ Guardar imagen'; btn.disabled = false; }
 }
 
 function cerrarPDFModal() {
