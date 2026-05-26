@@ -2218,8 +2218,16 @@ async function toggleEventosMes(mes, mesId) {
     return mesesNombres[m] === mes && ev.estado !== 'Cancelado';
   });
 
-  // Ordenar por fecha
-  eventosMes.sort(function(a, b) { return a.fecha_evento > b.fecha_evento ? 1 : -1; });
+  // Filtrar cancelados y ordenar: fecha asc, luego estatus
+  var ESTATUS_ORDEN = {'Agendado':1,'Cubierto':2,'Editado':3,'Entregado':4,'Cancelado':99};
+  eventosMes = eventosMes.filter(function(e) { return e.estado !== 'Cancelado'; });
+  eventosMes.sort(function(a, b) {
+    if (a.fecha_evento < b.fecha_evento) return -1;
+    if (a.fecha_evento > b.fecha_evento) return 1;
+    var sa = ESTATUS_ORDEN[a.estado] || 99;
+    var sb = ESTATUS_ORDEN[b.estado] || 99;
+    return sa - sb;
+  });
 
   var listEl = document.getElementById(mesId + '-list');
   if (!listEl) return;
