@@ -3833,7 +3833,7 @@ async function generarYDescargarPDF() {
   if (btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
 
   try {
-    // Cargar html2canvas
+    // Cargar html2canvas y jsPDF
     if (!window.html2canvas) {
       await new Promise(function(resolve, reject) {
         var s = document.createElement('script');
@@ -3842,58 +3842,79 @@ async function generarYDescargarPDF() {
         document.head.appendChild(s);
       });
     }
+    if (!window.jspdf) {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
 
-    // Crear overlay blanco que cubre toda la pantalla con el recibo
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    // A4 en px a 96dpi: 794 x 1123
+    var A4_W = 794;
+    var A4_H = 1123;
 
-    // Extraer estilos y body del HTML del recibo
+    // Renderizar contenido del recibo en contenedor oculto con ancho A4
     var styleMatch = window._pdfHtml.match(/<style>([\s\S]*?)<\/style>/i);
-    var bodyMatch = window._pdfHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    var bodyMatch  = window._pdfHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     var recipeStyle = styleMatch ? '<style>' + styleMatch[1] + '</style>' : '';
-    var recipeBody = bodyMatch ? bodyMatch[1] : window._pdfHtml;
+    var recipeBody  = bodyMatch  ? bodyMatch[1] : window._pdfHtml;
 
-    var inner = document.createElement('div');
-    inner.id = 'recibo-render-target';
-    inner.style.cssText = 'width:100%;max-width:600px;margin:0 auto;background:#fff;padding:20px;box-sizing:border-box';
-    inner.innerHTML = recipeStyle + recipeBody;
-    overlay.appendChild(inner);
-    document.body.appendChild(overlay);
+    var container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:' + A4_W + 'px;background:#fff;padding:40px;box-sizing:border-box';
+    container.innerHTML = recipeStyle + recipeBody;
+    document.body.appendChild(container);
 
-    // Esperar render completo
     await new Promise(function(r) { setTimeout(r, 600); });
 
-    var canvas = await html2canvas(inner, {
+    // Capturar canvas completo
+    var canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: inner.scrollWidth,
-      windowHeight: inner.scrollHeight
+      scrollX: 0, scrollY: 0,
+      windowWidth: A4_W + 80,
+      width: A4_W,
+      height: container.scrollHeight
     });
 
-    document.body.removeChild(overlay);
+    document.body.removeChild(container);
 
-    var imgData = canvas.toDataURL('image/png');
-    var filename = (window._pdfFilename || 'recibo').replace('.pdf', '');
+    // Dimensiones en mm para jsPDF (A4 = 210 x 297mm)
+    var jsPDF = window.jspdf.jsPDF;
+    var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    var pageW_mm = 210;
+    var pageH_mm = 297;
+    var margin_mm = 10;
+    var contentW_mm = pageW_mm - margin_mm * 2;
 
-    // Mostrar imagen para guardar — funciona en iOS y Android
-    var visor = document.createElement('div');
-    visor.style.cssText = 'position:fixed;inset:0;background:#1a1410;z-index:99999;display:flex;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch';
-    visor.innerHTML =
-      '<div style="padding:16px;text-align:center;flex-shrink:0">' +
-        '<p style="color:#c4ae96;font-family:sans-serif;font-size:13px;margin:0 0 8px">Mantén presionada la imagen para guardarla</p>' +
-        '<button id="btn-cerrar-visor" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:8px 20px;border-radius:6px;font-size:12px;cursor:pointer">✕ Cerrar</button>' +
-      '</div>' +
-      '<img src="' + imgData + '" style="width:100%;max-width:600px;display:block" />';
-    document.body.appendChild(visor);
-    var btnCerrar = document.getElementById('btn-cerrar-visor');
-    if (btnCerrar) btnCerrar.onclick = function() { visor.remove(); };
+    // Calcular cuántas páginas necesitamos
+    var totalH_px = canvas.height;
+    var pageH_px = Math.floor(canvas.width * (pageH_mm - margin_mm * 2) / contentW_mm);
+    var totalPages = Math.ceil(totalH_px / pageH_px);
+
+    for (var page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage();
+
+      // Cortar el canvas en rebanadas de altura pageH_px
+      var sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = Math.min(pageH_px, totalH_px - page * pageH_px);
+      var ctx = sliceCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, -page * pageH_px);
+
+      var imgSlice = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      var sliceH_mm = (sliceCanvas.height / canvas.width) * contentW_mm;
+      pdf.addImage(imgSlice, 'JPEG', margin_mm, margin_mm, contentW_mm, sliceH_mm);
+    }
+
+    var filename = (window._pdfFilename || 'recibo').replace('.pdf','') + '.pdf';
+    pdf.save(filename);
 
   } catch(e) {
-    alert('Error: ' + e.message);
+    alert('Error al generar PDF: ' + e.message);
   }
 
   if (btn) { btn.textContent = '⬇️ Guardar imagen'; btn.disabled = false; }
