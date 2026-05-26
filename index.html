@@ -424,7 +424,6 @@
             </div>
           </div>
           <div class="warning-banner" id="warning-fecha"></div>
-          <input class="input-field" id="ev-pago-inicial" type="number" inputmode="decimal" placeholder="Pago de hoy ($0 si solo aparta fecha)" step="0.01" min="0"/>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <label style="font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer">
               <input type="checkbox" id="ev-descuento-check" onchange="toggleDescuento()" style="accent-color:var(--brown-soft)"/>
@@ -1323,7 +1322,6 @@ async function registrar() {
     const evCliente = document.getElementById('ev-cliente').value.trim();
     const evFecha = document.getElementById('ev-fecha').value;
     const evHora = document.getElementById('ev-hora').value;
-    const evPagoInicial = parseFloat(document.getElementById('ev-pago-inicial').value || 0);
     const evDescCheck = document.getElementById('ev-descuento-check').checked;
     const evDescTipo = document.getElementById('ev-desc-tipo').value;
     const evDescValor = parseFloat(document.getElementById('ev-desc-valor').value || 0);
@@ -1411,7 +1409,6 @@ function resetForm() {
   if (document.getElementById('ev-telefono')) document.getElementById('ev-telefono').value = '';
   document.getElementById('ev-fecha').value = '';
   document.getElementById('ev-hora').value = '';
-  document.getElementById('ev-pago-inicial').value = '';
   document.getElementById('ev-descuento-check').checked = false;
   document.getElementById('ev-desc-valor').value = '';
   document.getElementById('ev-desc-resultado').textContent = '';
