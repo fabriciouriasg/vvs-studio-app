@@ -2930,7 +2930,7 @@ function buildContratoHTML(ev, textos) {
     textos.disclaimer_derechos,
     textos.disclaimer_uso
   ].filter(Boolean).map(function(d) {
-    return '<p style="margin:0 0 8px 0">' + d + '</p>';
+    return '<p style="margin:0 0 8px 0;padding-left:14px;text-indent:-14px">• ' + d + '</p>';
   }).join('');
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
@@ -2982,7 +2982,7 @@ function buildContratoHTML(ev, textos) {
     (saldo > 0 ? '<div style="margin-top:10px;font-size:11px;color:#8b6a1a;font-style:italic">* Liquidar en efectivo o transferencia un día antes o el día del ' + (ev.categoria === 'Sesiones' ? 'sesión' : 'evento') + '</div>' : '') +
     '</div>' +
 
-    (textos.politica_cancelacion ? '<div class="section"><div class="section-title">Políticas de Cancelación</div><div class="policy">' + textos.politica_cancelacion + '</div></div>' : '') +
+    (textos.politica_cancelacion ? '<div class="section"><div class="section-title">Políticas de Cancelación</div><div class="policy">' + textos.politica_cancelacion.split(' • ').filter(function(s){return s.trim();}).map(function(s){return '<p style="margin:0 0 8px 0;padding-left:14px;text-indent:-14px">• ' + s.trim() + '</p>';}).join('') + '</div></div>' : '') +
 
     (disclaimers ? '<div class="section"><div class="section-title">Términos del Servicio</div><div class="policy">' + disclaimers + '</div></div>' : '') +
 
