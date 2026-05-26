@@ -3997,10 +3997,51 @@ function renderFinanzas() {
   html += '<div class="fin-metric"><div class="fin-metric-lbl">Inversión</div><div class="fin-metric-val red">' + fmtMXN(inversion) + '</div></div>';
   html += '<div class="fin-metric"><div class="fin-metric-lbl">Margen</div><div class="fin-metric-val">' + margen + '%</div></div>';
   html += '</div>';
-  html += '<div class="fin-split-row">';
-  html += '<div class="fin-split-col"><div class="fin-split-lbl">Eventos</div><div class="fin-split-val">' + fmtMXN(ingresoEventos) + '</div></div>';
-  html += '<div class="fin-split-col"><div class="fin-split-lbl">Sesiones</div><div class="fin-split-val">' + fmtMXN(ingresoSesiones) + '</div></div>';
-  html += '</div>';
+  // Calcular saldo pendiente del mes actual
+  var evsMesActual = eventos.filter(function(e) {
+    return e.fecha_evento && e.fecha_evento.startsWith(prefMes) && e.estado !== 'Cancelado';
+  });
+  var saldosMesActual = evsMesActual.filter(function(e) {
+    return (e.total - e.pagado) > 0;
+  });
+  var totalPendienteMes = saldosMesActual.reduce(function(s,e) { return s + (e.total - e.pagado); }, 0);
+  var totalMes = ingresoTotal + totalPendienteMes;
+  var pctCobrado = totalMes > 0 ? Math.round((ingresoTotal / totalMes) * 100) : 100;
+
+  // Calcular saldo pendiente de meses anteriores
+  var saldosMesesAnteriores = eventos.filter(function(e) {
+    if (!e.fecha_evento || e.estado === 'Cancelado') return false;
+    var esMesAnterior = e.fecha_evento < prefMes + '-01';
+    return esMesAnterior && (e.total - e.pagado) > 0;
+  });
+  var totalPendienteAnterior = saldosMesesAnteriores.reduce(function(s,e) { return s + (e.total - e.pagado); }, 0);
+
+  // Tarjeta saldo pendiente mes actual
+  if (saldosMesActual.length > 0 || true) {
+    html += '<div class="fin-pleg" style="margin-bottom:10px">';
+    html += '<div style="padding:14px 16px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
+    html += '<div><div style="font-size:13px;font-weight:500;color:var(--text-main)">Saldo pendiente por cobrar</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Eventos del mes con saldo abierto</div></div>';
+    html += '<div style="font-size:20px;font-weight:500;color:#854F0B">' + fmtMXN(totalPendienteMes) + '</div>';
+    html += '</div>';
+    if (totalMes > 0) {
+      html += '<div style="height:6px;background:var(--beige-dark);border-radius:999px;overflow:hidden;margin:8px 0 4px">';
+      html += '<div style="height:100%;width:' + pctCobrado + '%;background:#8b7355;border-radius:999px"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:' + (saldosMesActual.length ? '10px' : '0') + '">';
+      html += '<span>Cobrado ' + fmtMXN(ingresoTotal) + '</span><span>Pendiente ' + fmtMXN(totalPendienteMes) + '</span></div>';
+    }
+    if (saldosMesActual.length) {
+      saldosMesActual.forEach(function(e) {
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:0.5px solid var(--beige-dark);font-size:13px">';
+        html += '<span style="color:var(--text-muted)">' + e.cliente + ' · ' + (e.paquete||'').split(' - ')[0] + '</span>';
+        html += '<span style="color:#854F0B;font-weight:500">' + fmtMXN(e.total - e.pagado) + '</span></div>';
+      });
+    } else {
+      html += '<div style="font-size:12px;color:var(--success);padding:6px 0">✓ Sin saldos pendientes este mes</div>';
+    }
+    html += '</div></div>';
+  }
 
   // SECCIÓN 2: EVENTOS POR VALIDAR
   if (porValidar.length) {
@@ -4018,6 +4059,26 @@ function renderFinanzas() {
       html += '</div></div>';
     });
     html += '</div>';
+  }
+
+  // SALDO PENDIENTE MESES ANTERIORES
+  if (saldosMesesAnteriores.length > 0) {
+    html += '<div class="fin-pleg" style="margin-bottom:10px">';
+    html += '<div style="padding:14px 16px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
+    html += '<div><div style="font-size:13px;font-weight:500;color:var(--error)">Saldo pendiente de meses anteriores</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + saldosMesesAnteriores.length + ' evento' + (saldosMesesAnteriores.length > 1 ? 's' : '') + ' con saldo abierto</div></div>';
+    html += '<div style="font-size:20px;font-weight:500;color:var(--error)">' + fmtMXN(totalPendienteAnterior) + '</div>';
+    html += '</div>';
+    saldosMesesAnteriores.sort(function(a,b) { return a.fecha_evento > b.fecha_evento ? 1 : -1; });
+    saldosMesesAnteriores.forEach(function(e) {
+      var mesEv = NOMBRES_MESES[parseInt((e.fecha_evento||'').split('-')[1]||0) - 1] || '';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:0.5px solid var(--beige-dark);font-size:13px">';
+      html += '<div><div style="color:var(--text-main)">' + e.cliente + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted)">' + (e.paquete||'').split(' - ')[0] + ' · ' + mesEv + '</div></div>';
+      html += '<span style="color:var(--error);font-weight:500">' + fmtMXN(e.total - e.pagado) + '</span></div>';
+    });
+    html += '</div></div>';
   }
 
   // SECCIÓN 3: PROYECCIÓN 3 MESES
