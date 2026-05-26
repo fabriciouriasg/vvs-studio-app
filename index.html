@@ -3830,10 +3830,17 @@ function descargarPDF(html, filename) {
 
 function imprimirPDF() {
   var iframe = document.getElementById('pdf-iframe');
-  if (iframe && iframe.contentWindow) {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-  }
+  if (!iframe || !iframe.contentDocument) return;
+  // Obtener el HTML del iframe y abrirlo en ventana about:blank
+  // para que el navegador no muestre la URL de GitHub en el pie
+  var htmlContent = iframe.contentDocument.documentElement.outerHTML;
+  var win = window.open('about:blank', '_blank');
+  if (!win) return;
+  win.document.open();
+  win.document.write(htmlContent);
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 500);
 }
 
 function cerrarPDFModal() {
