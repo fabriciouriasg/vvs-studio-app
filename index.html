@@ -3794,6 +3794,7 @@ function buildContratoHTML(ev, textos) {
 
 
     '<div class="footer">' + (textos.pie_pagina||'Gracias por confiar en Vanessa Velasco Fotografía Familiar') + '</div>' +
+    '<div style="margin-top:16px;text-align:center;font-size:10px;color:#c4ae96;letter-spacing:.06em">Vanessa Velasco Fotografía Familiar · @vanessavelascofoto · instagram.com/vanessavelascofoto</div>' +
     '</body></html>';
 }
 
@@ -3829,32 +3830,19 @@ function descargarPDF(html, filename) {
 
 function generarYDescargarPDF() {
   if (!window._pdfHtml) return;
-  // Inyectar regla CSS para suprimir URL en pie de página
-  var htmlConFix = window._pdfHtml.replace(
-    '@media print{body{margin:0;padding:10px}@page{margin:0;size:auto}}',
-    '@media print{body{margin:0;padding:10px}@page{margin:0;size:auto}} @media print{html,body{-webkit-print-color-adjust:exact}}'
-  );
-  // Crear blob URL — el navegador muestra "blob:" en lugar de la URL de GitHub
-  var blob = new Blob([htmlConFix], {type: 'text/html;charset=utf-8'});
-  var blobUrl = URL.createObjectURL(blob);
-  var win = window.open(blobUrl, '_blank');
-  if (!win) {
-    // Fallback: link de descarga
-    var a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = window._pdfFilename || 'recibo.pdf';
-    a.click();
-    return;
-  }
-  // Esperar a que cargue y luego imprimir
-  win.onload = function() {
-    setTimeout(function() {
-      win.focus();
-      win.print();
-      setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 5000);
-    }, 300);
+  var iframe = document.getElementById('pdf-iframe');
+  if (!iframe) return;
+  // Usar srcdoc en el iframe existente y llamar print desde él
+  // Safari no imprime URL cuando el documento viene de srcdoc
+  iframe.onload = function() {
+    iframe.onload = null;
+    try {
+      iframe.focus();
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch(e) {}
   };
-  setTimeout(function() { URL.revokeObjectURL(blobUrl); }, 30000);
+  iframe.srcdoc = window._pdfHtml;
 }
 
 function cerrarPDFModal() {
