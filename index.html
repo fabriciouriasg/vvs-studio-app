@@ -3833,7 +3833,7 @@ async function generarYDescargarPDF() {
   if (btn) { btn.textContent = '⏳ Generando...'; btn.disabled = true; }
 
   try {
-    // Cargar html2canvas si no está cargado
+    // Cargar html2canvas
     if (!window.html2canvas) {
       await new Promise(function(resolve, reject) {
         var s = document.createElement('script');
@@ -3843,58 +3843,57 @@ async function generarYDescargarPDF() {
       });
     }
 
-    // Renderizar el HTML del recibo en un div oculto
-    var container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:600px;background:#fff;padding:0;margin:0';
-    // Extraer solo el body del HTML del recibo
+    // Crear overlay blanco que cubre toda la pantalla con el recibo
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:99999;overflow-y:auto;-webkit-overflow-scrolling:touch';
+
+    // Extraer estilos y body del HTML del recibo
+    var styleMatch = window._pdfHtml.match(/<style>([\s\S]*?)<\/style>/i);
     var bodyMatch = window._pdfHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    container.innerHTML = bodyMatch ? bodyMatch[1] : window._pdfHtml;
-    document.body.appendChild(container);
+    var recipeStyle = styleMatch ? '<style>' + styleMatch[1] + '</style>' : '';
+    var recipeBody = bodyMatch ? bodyMatch[1] : window._pdfHtml;
 
-    // Esperar a que se renderice
-    await new Promise(function(r) { setTimeout(r, 300); });
+    var inner = document.createElement('div');
+    inner.id = 'recibo-render-target';
+    inner.style.cssText = 'width:100%;max-width:600px;margin:0 auto;background:#fff;padding:20px;box-sizing:border-box';
+    inner.innerHTML = recipeStyle + recipeBody;
+    overlay.appendChild(inner);
+    document.body.appendChild(overlay);
 
-    var canvas = await html2canvas(container, {
+    // Esperar render completo
+    await new Promise(function(r) { setTimeout(r, 600); });
+
+    var canvas = await html2canvas(inner, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      width: 600,
-      windowWidth: 600
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: inner.scrollWidth,
+      windowHeight: inner.scrollHeight
     });
 
-    document.body.removeChild(container);
+    document.body.removeChild(overlay);
 
-    // Convertir canvas a imagen y descargar
     var imgData = canvas.toDataURL('image/png');
-    var filename = (window._pdfFilename || 'recibo').replace('.pdf', '') + '.png';
+    var filename = (window._pdfFilename || 'recibo').replace('.pdf', '');
 
-    // En iOS: abrir imagen en nueva pestaña para guardar al carrete
-    // En otros: descargar directamente
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (isIOS) {
-      var win = window.open('', '_blank');
-      if (win) {
-        win.document.write('<html><head><title>' + filename + '</title>' +
-          '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-          '<style>body{margin:0;background:#1a1410;display:flex;flex-direction:column;align-items:center;padding:16px;gap:12px}' +
-          'img{max-width:100%;border-radius:8px}' +
-          'p{color:#c4ae96;font-family:sans-serif;font-size:13px;text-align:center;margin:0}' +
-          '</style></head><body>' +
-          '<p>Mantén presionada la imagen para guardarla</p>' +
-          '<img src="' + imgData + '" />' +
-          '</body></html>');
-        win.document.close();
-      }
-    } else {
-      var a = document.createElement('a');
-      a.href = imgData;
-      a.download = filename;
-      a.click();
-    }
+    // Mostrar imagen para guardar — funciona en iOS y Android
+    var visor = document.createElement('div');
+    visor.style.cssText = 'position:fixed;inset:0;background:#1a1410;z-index:99999;display:flex;flex-direction:column;align-items:center;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    visor.innerHTML =
+      '<div style="padding:16px;text-align:center;flex-shrink:0">' +
+        '<p style="color:#c4ae96;font-family:sans-serif;font-size:13px;margin:0 0 8px">Mantén presionada la imagen para guardarla</p>' +
+        '<button id="btn-cerrar-visor" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:8px 20px;border-radius:6px;font-size:12px;cursor:pointer">✕ Cerrar</button>' +
+      '</div>' +
+      '<img src="' + imgData + '" style="width:100%;max-width:600px;display:block" />';
+    document.body.appendChild(visor);
+    var btnCerrar = document.getElementById('btn-cerrar-visor');
+    if (btnCerrar) btnCerrar.onclick = function() { visor.remove(); };
 
   } catch(e) {
-    alert('Error al generar imagen: ' + e.message);
+    alert('Error: ' + e.message);
   }
 
   if (btn) { btn.textContent = '⬇️ Guardar imagen'; btn.disabled = false; }
