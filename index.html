@@ -407,6 +407,7 @@
     </svg>
     <div class="header-title">Vanessa Velasco Studio</div>
   </div>
+  <button id="btn-refresh" onclick="forzarActualizacion()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px 8px;color:var(--brown-soft);opacity:.7;position:absolute;right:12px;top:50%;transform:translateY(-50%)" title="Actualizar datos">↻</button>
 </div>
 
 <!-- TAB NAV -->
@@ -1672,6 +1673,29 @@ function renderizarGrillaMes() {
   }
 }
 
+async function forzarActualizacion() {
+  var btn = document.getElementById('btn-refresh');
+  if (btn) { btn.style.opacity = '0.3'; btn.style.pointerEvents = 'none'; }
+  // Limpiar caché
+  if (_offlineDB) {
+    try {
+      var tx = _offlineDB.transaction('cache', 'readwrite');
+      tx.objectStore('cache').clear();
+    } catch(e) {}
+  }
+  // Recargar todo
+  calCargado = false; resumenCargado = false;
+  todosEventos = []; fechasEspeciales = [];
+  await cargarLog();
+  await cargarAcumulados();
+  if (currentTab === 1) await cargarCalendario();
+  if (currentTab === 2) await cargarResumen();
+  if (currentTab === 3) { /* clientes se recarga al abrir */ }
+  if (currentTab === 4) await cargarFinanzas();
+  if (btn) { btn.style.opacity = '.7'; btn.style.pointerEvents = 'auto'; }
+  mostrarFeedback('Datos actualizados', 'success');
+}
+
 async function recargarFechasEspeciales() {
   if (!SCRIPT_URL) return;
   try {
@@ -1844,6 +1868,13 @@ async function registrar() {
       : `✓ Registrado: ${fmtMXN(monto)}`;
     mostrarFeedback(msg, 'success');
     resetForm();
+    // Invalidar caché de eventos para que el detalle cargue datos frescos
+    if (_offlineDB) {
+      try {
+        var tx2 = _offlineDB.transaction('cache', 'readwrite');
+        tx2.objectStore('cache').delete('cache_eventos');
+      } catch(e2) {}
+    }
     cargarLog(); cargarAcumulados();
     resumenCargado = false; calCargado = false;
 
