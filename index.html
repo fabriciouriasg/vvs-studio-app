@@ -3869,7 +3869,7 @@ function renderFinanzas() {
 
   // SECCIÓN 3: PROYECCIÓN 3 MESES
   html += '<div class="fin-pleg" id="pleg-proyeccion">';
-  html += '<div class="fin-pleg-header" id="hdr-pleg-proyeccion" onclick="toggleFinPleg(\"pleg-proyeccion\")">';
+  html += '<div class="fin-pleg-header" data-plegid="pleg-proyeccion" onclick="toggleFinPleg(this.dataset.plegid)">';
   html += '<span style="font-size:13px;font-weight:500;color:var(--text-main)">Proyección — próximos 3 meses</span>';
   html += '<span style="font-size:12px;color:var(--text-muted)" id="arrow-pleg-proyeccion">▼</span>';
   html += '</div>';
@@ -3912,7 +3912,7 @@ function renderFinanzas() {
 
   // SECCIÓN 4: GASTOS
   html += '<div class="fin-pleg" id="pleg-gastos">';
-  html += '<div class="fin-pleg-header" onclick="toggleFinPleg(\'pleg-gastos\')">';
+  html += '<div class="fin-pleg-header" data-plegid="pleg-gastos" onclick="toggleFinPleg(this.dataset.plegid)">';
   html += '<div><span style="font-size:13px;font-weight:500;color:var(--text-main)">Gastos</span>';
   html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Total mes: <span style="font-weight:500;color:var(--error)">' + fmtMXN(inversion) + '</span></div></div>';
   html += '<span style="font-size:12px;color:var(--text-muted)" id="arrow-pleg-gastos">▼</span></div>';
