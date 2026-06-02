@@ -852,6 +852,8 @@
     <div class="modal-title">Registrar pago</div>
     <div class="modal-label">Monto</div>
     <input type="number" id="pago-monto" class="modal-input" inputmode="decimal" placeholder="0.00"/>
+    <div class="modal-label">Fecha de pago</div>
+    <input type="date" id="pago-fecha" class="modal-input"/>
     <div class="modal-label">Nota (opcional)</div>
     <input type="text" id="pago-nota" class="modal-input" placeholder="Abono, saldo, etc."/>
     <div class="modal-actions">
@@ -2956,12 +2958,15 @@ function openModalPago() {
   if (!eventoDetalleActual) return;
   document.getElementById('pago-monto').value = '';
   document.getElementById('pago-nota').value = '';
+  document.getElementById('pago-fecha').value = '';
+  document.getElementById('pago-fecha').value = HOY;
   document.getElementById('modal-pago').classList.add('open');
 }
 function closeModalPago() {
   document.getElementById('modal-pago').classList.remove('open');
   document.getElementById('pago-monto').value = '';
   document.getElementById('pago-nota').value = '';
+  document.getElementById('pago-fecha').value = '';
 }
 
 async function guardarPago() {
@@ -2985,7 +2990,7 @@ async function guardarPago() {
     monto: monto,
     categoria: catPago,
     subcategoria: eventoDetalleActual.paquete,
-    fecha: HOY,
+    fecha: document.getElementById('pago-fecha').value || HOY,
     nota: nota || (catPago === 'Anticipos' ? 'Anticipo' : 'Pago'),
     quien: 'Vanessa',
     id_evento: eventoModalIdActual
