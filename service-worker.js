@@ -1,38 +1,60 @@
-const CACHE_NAME = 'piggybank-v10';
-const ASSETS = ['./', './index.html', './manifest.json'];
+// ============================================================
+// Vanessa Velasco Studio - Service Worker
+// ============================================================
 
-// Al instalar: cachear assets básicos
-self.addEventListener('install', e => {
+const CACHE_NAME = 'vvs-studio-v1';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json'
+];
+
+// Instalar — cachear assets principales
+self.addEventListener('install', function(e) {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(ASSETS);
+    })
   );
-  // Forzar activación inmediata sin esperar
   self.skipWaiting();
 });
 
-// Al activar: eliminar TODOS los cachés viejos
-self.addEventListener('activate', e => {
+// Activar — limpiar caches viejos
+self.addEventListener('activate', function(e) {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(key) { return key !== CACHE_NAME; })
+            .map(function(key) { return caches.delete(key); })
+      );
+    })
   );
-  // Tomar control de todas las páginas abiertas inmediatamente
   self.clients.claim();
 });
 
-// Fetch: network first para HTML, cache first para el resto
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
-  // HTML siempre desde red para tener versión fresca
-  if (e.request.destination === 'document' || url.pathname.endsWith('.html')) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
-    return;
-  }
-  // Resto: cache first
+// Fetch — network first, caché como fallback
+self.addEventListener('fetch', function(e) {
+  // No interceptar peticiones al Apps Script
+  if (e.request.url.indexOf('script.google.com') !== -1) return;
+  if (e.request.url.indexOf('googleapis.com') !== -1) return;
+
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(function(response) {
+        // Cachear respuestas exitosas de assets propios
+        if (response && response.status === 200 && response.type === 'basic') {
+          var clone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(e.request, clone);
+          });
+        }
+        return response;
+      })
+      .catch(function() {
+        // Sin red — servir desde caché
+        return caches.match(e.request).then(function(cached) {
+          return cached || caches.match('./index.html');
+        });
+      })
   );
 });
