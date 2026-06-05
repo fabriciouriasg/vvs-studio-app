@@ -493,6 +493,7 @@
             </div>
           </div>
           <div class="warning-banner" id="warning-fecha"></div>
+          <input class="input-field" id="ev-direccion" type="text" placeholder="Dirección del evento (opcional)"/>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <label style="font-size:13px;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer">
               <input type="checkbox" id="ev-descuento-check" onchange="toggleDescuento()" style="accent-color:var(--brown-soft)"/>
@@ -893,6 +894,8 @@
     <input type="time" id="edit-hora" class="modal-input"/>
     <div class="modal-label">Teléfono WhatsApp</div>
     <input type="tel" id="edit-telefono" class="modal-input" inputmode="tel" placeholder="10 dígitos"/>
+    <div class="modal-label">Dirección del evento (opcional)</div>
+    <input type="text" id="edit-direccion" class="modal-input" placeholder="Calle, colonia, ciudad..."/>
     <div class="modal-label">Correo electrónico</div>
     <input type="email" id="edit-email" class="modal-input" inputmode="email" placeholder="correo@ejemplo.com"/>
     <div class="modal-label">Notas</div>
@@ -1841,7 +1844,8 @@ async function registrar() {
           descuento_tipo: evDescCheck ? evDescTipo : '',
           descuento_valor: evDescCheck ? evDescValor : 0,
           pagado_inicial: 0,
-          estado: 'Agendado', notas: notasCustom
+          estado: 'Agendado', notas: notasCustom,
+          direccion: document.getElementById('ev-direccion') ? document.getElementById('ev-direccion').value.trim() : ''
         };
         const evRes = await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(eventoPayload)});
         const evData = await evRes.json();
@@ -1910,6 +1914,7 @@ function resetForm() {
   if (document.getElementById('ev-email')) document.getElementById('ev-email').value = '';
   if (document.getElementById('ev-telefono')) document.getElementById('ev-telefono').value = '';
   document.getElementById('ev-fecha').value = '';
+  if (document.getElementById('ev-direccion')) document.getElementById('ev-direccion').value = '';
   document.getElementById('ev-hora').value = '';
   document.getElementById('ev-descuento-check').checked = false;
   document.getElementById('ev-desc-valor').value = '';
@@ -2855,6 +2860,7 @@ function renderDetalleEvento(ev) {
       '<div class="detalle-row"><span class="detalle-label">Total</span><span class="detalle-total">' + fmtMXN(ev.total) + '</span></div>' +
       '<div class="detalle-row"><span class="detalle-label">Pagado</span><span class="detalle-valor">' + fmtMXN(ev.pagado) + '</span></div>' +
       '<div class="detalle-row"><span class="detalle-label">Saldo</span><span class="detalle-valor detalle-saldo ' + (saldoCubierto?'cubierto':'') + '">' + (saldoCubierto ? '✓ Liquidado' : fmtMXN(saldo)) + '</span></div>' +
+      (ev.direccion ? '<div class="detalle-row"><span class="detalle-label">Dirección</span><span class="detalle-valor"><a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.direccion) + '" target="_blank" style="color:var(--brown-soft);text-decoration:underline">📍 ' + ev.direccion + '</a></span></div>' : '') +
       extrasHtml +
       '<div class="seccion-titulo">Historial de pagos</div>' +
       pagosHtml +
@@ -3631,6 +3637,7 @@ function openModalEditar() {
   document.getElementById('edit-hora').value = eventoDetalleActual.hora || '';
   document.getElementById('edit-notas').value = eventoDetalleActual.notas || '';
   if (document.getElementById('edit-telefono')) document.getElementById('edit-telefono').value = eventoDetalleActual.telefono || '';
+  if (document.getElementById('edit-direccion')) document.getElementById('edit-direccion').value = eventoDetalleActual.direccion || '';
   if (document.getElementById('edit-email')) document.getElementById('edit-email').value = eventoDetalleActual.email || '';
   document.getElementById('modal-editar').classList.add('open');
 }
@@ -3649,7 +3656,8 @@ async function guardarEdicion() {
     precio_base: parseFloat(document.getElementById('edit-precio').value) || eventoDetalleActual.precio_base,
     fecha_evento: document.getElementById('edit-fecha').value,
     hora: document.getElementById('edit-hora').value,
-    notas: document.getElementById('edit-notas').value.trim()
+    notas: document.getElementById('edit-notas').value.trim(),
+    direccion: document.getElementById('edit-direccion') ? document.getElementById('edit-direccion').value.trim() : ''
   };
   var btn = document.querySelector('#modal-editar .btn-modal-save');
   btn.textContent = 'Guardando...'; btn.disabled = true;
