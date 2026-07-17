@@ -416,7 +416,10 @@
     </svg>
     <div class="header-title">Vanessa Velasco Studio</div>
   </div>
-  <button id="btn-refresh" onclick="forzarActualizacion()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px 8px;color:var(--brown-soft);opacity:.7;position:absolute;right:12px;top:50%;transform:translateY(-50%)" title="Actualizar datos">↻</button>
+  <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px">
+    <span style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500">v3.0</span>
+    <button id="btn-refresh" onclick="forzarActualizacion()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px 4px;color:var(--brown-soft);opacity:.7" title="Actualizar datos">↻</button>
+  </div>
 </div>
 
 <!-- TAB NAV -->
@@ -1292,8 +1295,12 @@ function normalizarTel(raw) {
 
 function setDefaultFecha() {
   document.getElementById('fecha').value = HOY;
+  // Permitir eventos de meses pasados desde mayo (inicio de operaciones)
+  var minOperaciones = _hoy.getFullYear() + '-05-01';
   const evFecha = document.getElementById('ev-fecha');
-  if (evFecha) evFecha.min = HOY;
+  if (evFecha) evFecha.min = minOperaciones;
+  const editFecha = document.getElementById('edit-fecha');
+  if (editFecha) editFecha.min = minOperaciones;
 }
 
 // ============================================================
@@ -1792,7 +1799,9 @@ async function registrar() {
         btn.disabled = false;
         return;
       }
-      if (esPersonalizado) {
+      // Validar descripción/precio custom SOLO en modo 'nuevo' — en modo 'ligar'
+      // el panel custom está oculto (vive dentro de panel-nuevo) y no aplica
+      if (esPersonalizado && modoEvento === 'nuevo') {
         var cDesc = document.getElementById('custom-descripcion') ? document.getElementById('custom-descripcion').value.trim() : '';
         var cPrecio = document.getElementById('custom-precio') ? parseFloat(document.getElementById('custom-precio').value)||0 : 0;
         if (!cDesc) { mostrarFeedback('La descripción del servicio es obligatoria', 'error'); btn.disabled = false; return; }
@@ -1812,10 +1821,11 @@ async function registrar() {
       if (modoEvento === 'ligar' && eventoLigadoId) {
         // LIGAR a evento existente
         idEvento = eventoLigadoId;
-        // Si es Otros, agregar como extra al evento
-        if (false && monto > 0) {
+        // Si es Personalizado/Extra, sumar como extra al total del evento (postventa)
+        // El ingreso se registra abajo con categoría 'Personalizado/Extra' → visible en Resumen/Finanzas
+        if (esPersonalizado && monto > 0) {
           await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
-            body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:idEvento,descripcion:subcatLabel||notaFinal||'Otro',monto:monto})});
+            body:JSON.stringify({token:SECRET_TOKEN,action:'agregarExtra',id_evento:idEvento,descripcion:(selectedSubcat ? selectedSubcat.paquete : '')||nota||'Extra postventa',monto:monto,tipo:'adicional',estatus:'Pedido'})});
         }
       } else if (modoEvento === 'nuevo' && evCliente) {
         // CREAR nuevo evento
@@ -1862,9 +1872,9 @@ async function registrar() {
       if (idEvento && monto < precioTotalEvento) {
         catIngreso = 'Anticipos';
       }
-      // Fecha de cobro: si es pago de evento nuevo usar HOY (fecha de recepción real)
-      // Si es registro libre (sin evento), usar la fecha del campo
-      var fechaCobro = idEvento ? HOY : fecha;
+      // Fecha de cobro: usar siempre la fecha del campo 'Fecha de pago'
+      // (editable — permite registrar pagos de eventos de meses pasados en su mes real)
+      var fechaCobro = fecha;
       const payload = {
         token: SECRET_TOKEN, monto, categoria: catIngreso,
         subcategoria: subcatLabel, fecha: fechaCobro, nota: notaFinal,
