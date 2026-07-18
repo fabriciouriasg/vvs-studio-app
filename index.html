@@ -417,7 +417,7 @@
     <div class="header-title">Vanessa Velasco Studio</div>
   </div>
   <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px">
-    <span style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500">v3.1</span>
+    <span id="app-version" style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500"></span>
     <button id="btn-refresh" onclick="forzarActualizacion()" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px 4px;color:var(--brown-soft);opacity:.7" title="Actualizar datos">↻</button>
   </div>
 </div>
@@ -1158,13 +1158,17 @@ const _hoy = new Date();
 const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
+// ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
+var APP_VERSION = 'v3.3';
 
 // Generar 14 meses desde el mes actual (dinamico, sin hardcodeo)
+// Inicio de operaciones del negocio — fijo, no depende del año en curso
+var INICIO_OPS = { anio: 2026, mes: 5 };
 function generarMesesConfig() {
   var meses = [];
-  // Incluir meses desde Mayo (inicio de operaciones)
-  var inicio = new Date(_hoy.getFullYear(), 4, 1); // Mayo
-  var finAnio = new Date(_hoy.getFullYear(), 11, 1); // Diciembre
+  // Incluir meses desde Mayo 2026 (inicio de operaciones) hasta Dic del año actual
+  var inicio = new Date(INICIO_OPS.anio, INICIO_OPS.mes - 1, 1);
+  var finAnio = new Date(_hoy.getFullYear(), 11, 1); // Diciembre año actual
   var fecha = new Date(inicio);
   while (fecha <= finAnio) {
     meses.push({
@@ -1295,8 +1299,10 @@ function normalizarTel(raw) {
 
 function setDefaultFecha() {
   document.getElementById('fecha').value = HOY;
-  // Permitir eventos de meses pasados desde mayo (inicio de operaciones)
-  var minOperaciones = _hoy.getFullYear() + '-05-01';
+  var vEl = document.getElementById('app-version');
+  if (vEl) vEl.textContent = APP_VERSION;
+  // Permitir eventos de meses pasados desde mayo 2026 (inicio de operaciones)
+  var minOperaciones = INICIO_OPS.anio + '-' + String(INICIO_OPS.mes).padStart(2,'0') + '-01';
   const evFecha = document.getElementById('ev-fecha');
   if (evFecha) evFecha.min = minOperaciones;
   const editFecha = document.getElementById('edit-fecha');
@@ -2045,7 +2051,8 @@ function renderResumen(resumen, resEventos) {
       var cats = Object.entries(r.categorias).filter(function(e) {
         return e[1] > 0 || esCurrent;
       }).map(function(e) {
-        return '<div class="resumen-cat-row"><span>' + e[0] + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
+        var catLbl = (e[0] === 'Personalizado/Extra' || e[0] === 'Personalizado') ? 'Postventa' : e[0];
+        return '<div class="resumen-cat-row"><span>' + catLbl + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
       }).join('');
       var mesAnio = r.anio || ANIO_ACTUAL;
       html += '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' ' + mesAnio + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
@@ -2348,9 +2355,31 @@ function renderPendientes(eventos) {
 function renderCalendario(eventos) {
   const cont = document.getElementById('meses-scroll');
   cont.innerHTML = '';
-  MESES_CONFIG.forEach(mc => {
-    const eventosMes = eventos.filter(e => e.fecha_evento && e.fecha_evento.startsWith(`${mc.anio}-${String(mc.mes).padStart(2,'0')}`));
-    cont.appendChild(crearMesMini(mc, eventosMes));
+  // Años pasados agrupados bajo encabezado colapsado; año actual expandido
+  var grupos = {};
+  MESES_CONFIG.forEach(function(mc) { (grupos[mc.anio] = grupos[mc.anio] || []).push(mc); });
+  Object.keys(grupos).sort().forEach(function(anio) {
+    var esAnioPasado = parseInt(anio) < ANIO_ACTUAL;
+    var target = cont;
+    if (esAnioPasado) {
+      var yHeader = document.createElement('div');
+      yHeader.style.cssText = 'display:flex;align-items:center;gap:6px;padding:10px 4px 6px;cursor:pointer;user-select:none';
+      yHeader.innerHTML = '<span style="font-size:11px;color:var(--text-muted)">\u25B6</span><span style="font-size:12px;font-weight:500;letter-spacing:.1em;color:var(--text-muted)">' + anio + '</span>';
+      var yBody = document.createElement('div');
+      yBody.style.display = 'none';
+      yHeader.addEventListener('click', function() {
+        var open = yBody.style.display !== 'none';
+        yBody.style.display = open ? 'none' : 'block';
+        yHeader.querySelector('span').textContent = open ? '\u25B6' : '\u25BC';
+      });
+      cont.appendChild(yHeader);
+      cont.appendChild(yBody);
+      target = yBody;
+    }
+    grupos[anio].forEach(function(mc) {
+      var eventosMes = eventos.filter(function(e) { return e.fecha_evento && e.fecha_evento.startsWith(mc.anio + '-' + String(mc.mes).padStart(2,'0')); });
+      target.appendChild(crearMesMini(mc, eventosMes));
+    });
   });
 }
 
@@ -2426,6 +2455,9 @@ function crearMesMini(mc, eventosMes) {
       var arrow = header.querySelector('.mes-fold-arrow');
       if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
     });
+    // Tap en el mini-calendario expandido abre la vista completa del mes
+    grid.style.cursor = 'pointer';
+    grid.addEventListener('click', function() { abrirMesDetail(mc); });
   } else {
     div.onclick = () => abrirMesDetail(mc);
     // Para mes actual y futuros, click en header abre detalle
@@ -4081,6 +4113,7 @@ async function cargarFinanzas() {
     _finanzasData = {
       eventos: (resEv && resEv.eventos) ? resEv.eventos : [],
       gastosFijos: (resGF && resGF.gastos) ? resGF.gastos : [],
+      gfHist: (resGF && resGF.hist) ? resGF.hist : [],
       gastosVariables: (resGV && resGV.gastos) ? resGV.gastos : [],
       logRegistros: (resLog && resLog.registros) ? resLog.registros : []
     };
@@ -4095,6 +4128,7 @@ function renderFinanzas() {
   var eventos = _finanzasData.eventos;
   var gastosFijos = _finanzasData.gastosFijos;
   var gastosVariables = _finanzasData.gastosVariables;
+  var gfHist = _finanzasData.gfHist || [];
 
   var hoy = new Date(); hoy.setHours(0,0,0,0);
   var mesActual = hoy.getMonth() + 1;
@@ -4343,13 +4377,27 @@ function renderFinanzas() {
   // Meses pasados con datos (antes del mes actual)
   var mesesHistorial = [];
   var nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  for (var mh = 0; mh < mesActual - 1; mh++) {
-    var mhPref = anioActual + '-' + String(mh + 1).padStart(2,'0');
+  // Recorrer desde mayo 2026 (inicio de operaciones) hasta el mes anterior al actual, cruzando años
+  var mesesRango = [];
+  var cursorA = INICIO_OPS.anio, cursorM = INICIO_OPS.mes;
+  while (cursorA < anioActual || (cursorA === anioActual && cursorM < mesActual)) {
+    mesesRango.push({ anio: cursorA, mes: cursorM });
+    cursorM++; if (cursorM > 12) { cursorM = 1; cursorA++; }
+  }
+  for (var mhIdx = 0; mhIdx < mesesRango.length; mhIdx++) {
+    var mhAnio = mesesRango[mhIdx].anio;
+    var mh = mesesRango[mhIdx].mes - 1;
+    var mhPref = mhAnio + '-' + String(mh + 1).padStart(2,'0');
     var mhLog = logRegistros.filter(function(r) { return r.fecha && r.fecha.startsWith(mhPref); });
     if (!mhLog.length) continue;
     var mhIngreso = mhLog.reduce(function(s,r){ return s+(r.monto||0); }, 0);
-    var mhGF = gastosFijos.reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
-    var mhGV = gastosVariables.filter(function(g){ return g.mes === nombres[mh]; }).reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
+    // Gastos fijos: usar snapshot congelado del mes si existe; si no, fallback al total vivo
+    var mhSnap = null;
+    for (var si = 0; si < gfHist.length; si++) {
+      if (gfHist[si].mes === nombres[mh] && String(gfHist[si].anio) === String(mhAnio)) { mhSnap = gfHist[si]; break; }
+    }
+    var mhGF = mhSnap ? (parseFloat(mhSnap.total)||0) : gastosFijos.reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
+    var mhGV = gastosVariables.filter(function(g){ return g.mes === nombres[mh] && (!g.anio || String(g.anio) === String(mhAnio)); }).reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
     var mhGanancia = mhIngreso - mhGF - mhGV;
     var mhEventos = eventos.filter(function(e){ return e.fecha_evento && e.fecha_evento.startsWith(mhPref) && e.estado !== 'Cancelado'; }).length;
     var mhEvLog = 0, mhSesLog = 0, mhAntLog = 0, mhPvLog = 0;
@@ -4360,7 +4408,7 @@ function renderFinanzas() {
       else if (cat === 'anticipos') mhAntLog += r.monto || 0;
       else if (cat === 'personalizado' || cat === 'personalizado/extra') mhPvLog += r.monto || 0;
     });
-    mesesHistorial.push({ nombre: nombres[mh], ingreso: mhIngreso, ganancia: mhGanancia, inversion: mhGF + mhGV, eventos: mhEventos,
+    mesesHistorial.push({ nombre: nombres[mh], anio: mhAnio, ingreso: mhIngreso, ganancia: mhGanancia, inversion: mhGF + mhGV, eventos: mhEventos,
       dEventos: mhEvLog, dSesiones: mhSesLog, dAnticipos: mhAntLog, dPostventa: mhPvLog });
   }
 
@@ -4368,14 +4416,15 @@ function renderFinanzas() {
     html += '<div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;margin-top:16px">Historial</div>';
 
     // Gráfica de línea — ganancia neta por mes
-    var maxGan = Math.max.apply(null, mesesHistorial.map(function(m){ return Math.abs(m.ganancia); })) || 1;
+    var chartMeses = mesesHistorial.slice(-12); // gráfica limitada a últimos 12 meses
+    var maxGan = Math.max.apply(null, chartMeses.map(function(m){ return Math.abs(m.ganancia); })) || 1;
     var svgH = 100;
     var svgW = 300;
     var padL = 44, padR = 10, padT = 18, padB = 24;
     var chartW = svgW - padL - padR;
     var chartH = svgH - padT - padB;
-    var pts = mesesHistorial.map(function(m, i) {
-      var x = padL + (mesesHistorial.length > 1 ? (i / (mesesHistorial.length - 1)) * chartW : chartW / 2);
+    var pts = chartMeses.map(function(m, i) {
+      var x = padL + (chartMeses.length > 1 ? (i / (chartMeses.length - 1)) * chartW : chartW / 2);
       var y = padT + chartH - ((m.ganancia / (maxGan * 1.1)) * chartH);
       y = Math.max(padT, Math.min(padT + chartH, y));
       return { x: x, y: y, m: m };
@@ -4418,7 +4467,7 @@ function renderFinanzas() {
       var tlId = 'tl-desglose-' + ti2;
       html += '<div class="tl-card">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<span style="font-size:12px;font-weight:500">' + mhi.nombre + ' ' + anioActual + '</span>';
+      html += '<span style="font-size:12px;font-weight:500">' + mhi.nombre + ' ' + mhi.anio + '</span>';
       html += '<span style="font-size:13px;font-weight:500">' + fmtMXN(mhi.ingreso) + '</span></div>';
       html += '<div class="tl-stats">';
       html += '<div class="tl-stat"><div class="tl-stat-lbl">Ganancia</div><div class="tl-stat-val ' + (mhi.ganancia >= 0 ? 'green' : 'red') + '">' + fmtMXN(mhi.ganancia) + '</div></div>';
@@ -4516,7 +4565,7 @@ async function guardarGastoVariable() {
   if (!desc || !monto) return;
   var mes = NOMBRES_MESES[new Date().getMonth()];
   await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'text/plain'},
-    body: JSON.stringify({token:SECRET_TOKEN, action:'agregarGastoVariable', descripcion:desc, categoria:cat, monto:monto, mes:mes})});
+    body: JSON.stringify({token:SECRET_TOKEN, action:'agregarGastoVariable', descripcion:desc, categoria:cat, monto:monto, mes:mes, anio:ANIO_ACTUAL})});
   closeModalGastoVariable(); cargarFinanzas();
 }
 async function eliminarGastoVariable(id) {
