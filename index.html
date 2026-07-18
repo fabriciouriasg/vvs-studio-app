@@ -1159,7 +1159,20 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v3.3';
+var APP_VERSION = 'v3.4';
+// ── REGLA DE ANTICIPOS ──
+// Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
+// Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
+// reclasifica en backend cuando se le asigne fecha).
+function esMesFuturoEvento(fechaEvento, fechaPago) {
+  if (!fechaEvento) return true;
+  return String(fechaEvento).substring(0,7) > String(fechaPago).substring(0,7);
+}
+function catRealAnticipo(subcatTag) {
+  if (subcatTag === 'Sesion') return 'Sesiones';
+  if (subcatTag === 'Pedido especial') return 'Personalizado/Extra';
+  return 'Eventos';
+}
 
 // Generar 14 meses desde el mes actual (dinamico, sin hardcodeo)
 // Inicio de operaciones del negocio — fijo, no depende del año en curso
@@ -1872,7 +1885,7 @@ async function registrar() {
     // Registrar ingreso solo si hay monto > 0
     if (monto > 0) {
       if (!selectedCat) { mostrarFeedback('Selecciona una categoria', 'error'); btn.disabled = false; return; }
-      // Si se creó un evento y el pago es parcial → es anticipo
+      // Si se creó un evento y el pago es parcial → candidato a anticipo
       var precioTotalEvento = precioBase; // precio del paquete seleccionado
       var catIngreso = cat.nombre;
       if (idEvento && monto < precioTotalEvento) {
@@ -1881,6 +1894,21 @@ async function registrar() {
       // Fecha de cobro: usar siempre la fecha del campo 'Fecha de pago'
       // (editable — permite registrar pagos de eventos de meses pasados en su mes real)
       var fechaCobro = fecha;
+      // Regla del mes: Anticipos solo si el evento es de un mes futuro al pago.
+      // Aplica tanto al anticipo automático como a la tarjeta Anticipos elegida a mano.
+      if (catIngreso === 'Anticipos' && idEvento) {
+        var fechaEvtAsoc = '', catEvtAsoc = '';
+        if (modoEvento === 'ligar' && window._eventoLigadoObj) {
+          fechaEvtAsoc = window._eventoLigadoObj.fecha_evento || '';
+          catEvtAsoc = window._eventoLigadoObj.categoria || '';
+        } else {
+          fechaEvtAsoc = evFecha || '';
+          catEvtAsoc = cat.nombre;
+        }
+        if (!esMesFuturoEvento(fechaEvtAsoc, fechaCobro)) {
+          catIngreso = (catEvtAsoc && catEvtAsoc !== 'Anticipos') ? catEvtAsoc : catRealAnticipo(subcatLabel);
+        }
+      }
       const payload = {
         token: SECRET_TOKEN, monto, categoria: catIngreso,
         subcategoria: subcatLabel, fecha: fechaCobro, nota: notaFinal,
@@ -1951,7 +1979,7 @@ function resetForm() {
   if (document.getElementById('ev-buscar-existente')) document.getElementById('ev-buscar-existente').value = '';
   if (document.getElementById('ev-seleccionado-info')) document.getElementById('ev-seleccionado-info').style.display = 'none';
   if (document.getElementById('ev-existente-resultados')) document.getElementById('ev-existente-resultados').style.display = 'none';
-  eventoLigadoId = null;
+  eventoLigadoId = null; window._eventoLigadoObj = null;
   modoEvento = 'nuevo'; esPersonalizado = false;
   setDefaultFecha();
   if (window._outsourcingData) delete window._outsourcingData;
@@ -3027,18 +3055,19 @@ async function guardarPago() {
   // - Monto que liquida saldo = categoría del evento
   var saldoPendiente = (eventoDetalleActual.total || 0) - (eventoDetalleActual.pagado || 0);
   var yaHayPagos = (eventoDetalleActual.pagado || 0) > 0;
+  var fechaPagoVal = document.getElementById('pago-fecha').value || HOY;
   var catPago;
-  if (!yaHayPagos && monto < saldoPendiente) {
-    catPago = 'Anticipos'; // Primer pago parcial = anticipo
+  if (!yaHayPagos && monto < saldoPendiente && esMesFuturoEvento(eventoDetalleActual.fecha_evento, fechaPagoVal)) {
+    catPago = 'Anticipos'; // Primer pago parcial + evento de mes futuro = anticipo
   } else {
-    catPago = eventoDetalleActual.categoria; // Abono o liquidación = categoría del evento
+    catPago = eventoDetalleActual.categoria; // Mismo mes, abono o liquidación = categoría del evento
   }
   var payload = {
     token: SECRET_TOKEN,
     monto: monto,
     categoria: catPago,
     subcategoria: eventoDetalleActual.paquete,
-    fecha: document.getElementById('pago-fecha').value || HOY,
+    fecha: fechaPagoVal,
     nota: nota || (catPago === 'Anticipos' ? 'Anticipo' : 'Pago'),
     quien: 'Vanessa',
     id_evento: eventoModalIdActual
@@ -3075,7 +3104,7 @@ function actualizarModoEvento(key) {
   }
   // Reset modo
   setModoEvento('nuevo');
-  eventoLigadoId = null;
+  eventoLigadoId = null; window._eventoLigadoObj = null;
   document.getElementById('ev-seleccionado-info').style.display = 'none';
   document.getElementById('ev-existente-resultados').style.display = 'none';
   document.getElementById('ev-buscar-existente').value = '';
@@ -3087,7 +3116,7 @@ function setModoEvento(modo) {
   document.getElementById('btn-modo-ligar').classList.toggle('active', modo === 'ligar');
   document.getElementById('panel-nuevo').style.display = modo === 'nuevo' ? 'block' : 'none';
   document.getElementById('panel-ligar').style.display = modo === 'ligar' ? 'block' : 'none';
-  eventoLigadoId = null;
+  eventoLigadoId = null; window._eventoLigadoObj = null;
   document.getElementById('ev-seleccionado-info').style.display = 'none';
 }
 
@@ -3114,6 +3143,7 @@ async function buscarEventoExistente() {
 
 function seleccionarEventoExistente(ev) {
   eventoLigadoId = ev.id_evento;
+  window._eventoLigadoObj = ev;
   document.getElementById('ev-existente-resultados').style.display = 'none';
   document.getElementById('ev-buscar-existente').value = ev.cliente;
   var info = document.getElementById('ev-seleccionado-info');
