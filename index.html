@@ -833,6 +833,13 @@
 </div>
 
 <!-- DESCUENTO MODAL -->
+<div class="modal-overlay" id="modal-desglose-cat" onclick="if(event.target===this)closeModalDesgloseCat()">
+  <div class="modal-sheet">
+    <div class="modal-title" id="desglose-cat-titulo">Detalle</div>
+    <div id="desglose-cat-lista" style="max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-descuento" onclick="if(event.target===this)closeModalDescuento()">
   <div class="modal-sheet">
     <div class="modal-title">Aplicar descuento</div>
@@ -1159,7 +1166,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v3.4';
+var APP_VERSION = 'v3.5';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -4153,6 +4160,55 @@ async function cargarFinanzas() {
   }
 }
 
+// ── Bottom sheet: composición de una categoría del desglose ──
+function abrirDesgloseCat(catKey, prefMes, titulo) {
+  if (!_finanzasData) return;
+  var regs = (_finanzasData.logRegistros || []).filter(function(r) {
+    if (!r.fecha || r.fecha.indexOf(prefMes) !== 0) return false;
+    var c = (r.categoria || '').toLowerCase();
+    if (catKey === 'postventa') return c === 'personalizado' || c === 'personalizado/extra';
+    return c === catKey;
+  });
+  regs.sort(function(a, b) { return a.fecha < b.fecha ? -1 : 1; });
+  var evMap = {};
+  (_finanzasData.eventos || []).forEach(function(e) { evMap[e.id_evento] = e; });
+  var total = regs.reduce(function(s, r) { return s + (r.monto || 0); }, 0);
+  document.getElementById('desglose-cat-titulo').textContent = titulo + ' — ' + fmtMXN(total);
+  var cont = document.getElementById('desglose-cat-lista');
+  cont.innerHTML = '';
+  if (!regs.length) {
+    cont.innerHTML = '<div style="font-size:13px;color:var(--text-muted);padding:12px 0">Sin pagos en esta categoría en este mes.</div>';
+  }
+  regs.forEach(function(r) {
+    var ev = r.id_evento ? (evMap[r.id_evento] || null) : null;
+    var principal, secundario;
+    if (ev) {
+      principal = ev.cliente || 'Cliente';
+      secundario = ev.paquete || ev.categoria || '';
+    } else if (r.id_evento) {
+      principal = r.nota || r.subcategoria || 'Pago de evento';
+      secundario = 'Evento eliminado';
+    } else {
+      principal = r.nota || r.subcategoria || 'Registro libre';
+      secundario = r.subcategoria && r.nota ? r.subcategoria : '';
+    }
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 2px;border-bottom:0.5px solid var(--beige-dark)' + (ev ? ';cursor:pointer' : '');
+    row.innerHTML =
+      '<div style="min-width:0">' +
+        '<div style="font-size:13px;font-weight:500;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + principal + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted)">' + fmtFecha(r.fecha) + (secundario ? ' · ' + secundario : '') + '</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:500;white-space:nowrap">' + fmtMXN(r.monto || 0) + '</div>';
+    if (ev) row.addEventListener('click', function() { closeModalDesgloseCat(); abrirDetalleEvento(ev.id_evento); });
+    cont.appendChild(row);
+  });
+  document.getElementById('modal-desglose-cat').classList.add('open');
+}
+function closeModalDesgloseCat() {
+  document.getElementById('modal-desglose-cat').classList.remove('open');
+}
+
 function renderFinanzas() {
   if (!_finanzasData) return;
   var eventos = _finanzasData.eventos;
@@ -4209,16 +4265,16 @@ function renderFinanzas() {
 
   // Desglose de ingresos mes actual — siempre visible
   var desgloseItems = [
-    { lbl: 'Eventos',   val: ingresoEventos },
-    { lbl: 'Sesiones',  val: ingresoSesiones },
-    { lbl: 'Anticipos', val: ingresoAnticipos },
-    { lbl: 'Postventa', val: ingresoPersonalizado }
+    { lbl: 'Eventos',   key: 'eventos',   val: ingresoEventos },
+    { lbl: 'Sesiones',  key: 'sesiones',  val: ingresoSesiones },
+    { lbl: 'Anticipos', key: 'anticipos', val: ingresoAnticipos },
+    { lbl: 'Postventa', key: 'postventa', val: ingresoPersonalizado }
   ];
   html += '<div class="fin-pleg" style="margin-bottom:10px"><div style="padding:14px 16px">';
   html += '<div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">Desglose de ingresos</div>';
   desgloseItems.forEach(function(d) {
     var pct = ingresoTotal > 0 ? Math.round((d.val / ingresoTotal) * 100) : 0;
-    html += '<div style="margin-bottom:8px">';
+    html += '<div style="margin-bottom:8px;cursor:pointer" onclick="abrirDesgloseCat(\'' + d.key + '\',\'' + prefMes + '\',\'' + d.lbl + ' · ' + NOMBRES_MESES[mesActual-1] + '\')">';
     html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">';
     html += '<span style="font-size:12px;color:var(--text-main)">' + d.lbl + '</span>';
     html += '<div style="display:flex;align-items:baseline;gap:8px">';
@@ -4511,14 +4567,15 @@ function renderFinanzas() {
       html += '<span style="font-size:9px">▼</span>Desglose de ingresos</button>';
       html += '<div id="' + tlId + '" style="display:none;margin-top:8px">';
       var tlItems = [
-        { lbl: 'Eventos',   val: mhi.dEventos },
-        { lbl: 'Sesiones',  val: mhi.dSesiones },
-        { lbl: 'Anticipos', val: mhi.dAnticipos },
-        { lbl: 'Postventa', val: mhi.dPostventa }
+        { lbl: 'Eventos',   key: 'eventos',   val: mhi.dEventos },
+        { lbl: 'Sesiones',  key: 'sesiones',  val: mhi.dSesiones },
+        { lbl: 'Anticipos', key: 'anticipos', val: mhi.dAnticipos },
+        { lbl: 'Postventa', key: 'postventa', val: mhi.dPostventa }
       ];
+      var mhiPref = mhi.anio + '-' + String(nombres.indexOf(mhi.nombre) + 1).padStart(2, '0');
       tlItems.forEach(function(d) {
         var pct = mhi.ingreso > 0 ? Math.round((d.val / mhi.ingreso) * 100) : 0;
-        html += '<div style="margin-bottom:7px">';
+        html += '<div style="margin-bottom:7px;cursor:pointer" onclick="event.stopPropagation();abrirDesgloseCat(\'' + d.key + '\',\'' + mhiPref + '\',\'' + d.lbl + ' · ' + mhi.nombre + ' ' + mhi.anio + '\')">';
         html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">';
         html += '<span style="font-size:11px;color:var(--text-main)">' + d.lbl + '</span>';
         html += '<div style="display:flex;align-items:baseline;gap:6px">';
