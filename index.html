@@ -549,7 +549,6 @@
       <!-- VISTA A: HIGH LEVEL - todos los meses -->
       <div id="cal-view-highlevel" style="height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
         <div id="modo-dia"></div>
-        <div id="sugerencias-card"></div>
         <div style="padding:10px 16px 0;background:var(--beige-light)">
           <input type="text" id="cal-search" class="search-box" placeholder="🔍 Buscar cliente..." oninput="filtrarCalendario()" style="margin-bottom:0;font-size:13px"/>
         </div>
@@ -599,6 +598,7 @@
           <button class="btn-buscar" onclick="buscarClientes()">Buscar</button>
         </div>
         <div id="clientes-list"><div class="clientes-empty">Escribe un nombre o presiona Buscar</div></div>
+        <div id="satisfaccion-panel"></div>
       </div>
     </div>
 
@@ -835,6 +835,15 @@
 </div>
 
 <!-- DESCUENTO MODAL -->
+<div class="modal-overlay" id="modal-postventa" onclick="if(event.target===this)closeModalPostventa()">
+  <div class="modal-sheet">
+    <div class="modal-title">✨ Postventa</div>
+    <button class="btn-modal-save" style="margin-bottom:10px;background:#25D366;border-color:#25D366" onclick="enviarPostventaWA()">💬 Enviar mensaje de postventa</button>
+    <button class="btn-modal-save" style="background:var(--brown-soft)" onclick="compartirTarjetaPrecios()">📋 Compartir tarjeta de precios</button>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:10px;text-align:center">Primero el mensaje, luego la tarjeta — llegan al mismo chat</div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-testimonio" onclick="if(event.target===this)closeModalTestimonio()">
   <div class="modal-sheet">
     <div class="modal-title">💛 Testimonio</div>
@@ -1186,6 +1195,16 @@ var MSG_TESTIMONIO = 'Hola {cliente} 💛 ¡Nos dio mucho gusto capturar sus mom
 var DIAS_POSTVENTA = 3;      // días después de Entregado
 var DIAS_ANIVERSARIO = 21;   // días antes del aniversario
 
+// ── ENCUESTA DE SATISFACCIÓN (Google Forms) ──
+var FORM_ENCUESTA_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeV3f53JVco-lnr9L-LPOdKYjtbU8yyWsW0nFFYgb8boW23dA/viewform?usp=pp_url&entry.2028539600=FOLIO';
+var MSG_ENCUESTA = 'Hola {cliente} 💛 ¡Gracias por permitirnos capturar sus momentos! Nos ayudarías muchísimo respondiendo esta pequeña encuesta (toma 2 minutos): {link} — Vanessa Velasco Studio 📸';
+function linkEncuesta(folio) {
+  return FORM_ENCUESTA_URL.replace('FOLIO', encodeURIComponent(folio || ''));
+}
+function msgEncuesta(ev) {
+  return plantilla(MSG_ENCUESTA, ev).replace('{link}', linkEncuesta(ev.folio));
+}
+
 function waLink(telefono, mensaje) {
   var tel = normalizarTel(telefono || '');
   if (tel.length === 10) tel = '52' + tel;
@@ -1293,7 +1312,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.0';
+var APP_VERSION = 'v4.1';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -1867,7 +1886,7 @@ async function forzarActualizacion() {
   await cargarAcumulados();
   if (currentTab === 1) await cargarCalendario();
   if (currentTab === 2) await cargarResumen();
-  if (currentTab === 3) { /* clientes se recarga al abrir */ }
+  if (currentTab === 3) { cargarSatisfaccion(); }
   if (currentTab === 4) await cargarFinanzas();
   if (btn) { btn.style.opacity = '.7'; btn.style.pointerEvents = 'auto'; }
   mostrarFeedback('Datos actualizados', 'success');
@@ -2488,7 +2507,6 @@ async function cargarCalendario() {
   renderCalendario(todosEventos);
   renderPendientes(todosEventos);
   renderModoDia(todosEventos);
-  renderSugerencias(todosEventos);
   calCargado = true;
 }
 
@@ -2553,6 +2571,16 @@ function descargarOCompartirCanvas(cv, nombre, titulo) {
 // ════════════════════════════════════════════════════════════
 // TESTIMONIOS — pedir, guardar y generar imagen 9:16
 // ════════════════════════════════════════════════════════════
+function openModalPostventa() { document.getElementById('modal-postventa').classList.add('open'); }
+function closeModalPostventa() { document.getElementById('modal-postventa').classList.remove('open'); }
+function enviarPostventaWA() {
+  if (!eventoDetalleActual) return;
+  window.open(waLink(eventoDetalleActual.telefono, plantilla(MSG_POSTVENTA, eventoDetalleActual)), '_blank');
+}
+function enviarEncuestaWA() {
+  if (!eventoDetalleActual || !eventoDetalleActual.folio) return;
+  window.open(waLink(eventoDetalleActual.telefono, msgEncuesta(eventoDetalleActual)), '_blank');
+}
 function openModalTestimonio() { document.getElementById('modal-testimonio').classList.add('open'); }
 function closeModalTestimonio() { document.getElementById('modal-testimonio').classList.remove('open'); }
 function pedirTestimonioWA() {
@@ -3094,6 +3122,84 @@ function continuarConOutsourcing() {
 // ============================================================
 // CLIENTES
 // ============================================================
+// ════════════════════════════════════════════════════════════
+// PANEL DE SATISFACCIÓN — encuestas de Google Forms
+// ════════════════════════════════════════════════════════════
+var _encuestasCargadas = false;
+async function cargarSatisfaccion() {
+  if (_encuestasCargadas || !SCRIPT_URL) return;
+  var cont = document.getElementById('satisfaccion-panel');
+  if (!cont) return;
+  try {
+    var res = await fetch(SCRIPT_URL + '?action=getEncuestas&token=' + encodeURIComponent(SECRET_TOKEN));
+    var data = await res.json();
+    var enc = (data && data.encuestas) ? data.encuestas : [];
+    _encuestasCargadas = true;
+    renderSatisfaccion(enc);
+  } catch(e) { cont.innerHTML = ''; }
+}
+
+function renderSatisfaccion(enc) {
+  var cont = document.getElementById('satisfaccion-panel');
+  if (!cont) return;
+  var h = '<div style="margin-top:18px;background:var(--white);border:0.5px solid var(--beige-dark);border-radius:12px;padding:14px 16px">';
+  h += '<div style="font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--brown-soft);margin-bottom:10px">📊 Satisfacción del cliente</div>';
+  if (!enc.length) {
+    h += '<div style="font-size:13px;color:var(--text-muted)">Sin encuestas todavía. Envíalas desde la ficha de un evento entregado con el botón 📊 Encuesta.</div></div>';
+    cont.innerHTML = h; return;
+  }
+  // Métricas globales
+  var recProm = enc.reduce(function(s,e){ return s + (e.recomendar||0); }, 0) / enc.length;
+  var agProm = enc.reduce(function(s,e){ return s + (e.agendar||0); }, 0) / enc.length;
+  var comProm = enc.reduce(function(s,e){ return s + (e.comodidad||0); }, 0) / enc.length;
+  var supero = enc.filter(function(e){ return (e.calidad||'').indexOf('Superó') === 0; }).length;
+  var tardo = enc.filter(function(e){ return (e.tiempo||'').indexOf('Más largo') === 0; }).length;
+  h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;text-align:center">';
+  h += '<div><div style="font-size:22px;font-weight:500">' + recProm.toFixed(1) + '<span style="font-size:12px;color:var(--text-muted)">/5</span></div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Recomendación</div></div>';
+  h += '<div><div style="font-size:22px;font-weight:500">' + comProm.toFixed(1) + '<span style="font-size:12px;color:var(--text-muted)">/5</span></div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Comodidad</div></div>';
+  h += '<div><div style="font-size:22px;font-weight:500">' + enc.length + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Respuestas</div></div>';
+  h += '</div>';
+  h += '<div style="font-size:12px;color:var(--text-main);line-height:1.6;margin-bottom:12px">';
+  h += 'Agendar y comunicación: <strong>' + agProm.toFixed(1) + '/5</strong>. ';
+  h += supero + ' de ' + enc.length + ' dicen que la calidad <strong>superó sus expectativas</strong>. ';
+  if (tardo > 0) h += '<span style="color:var(--error)">' + tardo + ' sintieron el tiempo de entrega largo.</span>';
+  h += '</div>';
+  // Tendencia mensual (promedio de recomendación por mes)
+  var porMes = {};
+  enc.forEach(function(e) {
+    if (!e.fecha) return;
+    var pm = e.fecha.substring(0, 7);
+    (porMes[pm] = porMes[pm] || []).push(e.recomendar || 0);
+  });
+  var meses = Object.keys(porMes).sort();
+  if (meses.length >= 2) {
+    var W = 300, Hh = 80, padL = 8, padR = 8;
+    var pts = meses.map(function(m, i) {
+      var vals = porMes[m];
+      var prom = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+      var x = padL + (i / (meses.length - 1)) * (W - padL - padR);
+      var y = Hh - 10 - ((prom - 1) / 4) * (Hh - 20);
+      return { x:x, y:y, prom:prom, m:m };
+    });
+    var poly = pts.map(function(p){ return p.x + ',' + p.y; }).join(' ');
+    h += '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Tendencia de recomendación</div>';
+    h += '<svg viewBox="0 0 ' + W + ' ' + Hh + '" style="width:100%;height:auto">';
+    h += '<polyline points="' + poly + '" fill="none" stroke="#8b7355" stroke-width="2"/>';
+    pts.forEach(function(p) {
+      h += '<circle cx="' + p.x + '" cy="' + p.y + '" r="3.5" fill="#8b7355"/>';
+      h += '<text x="' + p.x + '" y="' + (p.y - 8) + '" text-anchor="middle" font-size="9" fill="#4a3f33">' + p.prom.toFixed(1) + '</text>';
+      h += '<text x="' + p.x + '" y="' + (Hh - 1) + '" text-anchor="middle" font-size="8" fill="#8b7355">' + NOMBRES_MESES[parseInt(p.m.substring(5))-1].substring(0,3) + '</text>';
+    });
+    h += '</svg>';
+  }
+  // Nota de pocas respuestas del mes en curso
+  var prefHoy = HOY.substring(0, 7);
+  var esteMes = (porMes[prefHoy] || []).length;
+  if (esteMes < 3) h += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-style:italic">Aún pocas respuestas este mes (' + esteMes + ') para leer tendencia.</div>';
+  h += '</div>';
+  cont.innerHTML = h;
+}
+
 async function buscarClientes() {
   const q = document.getElementById('search-cliente').value.trim();
   const desde = document.getElementById('search-desde').value;
@@ -3291,7 +3397,9 @@ function renderDetalleEvento(ev) {
         '<button class="btn-accion" onclick="openModalEditar()">✏️ Editar</button>' +
         '<button class="btn-accion" onclick="generarContrato()">📄 Recibo</button>' +
         (ev.telefono ? '<button class="btn-accion" style="background:#25D366;color:white;border-color:#25D366" onclick="enviarWhatsApp()">💬 WhatsApp</button>' : '') +
+        (ev.estado === 'Entregado' && ev.telefono ? '<button class="btn-accion" onclick="openModalPostventa()">✨ Postventa</button>' : '') +
         (ev.estado === 'Entregado' && ev.telefono ? '<button class="btn-accion" onclick="openModalTestimonio()">💛 Testimonio</button>' : '') +
+        (ev.estado === 'Entregado' && ev.telefono && ev.folio ? '<button class="btn-accion" onclick="enviarEncuestaWA()">📊 Encuesta</button>' : '') +
         (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha</button>' : '') +
         (ev.categoria === 'Anticipos' ? '<button class="btn-accion" style="grid-column:1/-1;background:var(--brown-soft);color:var(--white);border-color:var(--brown-soft)" onclick="openModalConvertir()">🔄 Convertir a Evento / Sesión</button>' : '') +
         '<button class="btn-accion" style="grid-column:1/-1;color:var(--error);border-color:var(--error)" onclick="eliminarEvento()">🗑️ Eliminar evento</button>' +
@@ -3310,6 +3418,14 @@ async function cambiarEstado(idEvento, nuevoEstado) {
   var body = {token:SECRET_TOKEN,action:'actualizarEvento',id_evento:idEvento,estado:nuevoEstado};
   await offlineFetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}, null, {body:body});
   calCargado = false;
+  // Al marcar Entregado: ofrecer la encuesta de satisfacción (momento ideal)
+  if (nuevoEstado === 'Entregado' && eventoDetalleActual && eventoDetalleActual.telefono && eventoDetalleActual.folio) {
+    setTimeout(function() {
+      if (confirm('🎉 Evento entregado. ¿Enviar la encuesta de satisfacción a ' + eventoDetalleActual.cliente + ' por WhatsApp?')) {
+        enviarEncuestaWA();
+      }
+    }, 400);
+  }
 }
 
 function openModalExtra() { document.getElementById('modal-extra').classList.add('open'); }
