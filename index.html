@@ -1166,7 +1166,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v3.5';
+var APP_VERSION = 'v3.6';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -4197,7 +4197,7 @@ function abrirDesgloseCat(catKey, prefMes, titulo) {
     row.innerHTML =
       '<div style="min-width:0">' +
         '<div style="font-size:13px;font-weight:500;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + principal + '</div>' +
-        '<div style="font-size:11px;color:var(--text-muted)">' + fmtFecha(r.fecha) + (secundario ? ' · ' + secundario : '') + '</div>' +
+        '<div style="font-size:11px;color:var(--text-muted)">Pago ' + fmtFecha(r.fecha) + (ev && ev.fecha_evento ? ' · Evento ' + fmtFecha(ev.fecha_evento) : '') + (secundario ? ' · ' + secundario : '') + '</div>' +
       '</div>' +
       '<div style="font-size:13px;font-weight:500;white-space:nowrap">' + fmtMXN(r.monto || 0) + '</div>';
     if (ev) row.addEventListener('click', function() { closeModalDesgloseCat(); abrirDetalleEvento(ev.id_evento); });
