@@ -1166,7 +1166,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v3.6';
+var APP_VERSION = 'v3.7';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2887,7 +2887,15 @@ function renderDetalleEvento(ev) {
   if (ev.pagos && ev.pagos.length) {
     for (var j = 0; j < ev.pagos.length; j++) {
       var p = ev.pagos[j];
-      pagosHtml += '<div class="historial-item"><span style="color:var(--text-muted)">' + p.fecha + '</span><span>' + (p.nota||'Pago') + '</span><span style="font-weight:500">' + fmtMXN(p.monto) + '</span></div>';
+      pagosHtml += '<div class="historial-item"><span style="color:var(--text-muted)">' + p.fecha + '</span><span>' + (p.nota||'Pago') + '</span>' +
+        '<span style="display:flex;align-items:center;gap:8px"><span style="font-weight:500">' + fmtMXN(p.monto) + '</span>' +
+        '<button onclick="pedirEliminarPago(' + j + ')" style="background:none;border:1px solid var(--beige-dark);border-radius:50%;width:22px;height:22px;padding:0;line-height:1;font-size:11px;color:var(--error);cursor:pointer;flex-shrink:0">✕</button></span></div>' +
+        '<div id="pago-confirm-' + j + '" style="display:none;background:#fdecea;border-radius:8px;padding:8px 10px;margin:4px 0 8px;font-size:12px;color:var(--error)">' +
+          '¿Eliminar este pago de ' + fmtMXN(p.monto) + '? Se descontará del pagado del evento.' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">' +
+            '<button onclick="cancelarEliminarPago(' + j + ')" style="background:none;border:1px solid var(--beige-dark);border-radius:8px;padding:4px 12px;font-family:Jost,sans-serif;font-size:12px;cursor:pointer">Cancelar</button>' +
+            '<button onclick="confirmarEliminarPago(' + j + ')" style="background:var(--error);color:#fff;border:1px solid var(--error);border-radius:8px;padding:4px 12px;font-family:Jost,sans-serif;font-size:12px;cursor:pointer">Eliminar</button>' +
+          '</div></div>';
     }
   } else {
     pagosHtml = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin pagos registrados</div>';
@@ -2934,13 +2942,12 @@ function renderDetalleEvento(ev) {
       '<div class="seccion-titulo">Resumen financiero</div>' +
       '<div class="detalle-row"><span class="detalle-label">Precio paquete</span><span class="detalle-valor">' + fmtMXN(ev.precio_base) + '</span></div>' +
       descHtml +
-      '<div class="detalle-row"><span class="detalle-label">Total</span><span class="detalle-total">' + fmtMXN(ev.total) + '</span></div>' +
-      '<div class="detalle-row"><span class="detalle-label">Pagado</span><span class="detalle-valor">' + fmtMXN(ev.pagado) + '</span></div>' +
-      '<div class="detalle-row"><span class="detalle-label">Saldo</span><span class="detalle-valor detalle-saldo ' + (saldoCubierto?'cubierto':'') + '">' + (saldoCubierto ? '✓ Liquidado' : fmtMXN(saldo)) + '</span></div>' +
+      '<div class="seccion-titulo" style="margin-top:12px">Historial de pagos</div>' +
+      pagosHtml +
+      '<div class="detalle-row" style="border-top:1px solid var(--beige-dark);margin-top:8px;padding-top:10px"><span class="detalle-label">Total' + (ev.extras && ev.extras.length ? ' <span style="font-size:11px;color:var(--text-muted)">(incluye extras)</span>' : '') + '</span><span class="detalle-valor" style="font-weight:500">' + fmtMXN(ev.total) + '</span></div>' +
+      '<div class="detalle-row"><span class="detalle-label">Saldo</span><span class="detalle-valor detalle-saldo ' + ((saldoCubierto && ev.pagado <= ev.total)?'cubierto':'') + '">' + (ev.pagado > ev.total ? '− ' + fmtMXN(ev.pagado - ev.total) + ' sobrepagado' : (saldoCubierto ? '✓ Liquidado' : fmtMXN(saldo))) + '</span></div>' +
       (ev.direccion ? '<div class="detalle-row"><span class="detalle-label">Dirección</span><span class="detalle-valor"><a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.direccion) + '" target="_blank" style="color:var(--brown-soft);text-decoration:underline">📍 ' + ev.direccion + '</a></span></div>' : '') +
       extrasHtml +
-      '<div class="seccion-titulo">Historial de pagos</div>' +
-      pagosHtml +
       '<div class="seccion-titulo">Estado</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">' + estadoPills + '</div>' +
       '<div class="acciones-grid" style="margin-top:20px">' +
@@ -3052,10 +3059,38 @@ function closeModalPago() {
   document.getElementById('pago-fecha').value = '';
 }
 
+// ── Eliminar pago individual (✕ en historial) ──
+var _eliminandoPago = false;
+function pedirEliminarPago(i) {
+  var el = document.getElementById('pago-confirm-' + i);
+  if (el) el.style.display = 'block';
+}
+function cancelarEliminarPago(i) {
+  var el = document.getElementById('pago-confirm-' + i);
+  if (el) el.style.display = 'none';
+}
+async function confirmarEliminarPago(i) {
+  if (_eliminandoPago) return;
+  var p = (eventoDetalleActual && eventoDetalleActual.pagos) ? eventoDetalleActual.pagos[i] : null;
+  if (!p || !p.ts || !SCRIPT_URL) return;
+  _eliminandoPago = true;
+  try {
+    await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({token:SECRET_TOKEN, action:'deleteIngreso', ts:String(p.ts)})});
+    calCargado = false; resumenCargado = false;
+    cargarLog(); cargarAcumulados();
+    await abrirDetalleEvento(eventoModalIdActual);
+  } finally { _eliminandoPago = false; }
+}
+
+var _pagoEnviando = false; // candado anti-doble-envío
 async function guardarPago() {
+  if (_pagoEnviando) return;
   var monto = parseFloat(document.getElementById('pago-monto').value) || 0;
   var nota = document.getElementById('pago-nota').value.trim();
   if (!monto || !eventoModalIdActual || !eventoDetalleActual) return;
+  _pagoEnviando = true;
+  try {
   // Categoría automática:
   // - Sin pagos previos + monto parcial = Anticipos
   // - Con pagos previos (abono) = categoría del evento
@@ -3084,6 +3119,7 @@ async function guardarPago() {
   abrirDetalleEvento(eventoModalIdActual);
   cargarLog(); cargarAcumulados();
   resumenCargado = false; calCargado = false;
+  } finally { _pagoEnviando = false; }
 }
 
 // ============================================================
@@ -3140,7 +3176,7 @@ async function buscarEventoExistente() {
       data.clientes.slice(0, 5).forEach(function(ev) {
         var div = document.createElement('div');
         div.style.cssText = 'padding:10px 14px;border-bottom:1px solid var(--beige-light);font-size:13px;cursor:pointer';
-        div.innerHTML = '<strong>' + ev.cliente + '</strong> <span style="color:var(--text-muted)">· ' + ev.categoria + ' ' + (ev.fecha_evento ? fmtFecha(ev.fecha_evento) : 'Sin fecha') + '</span>';
+        div.innerHTML = '<strong>' + ev.cliente + '</strong> <span style="color:var(--text-muted)">· ' + ev.categoria + ' ' + (ev.fecha_evento ? fmtFecha(ev.fecha_evento) : 'Sin fecha') + (ev.hora ? ' ' + String(ev.hora).substring(0,5) : '') + (ev.folio ? ' · ' + ev.folio : '') + '</span>';
         div.addEventListener('click', function() { seleccionarEventoExistente(ev); });
         cont.appendChild(div);
       });
