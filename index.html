@@ -548,6 +548,8 @@
 
       <!-- VISTA A: HIGH LEVEL - todos los meses -->
       <div id="cal-view-highlevel" style="height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div id="modo-dia"></div>
+        <div id="sugerencias-card"></div>
         <div style="padding:10px 16px 0;background:var(--beige-light)">
           <input type="text" id="cal-search" class="search-box" placeholder="🔍 Buscar cliente..." oninput="filtrarCalendario()" style="margin-bottom:0;font-size:13px"/>
         </div>
@@ -833,6 +835,17 @@
 </div>
 
 <!-- DESCUENTO MODAL -->
+<div class="modal-overlay" id="modal-testimonio" onclick="if(event.target===this)closeModalTestimonio()">
+  <div class="modal-sheet">
+    <div class="modal-title">💛 Testimonio</div>
+    <button class="btn-modal-save" style="margin-bottom:12px" onclick="pedirTestimonioWA()">💬 Pedir por WhatsApp</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Pega aquí lo que respondió la clienta:</div>
+    <textarea id="testimonio-texto" class="modal-input" rows="4" placeholder="Nos encantaron las fotos..." style="resize:none;margin-bottom:10px"></textarea>
+    <button class="btn-modal-save" onclick="guardarTestimonio()">Guardar testimonio</button>
+    <button class="btn-modal-save" style="margin-top:8px;background:var(--brown-soft)" onclick="generarImagenTestimonio()">🖼️ Generar imagen para historia</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-desglose-cat" onclick="if(event.target===this)closeModalDesgloseCat()">
   <div class="modal-sheet">
     <div class="modal-title" id="desglose-cat-titulo">Detalle</div>
@@ -1160,13 +1173,127 @@ function a12h(hhmm) {
 }
 
 const NOMBRES_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ════════════════════════════════════════════════════════════
+// PLANTILLAS DE MENSAJES WHATSAPP — editar aquí los textos
+// {cliente} {saldo} {fecha} {paquete} {bebe} se reemplazan solos
+// ════════════════════════════════════════════════════════════
+var MSG_COBRO = 'Hola {cliente} 💛 Te recordamos que tu servicio de {paquete} del {fecha} tiene un saldo pendiente de {saldo}. Puedes cubrirlo por transferencia o el día del evento. ¡Gracias por tu confianza! — Vanessa Velasco Studio 📸';
+var MSG_POSTVENTA = 'Hola {cliente} 💛 Esperamos que estén disfrutando muchísimo sus fotos. Como las tomas nos encantaron, queremos ofrecerte algo especial: fotos impresas, álbum o canvas para tu pared. Te comparto nuestros precios. ¿Te gustaría alguno? — Vanessa Velasco Studio 📸';
+var MSG_ANIVERSARIO = 'Hola {cliente} 💛 ¡Ya casi se cumple un año de tu sesión de {paquete} con nosotras! Nos encantaría celebrar esta nueva etapa con una sesión de aniversario. Tenemos fechas disponibles este mes. ¿Te animas? — Vanessa Velasco Studio 📸';
+var MSG_VOY_EN_CAMINO = 'Hola {cliente} 💛 ¡Voy en camino a tu sesión! Nos vemos en un momento 📸';
+var MSG_TESTIMONIO = 'Hola {cliente} 💛 ¡Nos dio mucho gusto capturar sus momentos! ¿Nos regalarías unas palabras sobre tu experiencia? Nos ayuda muchísimo a seguir creciendo 🙏';
+var DIAS_POSTVENTA = 3;      // días después de Entregado
+var DIAS_ANIVERSARIO = 21;   // días antes del aniversario
+
+function waLink(telefono, mensaje) {
+  var tel = normalizarTel(telefono || '');
+  if (tel.length === 10) tel = '52' + tel;
+  return 'https://wa.me/' + tel + '?text=' + encodeURIComponent(mensaje);
+}
+function plantilla(tpl, ev) {
+  return tpl
+    .replace(/{cliente}/g, (ev.cliente || '').split(' ')[0])
+    .replace(/{saldo}/g, fmtMXN((ev.total || 0) - (ev.pagado || 0)))
+    .replace(/{fecha}/g, ev.fecha_evento ? fmtFecha(ev.fecha_evento) : '')
+    .replace(/{paquete}/g, ev.paquete || '');
+}
+
+// ── Descartes persistentes de sugerencias ──
+function sugDescartadas() {
+  try { return JSON.parse(localStorage.getItem('vvs_sug_dismiss') || '[]'); } catch(e) { return []; }
+}
+function descartarSugerencia(key) {
+  var d = sugDescartadas();
+  if (d.indexOf(key) === -1) d.push(key);
+  try { localStorage.setItem('vvs_sug_dismiss', JSON.stringify(d)); } catch(e) {}
+  renderSugerencias(todosEventos || []);
+}
+
+// ── Motor de sugerencias: cobros, postventa, aniversarios ──
+function calcularSugerencias(eventos) {
+  var sugs = [];
+  var descartadas = sugDescartadas();
+  var hoyD = new Date(HOY + 'T12:00:00');
+  eventos.forEach(function(ev) {
+    if (!ev.telefono || ev.estado === 'Cancelado') return;
+    var saldo = (ev.total || 0) - (ev.pagado || 0);
+    // #1 COBRO: saldo abierto y evento en los próximos 14 días o ya pasado
+    if (saldo > 0 && ev.fecha_evento) {
+      var evD = new Date(ev.fecha_evento + 'T12:00:00');
+      var diff = Math.round((evD - hoyD) / 86400000);
+      if (diff <= 14) {
+        var k = 'cobro_' + ev.id_evento;
+        if (descartadas.indexOf(k) === -1) sugs.push({ key:k, tipo:'cobro', icono:'💰', ev:ev,
+          texto: 'Cobrar ' + fmtMXN(saldo) + ' a ' + ev.cliente, sub: ev.paquete + ' · ' + fmtFecha(ev.fecha_evento),
+          msg: plantilla(MSG_COBRO, ev) });
+      }
+    }
+    // #2 POSTVENTA: entregado hace 3+ días, sin postventa registrada
+    if (ev.estado === 'Entregado' && ev.fecha_entregado) {
+      var entD = new Date(ev.fecha_entregado + 'T12:00:00');
+      var dEnt = Math.round((hoyD - entD) / 86400000);
+      if (dEnt >= DIAS_POSTVENTA && dEnt <= 45) {
+        var k2 = 'postventa_' + ev.id_evento;
+        if (descartadas.indexOf(k2) === -1) sugs.push({ key:k2, tipo:'postventa', icono:'✨', ev:ev,
+          texto: 'Ofrecer postventa a ' + ev.cliente, sub: 'Entregado hace ' + dEnt + ' día' + (dEnt===1?'':'s'),
+          msg: plantilla(MSG_POSTVENTA, ev), conPrecios: true });
+      }
+    }
+    // #3 ANIVERSARIO: sesión hace ~1 año (ventana de 21 días antes)
+    if (ev.fecha_evento && (ev.estado === 'Entregado' || ev.estado === 'Editado')) {
+      var aniv = new Date(ev.fecha_evento + 'T12:00:00');
+      aniv.setFullYear(aniv.getFullYear() + 1);
+      var dAniv = Math.round((aniv - hoyD) / 86400000);
+      if (dAniv >= 0 && dAniv <= DIAS_ANIVERSARIO) {
+        var k3 = 'aniv_' + ev.id_evento + '_' + aniv.getFullYear();
+        if (descartadas.indexOf(k3) === -1) sugs.push({ key:k3, tipo:'aniversario', icono:'🎂', ev:ev,
+          texto: 'Aniversario de ' + ev.cliente, sub: 'Su sesión cumple 1 año el ' + fmtFecha(ev.fecha_evento.replace(/^\d{4}/, aniv.getFullYear())),
+          msg: plantilla(MSG_ANIVERSARIO, ev) });
+      }
+    }
+  });
+  return sugs;
+}
+
+function renderSugerencias(eventos) {
+  var cont = document.getElementById('sugerencias-card');
+  if (!cont) return;
+  var sugs = calcularSugerencias(eventos || []);
+  if (!sugs.length) { cont.innerHTML = ''; return; }
+  var abierto = localStorage.getItem('vvs_sug_open_' + HOY) !== '0';
+  var h = '<div style="margin:10px 16px 0;background:var(--white);border:0.5px solid var(--beige-dark);border-radius:12px;overflow:hidden">';
+  h += '<div onclick="toggleSugerencias()" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer">';
+  h += '<span style="font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--brown-soft)">💡 Sugerencias (' + sugs.length + ')</span>';
+  h += '<span style="font-size:11px;color:var(--text-muted)">' + (abierto ? '▲' : '▼') + '</span></div>';
+  h += '<div id="sug-body" style="display:' + (abierto ? 'block' : 'none') + ';padding:0 14px 10px">';
+  sugs.slice(0, 6).forEach(function(s) {
+    h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:0.5px solid var(--beige-light)">';
+    h += '<span style="font-size:16px">' + s.icono + '</span>';
+    h += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s.texto + '</div>';
+    h += '<div style="font-size:11px;color:var(--text-muted)">' + s.sub + '</div></div>';
+    if (s.conPrecios) h += '<button onclick="compartirTarjetaPrecios()" title="Tarjeta de precios" style="background:none;border:1px solid var(--beige-dark);border-radius:8px;padding:5px 8px;font-size:13px;cursor:pointer">📋</button>';
+    h += '<a href="' + waLink(s.ev.telefono, s.msg) + '" target="_blank" style="background:#25D366;color:#fff;border-radius:8px;padding:5px 10px;font-size:13px;text-decoration:none">💬</a>';
+    h += '<button onclick="descartarSugerencia(\'' + s.key + '\')" style="background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;padding:4px">✕</button>';
+    h += '</div>';
+  });
+  h += '</div></div>';
+  cont.innerHTML = h;
+}
+function toggleSugerencias() {
+  var b = document.getElementById('sug-body');
+  var abierto = b.style.display !== 'none';
+  b.style.display = abierto ? 'none' : 'block';
+  try { localStorage.setItem('vvs_sug_open_' + HOY, abierto ? '0' : '1'); } catch(e) {}
+  renderSugerencias(todosEventos || []);
+}
 const HOY = new Date().toISOString().slice(0,10);
 const _hoy = new Date();
 const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v3.7';
+var APP_VERSION = 'v4.0';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2360,7 +2487,214 @@ async function cargarCalendario() {
   fechasEspeciales = (resFechas && resFechas.ok && resFechas.fechas) ? resFechas.fechas : [];
   renderCalendario(todosEventos);
   renderPendientes(todosEventos);
+  renderModoDia(todosEventos);
+  renderSugerencias(todosEventos);
   calCargado = true;
+}
+
+// ════════════════════════════════════════════════════════════
+// TARJETA DE PRECIOS DE EXTRAS (canvas → compartir/descargar)
+// ════════════════════════════════════════════════════════════
+var _preciosExtrasCache = null;
+async function compartirTarjetaPrecios() {
+  if (!_preciosExtrasCache) {
+    try {
+      var res = await fetch(SCRIPT_URL + '?action=getPreciosExtras&token=' + encodeURIComponent(SECRET_TOKEN));
+      var data = await res.json();
+      _preciosExtrasCache = (data && data.precios) ? data.precios : [];
+    } catch(e) { _preciosExtrasCache = []; }
+  }
+  if (!_preciosExtrasCache.length) { mostrarFeedback('No hay precios en la hoja Precios_Extras', 'error'); return; }
+  var cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
+  var ctx = cv.getContext('2d');
+  ctx.fillStyle = '#f5f0ea'; ctx.fillRect(0, 0, 1080, 1350);
+  ctx.fillStyle = '#1a1410'; ctx.fillRect(0, 0, 1080, 200);
+  ctx.fillStyle = '#f5f0ea'; ctx.textAlign = 'center';
+  ctx.font = '500 56px "Cormorant Garamond", serif';
+  ctx.fillText('Vanessa Velasco Studio', 540, 100);
+  ctx.fillStyle = '#b8a68f'; ctx.font = '400 26px Jost, sans-serif';
+  ctx.fillText('E X T R A S   ·   P R E C I O S', 540, 155);
+  var y = 280;
+  var grupos = {};
+  _preciosExtrasCache.forEach(function(p) { (grupos[p.categoria] = grupos[p.categoria] || []).push(p); });
+  Object.keys(grupos).forEach(function(g) {
+    ctx.fillStyle = '#8b7355'; ctx.font = '500 30px Jost, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(g.toUpperCase(), 90, y);
+    ctx.strokeStyle = '#d9cbb8'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(90, y + 14); ctx.lineTo(990, y + 14); ctx.stroke();
+    y += 58;
+    grupos[g].forEach(function(p) {
+      ctx.fillStyle = '#2c241c'; ctx.font = '400 32px Jost, sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(p.concepto, 90, y);
+      if (p.detalle) { ctx.fillStyle = '#8b7355'; ctx.font = '400 22px Jost, sans-serif'; ctx.fillText(p.detalle, 90, y + 30); }
+      ctx.fillStyle = '#1a1410'; ctx.font = '500 40px "Cormorant Garamond", serif'; ctx.textAlign = 'right';
+      ctx.fillText('$' + Number(p.precio).toLocaleString('en-US'), 990, y);
+      y += p.detalle ? 76 : 52;
+    });
+    y += 34;
+  });
+  ctx.fillStyle = '#b8a68f'; ctx.font = 'italic 400 26px "Cormorant Garamond", serif'; ctx.textAlign = 'center';
+  ctx.fillText('Gracias por confiar en nosotras 💛', 540, 1300);
+  descargarOCompartirCanvas(cv, 'precios-extras-vvs.png', 'Precios de extras — Vanessa Velasco Studio');
+}
+
+function descargarOCompartirCanvas(cv, nombre, titulo) {
+  cv.toBlob(function(blob) {
+    var file = new File([blob], nombre, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: titulo }).catch(function(){});
+    } else {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = nombre; a.click();
+    }
+  }, 'image/png');
+}
+
+// ════════════════════════════════════════════════════════════
+// TESTIMONIOS — pedir, guardar y generar imagen 9:16
+// ════════════════════════════════════════════════════════════
+function openModalTestimonio() { document.getElementById('modal-testimonio').classList.add('open'); }
+function closeModalTestimonio() { document.getElementById('modal-testimonio').classList.remove('open'); }
+function pedirTestimonioWA() {
+  if (!eventoDetalleActual) return;
+  window.open(waLink(eventoDetalleActual.telefono, plantilla(MSG_TESTIMONIO, eventoDetalleActual)), '_blank');
+}
+async function guardarTestimonio() {
+  var txt = document.getElementById('testimonio-texto').value.trim();
+  if (!txt || !eventoDetalleActual) { mostrarFeedback('Escribe o pega el testimonio', 'error'); return; }
+  await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({token:SECRET_TOKEN, action:'agregarTestimonio', cliente:eventoDetalleActual.cliente, texto:txt, id_evento:eventoDetalleActual.id_evento})});
+  mostrarFeedback('✓ Testimonio guardado', 'success');
+}
+function generarImagenTestimonio() {
+  var txt = document.getElementById('testimonio-texto').value.trim();
+  if (!txt || !eventoDetalleActual) { mostrarFeedback('Escribe o pega el testimonio', 'error'); return; }
+  var cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1920;
+  var ctx = cv.getContext('2d');
+  ctx.fillStyle = '#efe7dc'; ctx.fillRect(0, 0, 1080, 1920);
+  ctx.fillStyle = '#1a1410'; ctx.textAlign = 'center';
+  ctx.font = '400 160px "Cormorant Garamond", serif';
+  ctx.fillText('“', 540, 560);
+  // Texto envuelto
+  ctx.font = 'italic 400 46px "Cormorant Garamond", serif';
+  ctx.fillStyle = '#2c241c';
+  var palabras = txt.split(' '), linea = '', lineas = [];
+  palabras.forEach(function(w) {
+    var test = linea ? linea + ' ' + w : w;
+    if (ctx.measureText(test).width > 840) { lineas.push(linea); linea = w; } else linea = test;
+  });
+  if (linea) lineas.push(linea);
+  var yT = 960 - (lineas.length * 33);
+  lineas.slice(0, 12).forEach(function(l) { ctx.fillText(l, 540, yT); yT += 66; });
+  ctx.fillStyle = '#8b7355'; ctx.font = '400 34px Jost, sans-serif';
+  ctx.fillText('— ' + eventoDetalleActual.cliente, 540, yT + 60);
+  ctx.strokeStyle = '#b8a68f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(440, yT + 110); ctx.lineTo(640, yT + 110); ctx.stroke();
+  ctx.fillStyle = '#1a1410'; ctx.font = '500 40px "Cormorant Garamond", serif';
+  ctx.fillText('Vanessa Velasco Studio', 540, 1760);
+  ctx.fillStyle = '#8b7355'; ctx.font = '400 24px Jost, sans-serif';
+  ctx.fillText('F O T O G R A F Í A   F A M I L I A R', 540, 1810);
+  descargarOCompartirCanvas(cv, 'testimonio-vvs.png', 'Testimonio — Vanessa Velasco Studio');
+}
+
+// ════════════════════════════════════════════════════════════
+// MODO DÍA — vista editorial de las sesiones de hoy
+// ════════════════════════════════════════════════════════════
+var _mdExpandida = 0; // índice de la tarjeta expandida
+function renderModoDia(eventos) {
+  var cont = document.getElementById('modo-dia');
+  if (!cont) return;
+  var sesionesHoy = (eventos || []).filter(function(e) {
+    return e.fecha_evento === HOY && e.estado !== 'Cancelado';
+  }).sort(function(a, b) { return (a.hora || '99') < (b.hora || '99') ? -1 : 1; });
+  if (!sesionesHoy.length) { cont.innerHTML = ''; return; }
+
+  var totalCobrar = sesionesHoy.reduce(function(s, e) { return s + Math.max(0, (e.total||0) - (e.pagado||0)); }, 0);
+  var hechas = sesionesHoy.filter(function(e) { return e.estado !== 'Agendado'; }).length;
+  var colapsado = localStorage.getItem('vvs_md_' + HOY) === '0';
+  var d = new Date(HOY + 'T12:00:00');
+  var DIAS_SEM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  var mesCorto = NOMBRES_MESES[d.getMonth()].substring(0,3).toLowerCase();
+
+  var h = '<div style="margin:10px 16px 0;border-radius:16px;overflow:hidden;background:#efe7dc;border:0.5px solid var(--beige-dark)">';
+  // Cabecera oscura (tap = colapsar/expandir)
+  h += '<div onclick="toggleModoDia()" style="background:#1a1410;padding:' + (colapsado ? '12px 18px' : '18px 18px 14px') + ';cursor:pointer;user-select:none">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:' + (colapsado ? 'center' : 'flex-end') + '">';
+  if (colapsado) {
+    h += '<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:\'Cormorant Garamond\',serif;font-size:24px;color:#f5f0ea;line-height:1">' + d.getDate() + ' <span style="font-size:13px;color:#b8a68f">' + mesCorto + '</span></span>';
+    h += '<span style="font-size:12px;color:#b8a68f">' + sesionesHoy.length + ' sesion' + (sesionesHoy.length===1?'':'es') + ' · ' + fmtMXN(totalCobrar) + ' por cobrar</span></div>';
+    h += '<span style="color:#b8a68f;font-size:12px">▼</span>';
+  } else {
+    h += '<div><div style="font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#b8a68f">' + DIAS_SEM[d.getDay()] + '</div>';
+    h += '<div style="font-family:\'Cormorant Garamond\',serif;font-size:46px;line-height:1;color:#f5f0ea;margin-top:2px">' + d.getDate() + ' <span style="font-size:18px;color:#b8a68f">' + mesCorto + '</span></div></div>';
+    h += '<div style="text-align:right"><div style="font-family:\'Cormorant Garamond\',serif;font-size:23px;color:#e8ddd0;line-height:1.1">' + fmtMXN(totalCobrar) + '</div>';
+    h += '<div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#b8a68f">por cobrar hoy</div></div>';
+  }
+  h += '</div>';
+  if (!colapsado) {
+    h += '<div style="display:flex;gap:5px;margin-top:12px">';
+    sesionesHoy.forEach(function(e, i) {
+      h += '<div style="flex:1;height:4px;border-radius:999px;background:' + (i < hechas ? '#8b7355' : '#3a2f26') + '"></div>';
+    });
+    h += '</div>';
+    h += '<div style="font-size:11px;color:#b8a68f;margin-top:5px">' + (sesionesHoy.length - hechas) + ' de ' + sesionesHoy.length + ' por delante · toca para colapsar ▲</div>';
+  }
+  h += '</div>';
+
+  // Línea de tiempo
+  if (!colapsado) {
+    h += '<div style="padding:14px 14px 4px;position:relative">';
+    h += '<div style="position:absolute;left:33px;top:14px;bottom:8px;width:2px;background:#d9cbb8"></div>';
+    sesionesHoy.forEach(function(e, i) {
+      var hora = e.hora ? String(e.hora).substring(0,5) : '—';
+      var hNum = hora.split(':')[0], ampm = parseInt(hNum) >= 12 ? 'PM' : 'AM';
+      var hDisp = hora === '—' ? '—' : (parseInt(hNum) % 12 || 12);
+      var saldo = Math.max(0, (e.total||0) - (e.pagado||0));
+      var inicial = (e.cliente || '?').charAt(0).toUpperCase();
+      var expandida = i === _mdExpandida;
+      var hecha = e.estado !== 'Agendado';
+      h += '<div style="display:flex;gap:12px;margin-bottom:12px;position:relative">';
+      h += '<div style="width:38px;flex-shrink:0;text-align:center">';
+      h += '<div style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:#4a3f33;line-height:1">' + hDisp + '</div>';
+      h += '<div style="font-size:9px;color:#8b7355">' + (hora === '—' ? '' : ampm) + '</div>';
+      h += '<div style="width:10px;height:10px;border-radius:50%;margin:5px auto 0;' + (hecha ? 'background:#8b7355;border:2px solid #efe7dc' : 'background:#efe7dc;border:2px solid #8b7355') + '"></div></div>';
+      if (expandida) {
+        h += '<div style="flex:1;background:#faf6f0;border-radius:14px;padding:13px;border:0.5px solid #d9cbb8">';
+        h += '<div onclick="abrirDetalleEvento(\'' + e.id_evento + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer">';
+        h += '<div style="width:38px;height:38px;border-radius:50%;background:#8b7355;color:#f5f0ea;display:flex;align-items:center;justify-content:center;font-family:\'Cormorant Garamond\',serif;font-size:16px">' + inicial + '</div>';
+        h += '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:500;color:#2c241c">' + e.cliente + '</div>';
+        h += '<div style="font-size:12px;color:#8b7355">' + (e.paquete || e.categoria) + '</div></div></div>';
+        h += '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #d9cbb8">';
+        if (saldo > 0) h += '<div style="font-family:\'Cormorant Garamond\',serif;font-size:17px;color:#993c1d;margin-bottom:10px">' + fmtMXN(saldo) + ' <span style="font-size:10px;font-family:Jost,sans-serif;letter-spacing:.08em;text-transform:uppercase">en sitio</span></div>';
+        else h += '<div style="font-size:12px;color:#3b6d11;margin-bottom:10px">✓ Liquidado</div>';
+        h += '<div style="display:flex;gap:8px">';
+        var mapsQ = e.direccion || (e.cliente + ' ' + (e.paquete||''));
+        h += '<a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(e.direccion || '') + '" target="_blank" style="flex:1;height:50px;border-radius:13px;background:#1a1410;color:#f5f0ea;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;text-decoration:none' + (e.direccion ? '' : ';opacity:.4;pointer-events:none') + '">📍 Ir</a>';
+        h += '<a href="tel:' + normalizarTel(e.telefono||'') + '" style="flex:1;height:50px;border-radius:13px;border:1.5px solid #b8a68f;color:#4a3f33;display:flex;align-items:center;justify-content:center;font-size:19px;text-decoration:none">📞</a>';
+        h += '<a href="' + waLink(e.telefono, plantilla(MSG_VOY_EN_CAMINO, e)) + '" target="_blank" style="flex:1;height:50px;border-radius:13px;border:1.5px solid #b8a68f;color:#4a3f33;display:flex;align-items:center;justify-content:center;font-size:19px;text-decoration:none">💬</a>';
+        h += '</div></div></div>';
+      } else {
+        h += '<div onclick="expandirSesionMD(' + i + ')" style="flex:1;background:#faf6f0;border-radius:14px;padding:11px 13px;border:0.5px solid #d9cbb8;display:flex;align-items:center;gap:10px;cursor:pointer">';
+        h += '<div style="width:34px;height:34px;border-radius:50%;background:#c8a988;color:#3a2f26;display:flex;align-items:center;justify-content:center;font-family:\'Cormorant Garamond\',serif;font-size:15px">' + inicial + '</div>';
+        h += '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500;color:#2c241c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + e.cliente + '</div>';
+        h += '<div style="font-size:11px;color:#8b7355">' + (e.paquete || '') + (saldo > 0 ? ' · ' + fmtMXN(saldo) + ' en sitio' : ' · Liquidado') + '</div></div>';
+        h += '<span style="color:#b8a68f;font-size:13px">▾</span></div>';
+      }
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';
+  cont.innerHTML = h;
+}
+function toggleModoDia() {
+  var col = localStorage.getItem('vvs_md_' + HOY) === '0';
+  try { localStorage.setItem('vvs_md_' + HOY, col ? '1' : '0'); } catch(e) {}
+  renderModoDia(todosEventos || []);
+}
+function expandirSesionMD(i) {
+  _mdExpandida = i;
+  renderModoDia(todosEventos || []);
 }
 
 function renderPendientes(eventos) {
@@ -2957,6 +3291,7 @@ function renderDetalleEvento(ev) {
         '<button class="btn-accion" onclick="openModalEditar()">✏️ Editar</button>' +
         '<button class="btn-accion" onclick="generarContrato()">📄 Recibo</button>' +
         (ev.telefono ? '<button class="btn-accion" style="background:#25D366;color:white;border-color:#25D366" onclick="enviarWhatsApp()">💬 WhatsApp</button>' : '') +
+        (ev.estado === 'Entregado' && ev.telefono ? '<button class="btn-accion" onclick="openModalTestimonio()">💛 Testimonio</button>' : '') +
         (!ev.fecha_evento ? '<button class="btn-accion" style="grid-column:1/-1" onclick="openModalFecha()">📅 Asignar fecha</button>' : '') +
         (ev.categoria === 'Anticipos' ? '<button class="btn-accion" style="grid-column:1/-1;background:var(--brown-soft);color:var(--white);border-color:var(--brown-soft)" onclick="openModalConvertir()">🔄 Convertir a Evento / Sesión</button>' : '') +
         '<button class="btn-accion" style="grid-column:1/-1;color:var(--error);border-color:var(--error)" onclick="eliminarEvento()">🗑️ Eliminar evento</button>' +
@@ -4245,6 +4580,22 @@ function closeModalDesgloseCat() {
   document.getElementById('modal-desglose-cat').classList.remove('open');
 }
 
+function abrirDescuadres() {
+  var lista = window._descuadresList || [];
+  document.getElementById('desglose-cat-titulo').textContent = '⚠ Posibles descuadres (' + lista.length + ')';
+  var cont = document.getElementById('desglose-cat-lista');
+  cont.innerHTML = '';
+  lista.forEach(function(d) {
+    var row = document.createElement('div');
+    row.style.cssText = 'padding:11px 2px;border-bottom:0.5px solid var(--beige-dark);font-size:13px;line-height:1.5' + (d.id ? ';cursor:pointer' : '');
+    row.innerHTML = d.detalle + (d.id ? ' <span style="color:var(--brown-soft);font-size:11px">→ abrir evento</span>' : '');
+    if (d.id) row.addEventListener('click', function() { closeModalDesgloseCat(); abrirDetalleEvento(d.id); });
+    cont.appendChild(row);
+  });
+  cont.innerHTML += '<div style="font-size:11px;color:var(--text-muted);padding:10px 2px">Un descuadre puede deberse a un pago duplicado, un pago eliminado a mano en el Sheet, o un evento borrado. Revisa cada caso y corrige con la ✕ del historial de pagos.</div>';
+  document.getElementById('modal-desglose-cat').classList.add('open');
+}
+
 function renderFinanzas() {
   if (!_finanzasData) return;
   var eventos = _finanzasData.eventos;
@@ -4289,6 +4640,69 @@ function renderFinanzas() {
   });
 
   var html = '';
+
+  // ── #11 DESCUADRES: pagos huérfanos + eventos cuyo Log no cuadra con su 'pagado' ──
+  var _descuadres = [];
+  var _evPorId = {};
+  eventos.forEach(function(e) { _evPorId[e.id_evento] = e; });
+  var _sumaPorEvento = {};
+  logRegistros.forEach(function(r) {
+    if (!r.id_evento) return;
+    if (!_evPorId[r.id_evento]) {
+      _descuadres.push({ tipo:'huerfano', detalle: fmtMXN(r.monto||0) + ' del ' + fmtFecha(r.fecha) + ' apunta a un evento eliminado' });
+      return;
+    }
+    _sumaPorEvento[r.id_evento] = (_sumaPorEvento[r.id_evento] || 0) + (r.monto || 0);
+  });
+  eventos.forEach(function(e) {
+    var enLog = _sumaPorEvento[e.id_evento] || 0;
+    var dif = Math.round((enLog - (e.pagado || 0)) * 100) / 100;
+    if (Math.abs(dif) > 1) {
+      _descuadres.push({ tipo:'suma', id: e.id_evento, detalle: e.cliente + ': Log suma ' + fmtMXN(enLog) + ' pero el evento marca pagado ' + fmtMXN(e.pagado||0) });
+    }
+  });
+  window._descuadresList = _descuadres;
+  if (_descuadres.length) {
+    html += '<div onclick="abrirDescuadres()" style="background:#fdecea;border:0.5px solid #f0999533;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--error);cursor:pointer">⚠ ' + _descuadres.length + ' posible' + (_descuadres.length===1?'':'s') + ' descuadre' + (_descuadres.length===1?'':'s') + ' entre pagos y eventos — toca para revisar</div>';
+  }
+
+  // ── #9 CIERRE DE MES NARRADO: primeros 7 días del mes ──
+  if (hoy.getDate() <= 7) {
+    var cierreParts = [];
+    var mesCerradoIdx = mesActual === 1 ? 12 : mesActual - 1;
+    var anioCerrado = mesActual === 1 ? anioActual - 1 : anioActual;
+    var prefCerrado = anioCerrado + '-' + String(mesCerradoIdx).padStart(2,'0');
+    var prefPrevio = mesCerradoIdx === 1 ? (anioCerrado-1) + '-12' : anioCerrado + '-' + String(mesCerradoIdx-1).padStart(2,'0');
+    var ingCerrado = 0, ingPrevio = 0, catsCerrado = {};
+    logRegistros.forEach(function(r) {
+      if (!r.fecha) return;
+      if (r.fecha.indexOf(prefCerrado) === 0) {
+        ingCerrado += r.monto || 0;
+        var cc = (r.categoria || '').toLowerCase();
+        var lbl = (cc === 'personalizado' || cc === 'personalizado/extra') ? 'Postventa' : (r.categoria || 'Otros');
+        catsCerrado[lbl] = (catsCerrado[lbl] || 0) + (r.monto || 0);
+      }
+      if (r.fecha.indexOf(prefPrevio) === 0) ingPrevio += r.monto || 0;
+    });
+    if (ingCerrado > 0) {
+      cierreParts.push(NOMBRES_MESES[mesCerradoIdx-1] + ' cerró con <strong>' + fmtMXN(ingCerrado) + '</strong>');
+      if (ingPrevio > 0) {
+        var varPct = Math.round(((ingCerrado - ingPrevio) / ingPrevio) * 100);
+        cierreParts.push(varPct >= 0 ? 'un <strong>' + varPct + '% arriba</strong> de ' + NOMBRES_MESES[(mesCerradoIdx+10)%12] : 'un <strong>' + Math.abs(varPct) + '% abajo</strong> de ' + NOMBRES_MESES[(mesCerradoIdx+10)%12]);
+      }
+      var topCat = Object.keys(catsCerrado).sort(function(a,b){ return catsCerrado[b]-catsCerrado[a]; })[0];
+      if (topCat) cierreParts.push('Tu categoría más fuerte fue <strong>' + topCat + '</strong> (' + fmtMXN(catsCerrado[topCat]) + ')');
+      if (catsCerrado['Postventa']) cierreParts.push('La postventa generó ' + fmtMXN(catsCerrado['Postventa']));
+      var saldosAbiertos = eventos.filter(function(e) { return e.estado !== 'Cancelado' && ((e.total||0)-(e.pagado||0)) > 0 && e.fecha_evento && e.fecha_evento.indexOf(prefMes) === 0; });
+      if (saldosAbiertos.length) {
+        var sumAbiertos = saldosAbiertos.reduce(function(s,e){ return s + (e.total||0)-(e.pagado||0); }, 0);
+        cierreParts.push('Pendiente: ' + saldosAbiertos.length + ' evento' + (saldosAbiertos.length===1?'':'s') + ' de este mes con saldo abierto por ' + fmtMXN(sumAbiertos));
+      }
+      html += '<div style="background:var(--white);border:0.5px solid var(--beige-dark);border-radius:12px;padding:13px 15px;margin-bottom:12px">';
+      html += '<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--brown-soft);margin-bottom:6px">📖 Cierre de ' + NOMBRES_MESES[mesCerradoIdx-1] + '</div>';
+      html += '<div style="font-size:13px;line-height:1.6;color:var(--text-main)">' + cierreParts.join('. ') + '.</div></div>';
+    }
+  }
 
   // SECCIÓN 1: MES ACTUAL
   html += '<div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">' + NOMBRES_MESES[mesActual-1] + ' ' + anioActual + ' — mes actual</div>';
