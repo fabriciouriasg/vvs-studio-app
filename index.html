@@ -850,7 +850,7 @@
     <button class="btn-modal-save" style="margin-bottom:12px" onclick="pedirTestimonioWA()">💬 Pedir por WhatsApp</button>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Pega aquí lo que respondió la clienta:</div>
     <textarea id="testimonio-texto" class="modal-input" rows="4" placeholder="Nos encantaron las fotos..." style="resize:none;margin-bottom:10px"></textarea>
-    <button class="btn-modal-save" onclick="guardarTestimonio()">Guardar testimonio</button>
+    <button class="btn-modal-save" id="btn-guardar-testimonio" onclick="guardarTestimonio()">Guardar testimonio</button>
     <button class="btn-modal-save" style="margin-top:8px;background:var(--brown-soft)" onclick="generarImagenTestimonio()">🖼️ Generar imagen para historia</button>
   </div>
 </div>
@@ -1312,7 +1312,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.1';
+var APP_VERSION = 'v4.2';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2523,9 +2523,19 @@ async function compartirTarjetaPrecios() {
     } catch(e) { _preciosExtrasCache = []; }
   }
   if (!_preciosExtrasCache.length) { mostrarFeedback('No hay precios en la hoja Precios_Extras', 'error'); return; }
-  var cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
+  // Calcular altura necesaria para que quepan TODOS los conceptos
+  var grupos0 = {};
+  _preciosExtrasCache.forEach(function(p) { (grupos0[p.categoria] = grupos0[p.categoria] || []).push(p); });
+  var altura = 280;
+  Object.keys(grupos0).forEach(function(g) {
+    altura += 58;
+    grupos0[g].forEach(function(p) { altura += p.detalle ? 76 : 52; });
+    altura += 34;
+  });
+  altura += 120; // pie
+  var cv = document.createElement('canvas'); cv.width = 1080; cv.height = Math.max(1350, altura);
   var ctx = cv.getContext('2d');
-  ctx.fillStyle = '#f5f0ea'; ctx.fillRect(0, 0, 1080, 1350);
+  ctx.fillStyle = '#f5f0ea'; ctx.fillRect(0, 0, 1080, cv.height);
   ctx.fillStyle = '#1a1410'; ctx.fillRect(0, 0, 1080, 200);
   ctx.fillStyle = '#f5f0ea'; ctx.textAlign = 'center';
   ctx.font = '500 56px "Cormorant Garamond", serif';
@@ -2552,7 +2562,7 @@ async function compartirTarjetaPrecios() {
     y += 34;
   });
   ctx.fillStyle = '#b8a68f'; ctx.font = 'italic 400 26px "Cormorant Garamond", serif'; ctx.textAlign = 'center';
-  ctx.fillText('Gracias por confiar en nosotras 💛', 540, 1300);
+  ctx.fillText('Gracias por confiar en mi trabajo 💛', 540, cv.height - 50);
   descargarOCompartirCanvas(cv, 'precios-extras-vvs.png', 'Precios de extras — Vanessa Velasco Studio');
 }
 
@@ -2581,18 +2591,32 @@ function enviarEncuestaWA() {
   if (!eventoDetalleActual || !eventoDetalleActual.folio) return;
   window.open(waLink(eventoDetalleActual.telefono, msgEncuesta(eventoDetalleActual)), '_blank');
 }
-function openModalTestimonio() { document.getElementById('modal-testimonio').classList.add('open'); }
+function openModalTestimonio() {
+  var btn = document.getElementById('btn-guardar-testimonio');
+  if (btn) { btn.disabled = false; btn.textContent = 'Guardar testimonio'; btn.style.background = ''; }
+  document.getElementById('modal-testimonio').classList.add('open');
+}
 function closeModalTestimonio() { document.getElementById('modal-testimonio').classList.remove('open'); }
 function pedirTestimonioWA() {
   if (!eventoDetalleActual) return;
   window.open(waLink(eventoDetalleActual.telefono, plantilla(MSG_TESTIMONIO, eventoDetalleActual)), '_blank');
 }
+var _testimonioEnviando = false;
 async function guardarTestimonio() {
+  if (_testimonioEnviando) return;
   var txt = document.getElementById('testimonio-texto').value.trim();
   if (!txt || !eventoDetalleActual) { mostrarFeedback('Escribe o pega el testimonio', 'error'); return; }
-  await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({token:SECRET_TOKEN, action:'agregarTestimonio', cliente:eventoDetalleActual.cliente, texto:txt, id_evento:eventoDetalleActual.id_evento})});
-  mostrarFeedback('✓ Testimonio guardado', 'success');
+  _testimonioEnviando = true;
+  var btn = document.getElementById('btn-guardar-testimonio');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    await fetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({token:SECRET_TOKEN, action:'agregarTestimonio', cliente:eventoDetalleActual.cliente, texto:txt, id_evento:eventoDetalleActual.id_evento})});
+    if (btn) { btn.textContent = '✓ Testimonio guardado'; btn.style.background = '#3b6d11'; }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar testimonio'; }
+    mostrarFeedback('Sin conexión — intenta de nuevo', 'error');
+  } finally { _testimonioEnviando = false; }
 }
 function generarImagenTestimonio() {
   var txt = document.getElementById('testimonio-texto').value.trim();
@@ -3172,14 +3196,26 @@ function renderSatisfaccion(enc) {
     (porMes[pm] = porMes[pm] || []).push(e.recomendar || 0);
   });
   var meses = Object.keys(porMes).sort();
+  // Tendencia: por MES cuando hay 2+ meses; por RESPUESTA cuando hay 2+ encuestas en un solo mes
+  var serie = [];
   if (meses.length >= 2) {
-    var W = 300, Hh = 80, padL = 8, padR = 8;
-    var pts = meses.map(function(m, i) {
+    serie = meses.map(function(m) {
       var vals = porMes[m];
-      var prom = vals.reduce(function(a,b){return a+b;},0) / vals.length;
-      var x = padL + (i / (meses.length - 1)) * (W - padL - padR);
-      var y = Hh - 10 - ((prom - 1) / 4) * (Hh - 20);
-      return { x:x, y:y, prom:prom, m:m };
+      return { val: vals.reduce(function(a,b){return a+b;},0) / vals.length, lbl: NOMBRES_MESES[parseInt(m.substring(5))-1].substring(0,3) };
+    });
+  } else if (enc.length >= 2) {
+    serie = enc.slice().sort(function(a,b){ return (a.fecha||'') < (b.fecha||'') ? -1 : 1; }).map(function(e) {
+      var f = e.fecha || '';
+      return { val: e.recomendar || 0, lbl: f ? parseInt(f.substring(8)) + '/' + parseInt(f.substring(5,7)) : '' };
+    });
+  }
+  if (serie.length >= 2) {
+    var W = 300, Hh = 80, padL = 8, padR = 8;
+    if (serie.length > 12) serie = serie.slice(-12);
+    var pts = serie.map(function(s, i) {
+      var x = padL + (i / (serie.length - 1)) * (W - padL - padR);
+      var y = Hh - 10 - ((s.val - 1) / 4) * (Hh - 20);
+      return { x:x, y:y, val:s.val, lbl:s.lbl };
     });
     var poly = pts.map(function(p){ return p.x + ',' + p.y; }).join(' ');
     h += '<div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Tendencia de recomendación</div>';
@@ -3187,8 +3223,8 @@ function renderSatisfaccion(enc) {
     h += '<polyline points="' + poly + '" fill="none" stroke="#8b7355" stroke-width="2"/>';
     pts.forEach(function(p) {
       h += '<circle cx="' + p.x + '" cy="' + p.y + '" r="3.5" fill="#8b7355"/>';
-      h += '<text x="' + p.x + '" y="' + (p.y - 8) + '" text-anchor="middle" font-size="9" fill="#4a3f33">' + p.prom.toFixed(1) + '</text>';
-      h += '<text x="' + p.x + '" y="' + (Hh - 1) + '" text-anchor="middle" font-size="8" fill="#8b7355">' + NOMBRES_MESES[parseInt(p.m.substring(5))-1].substring(0,3) + '</text>';
+      h += '<text x="' + p.x + '" y="' + (p.y - 8) + '" text-anchor="middle" font-size="9" fill="#4a3f33">' + (p.val % 1 === 0 ? p.val : p.val.toFixed(1)) + '</text>';
+      h += '<text x="' + p.x + '" y="' + (Hh - 1) + '" text-anchor="middle" font-size="8" fill="#8b7355">' + p.lbl + '</text>';
     });
     h += '</svg>';
   }
@@ -4775,6 +4811,11 @@ function renderFinanzas() {
     var dif = Math.round((enLog - (e.pagado || 0)) * 100) / 100;
     if (Math.abs(dif) > 1) {
       _descuadres.push({ tipo:'suma', id: e.id_evento, detalle: e.cliente + ': Log suma ' + fmtMXN(enLog) + ' pero el evento marca pagado ' + fmtMXN(e.pagado||0) });
+    }
+    // Sobrepago: pagado excede el total (consistente en Log, pero requiere revisión)
+    var sobre = Math.round(((e.pagado || 0) - (e.total || 0)) * 100) / 100;
+    if (e.estado !== 'Cancelado' && sobre > 1) {
+      _descuadres.push({ tipo:'sobrepago', id: e.id_evento, detalle: e.cliente + ': pagado ' + fmtMXN(e.pagado||0) + ' excede el total ' + fmtMXN(e.total||0) + ' — sobrepago de ' + fmtMXN(sobre) });
     }
   });
   window._descuadresList = _descuadres;
