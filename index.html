@@ -847,8 +847,7 @@
 <div class="modal-overlay" id="modal-testimonio" onclick="if(event.target===this)closeModalTestimonio()">
   <div class="modal-sheet">
     <div class="modal-title">💛 Testimonio</div>
-    <button class="btn-modal-save" style="margin-bottom:12px" onclick="pedirTestimonioWA()">💬 Pedir por WhatsApp</button>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Pega aquí lo que respondió la clienta:</div>
+    <div id="testimonio-fuente" style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Texto del testimonio:</div>
     <textarea id="testimonio-texto" class="modal-input" rows="4" placeholder="Nos encantaron las fotos..." style="resize:none;margin-bottom:10px"></textarea>
     <button class="btn-modal-save" id="btn-guardar-testimonio" onclick="guardarTestimonio()">Guardar testimonio</button>
     <button class="btn-modal-save" style="margin-top:8px;background:var(--brown-soft)" onclick="generarImagenTestimonio()">🖼️ Generar imagen para historia</button>
@@ -1312,7 +1311,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.2';
+var APP_VERSION = 'v4.3';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2591,9 +2590,25 @@ function enviarEncuestaWA() {
   if (!eventoDetalleActual || !eventoDetalleActual.folio) return;
   window.open(waLink(eventoDetalleActual.telefono, msgEncuesta(eventoDetalleActual)), '_blank');
 }
-function openModalTestimonio() {
+async function openModalTestimonio() {
   var btn = document.getElementById('btn-guardar-testimonio');
   if (btn) { btn.disabled = false; btn.textContent = 'Guardar testimonio'; btn.style.background = ''; }
+  // Pre-cargar con la respuesta de la encuesta de este evento (por folio)
+  window._testimonioNombreActual = '';
+  var fuente = document.getElementById('testimonio-fuente');
+  var campo = document.getElementById('testimonio-texto');
+  if (eventoDetalleActual && eventoDetalleActual.folio) {
+    if (!window._encuestasData) { try { await cargarSatisfaccion(); } catch(e) {} }
+    var enc = (window._encuestasData || []).filter(function(e) { return e.folio === eventoDetalleActual.folio && e.testimonio; });
+    if (enc.length) {
+      campo.value = enc[enc.length - 1].testimonio;
+      window._testimonioNombreActual = enc[enc.length - 1].nombre || eventoDetalleActual.cliente;
+      fuente.textContent = '✓ Cargado de la encuesta de ' + (enc[enc.length - 1].nombre || eventoDetalleActual.cliente) + ' — puedes editarlo:';
+    } else {
+      campo.value = '';
+      fuente.textContent = 'Sin respuesta de encuesta todavía. Puedes pegar un comentario espontáneo:';
+    }
+  }
   document.getElementById('modal-testimonio').classList.add('open');
 }
 function closeModalTestimonio() { document.getElementById('modal-testimonio').classList.remove('open'); }
@@ -2620,7 +2635,11 @@ async function guardarTestimonio() {
 }
 function generarImagenTestimonio() {
   var txt = document.getElementById('testimonio-texto').value.trim();
-  if (!txt || !eventoDetalleActual) { mostrarFeedback('Escribe o pega el testimonio', 'error'); return; }
+  if (!txt) { mostrarFeedback('No hay texto de testimonio', 'error'); return; }
+  var nom = (window._testimonioNombreActual) || (eventoDetalleActual ? eventoDetalleActual.cliente : '');
+  generarImagenTestimonioCanvas(txt, nom);
+}
+function generarImagenTestimonioCanvas(txt, nombreFirma) {
   var cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1920;
   var ctx = cv.getContext('2d');
   ctx.fillStyle = '#efe7dc'; ctx.fillRect(0, 0, 1080, 1920);
@@ -2639,7 +2658,7 @@ function generarImagenTestimonio() {
   var yT = 960 - (lineas.length * 33);
   lineas.slice(0, 12).forEach(function(l) { ctx.fillText(l, 540, yT); yT += 66; });
   ctx.fillStyle = '#8b7355'; ctx.font = '400 34px Jost, sans-serif';
-  ctx.fillText('— ' + eventoDetalleActual.cliente, 540, yT + 60);
+  if (nombreFirma) ctx.fillText('— ' + nombreFirma, 540, yT + 60);
   ctx.strokeStyle = '#b8a68f'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(440, yT + 110); ctx.lineTo(640, yT + 110); ctx.stroke();
   ctx.fillStyle = '#1a1410'; ctx.font = '500 40px "Cormorant Garamond", serif';
@@ -3158,6 +3177,7 @@ async function cargarSatisfaccion() {
     var res = await fetch(SCRIPT_URL + '?action=getEncuestas&token=' + encodeURIComponent(SECRET_TOKEN));
     var data = await res.json();
     var enc = (data && data.encuestas) ? data.encuestas : [];
+    window._encuestasData = enc;
     _encuestasCargadas = true;
     renderSatisfaccion(enc);
   } catch(e) { cont.innerHTML = ''; }
@@ -3175,12 +3195,12 @@ function renderSatisfaccion(enc) {
   // Métricas globales
   var recProm = enc.reduce(function(s,e){ return s + (e.recomendar||0); }, 0) / enc.length;
   var agProm = enc.reduce(function(s,e){ return s + (e.agendar||0); }, 0) / enc.length;
-  var comProm = enc.reduce(function(s,e){ return s + (e.comodidad||0); }, 0) / enc.length;
+  var comProm = enc.reduce(function(s,e){ return s + (e.trato||0); }, 0) / enc.length;
   var supero = enc.filter(function(e){ return (e.calidad||'').indexOf('Superó') === 0; }).length;
   var tardo = enc.filter(function(e){ return (e.tiempo||'').indexOf('Más largo') === 0; }).length;
   h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;text-align:center">';
   h += '<div><div style="font-size:22px;font-weight:500">' + recProm.toFixed(1) + '<span style="font-size:12px;color:var(--text-muted)">/5</span></div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Recomendación</div></div>';
-  h += '<div><div style="font-size:22px;font-weight:500">' + comProm.toFixed(1) + '<span style="font-size:12px;color:var(--text-muted)">/5</span></div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Comodidad</div></div>';
+  h += '<div><div style="font-size:22px;font-weight:500">' + comProm.toFixed(1) + '<span style="font-size:12px;color:var(--text-muted)">/5</span></div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Trato</div></div>';
   h += '<div><div style="font-size:22px;font-weight:500">' + enc.length + '</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Respuestas</div></div>';
   h += '</div>';
   h += '<div style="font-size:12px;color:var(--text-main);line-height:1.6;margin-bottom:12px">';
@@ -3232,8 +3252,31 @@ function renderSatisfaccion(enc) {
   var prefHoy = HOY.substring(0, 7);
   var esteMes = (porMes[prefHoy] || []).length;
   if (esteMes < 3) h += '<div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-style:italic">Aún pocas respuestas este mes (' + esteMes + ') para leer tendencia.</div>';
+  // ── COSECHA: comentarios publicables (pregunta de testimonio respondida) ──
+  var publicables = [];
+  enc.forEach(function(e, idx) { if (e.testimonio) publicables.push({ e:e, idx:idx }); });
+  if (publicables.length) {
+    h += '<div style="border-top:0.5px solid var(--beige-dark);margin-top:12px;padding-top:10px">';
+    h += '<div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--brown-soft);margin-bottom:8px">💛 Comentarios publicables (' + publicables.length + ')</div>';
+    publicables.slice(-8).reverse().forEach(function(p) {
+      var quien = p.e.nombre || p.e.cliente || 'Clienta';
+      var snippet = p.e.testimonio.length > 90 ? p.e.testimonio.substring(0, 90) + '…' : p.e.testimonio;
+      h += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--beige-light)">';
+      h += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500">' + quien + (p.e.recomendar ? ' · ' + p.e.recomendar + '★' : '') + '</div>';
+      h += '<div style="font-size:12px;color:var(--text-muted);font-style:italic">“' + snippet + '”</div></div>';
+      h += '<button onclick="imagenDesdeEncuesta(' + p.idx + ')" style="background:var(--brown-soft);color:#fff;border:none;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer;flex-shrink:0">🖼️</button>';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
   h += '</div>';
   cont.innerHTML = h;
+}
+
+function imagenDesdeEncuesta(idx) {
+  var e = (window._encuestasData || [])[idx];
+  if (!e || !e.testimonio) return;
+  generarImagenTestimonioCanvas(e.testimonio, e.nombre || e.cliente || '');
 }
 
 async function buscarClientes() {
@@ -3454,14 +3497,8 @@ async function cambiarEstado(idEvento, nuevoEstado) {
   var body = {token:SECRET_TOKEN,action:'actualizarEvento',id_evento:idEvento,estado:nuevoEstado};
   await offlineFetch(SCRIPT_URL, {method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)}, null, {body:body});
   calCargado = false;
-  // Al marcar Entregado: ofrecer la encuesta de satisfacción (momento ideal)
-  if (nuevoEstado === 'Entregado' && eventoDetalleActual && eventoDetalleActual.telefono && eventoDetalleActual.folio) {
-    setTimeout(function() {
-      if (confirm('🎉 Evento entregado. ¿Enviar la encuesta de satisfacción a ' + eventoDetalleActual.cliente + ' por WhatsApp?')) {
-        enviarEncuestaWA();
-      }
-    }, 400);
-  }
+  // La encuesta ya no se ofrece automáticamente: Vanessa la envía con el
+  // botón 📊 de la ficha cuando el chat con la clienta esté en buen momento.
 }
 
 function openModalExtra() { document.getElementById('modal-extra').classList.add('open'); }
