@@ -1311,7 +1311,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.3';
+var APP_VERSION = 'v4.4';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -1532,6 +1532,7 @@ function switchTab(idx) {
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
   if (idx === 1 && !calCargado) cargarCalendario();
   if (idx === 2) { resumenCargado = false; cargarResumen(); }
+  if (idx === 3) cargarSatisfaccion();
   if (idx === 4) cargarFinanzas();
 }
 
@@ -1885,7 +1886,7 @@ async function forzarActualizacion() {
   await cargarAcumulados();
   if (currentTab === 1) await cargarCalendario();
   if (currentTab === 2) await cargarResumen();
-  if (currentTab === 3) { cargarSatisfaccion(); }
+  if (currentTab === 3) { _encuestasCargadas = false; cargarSatisfaccion(); }
   if (currentTab === 4) await cargarFinanzas();
   if (btn) { btn.style.opacity = '.7'; btn.style.pointerEvents = 'auto'; }
   mostrarFeedback('Datos actualizados', 'success');
