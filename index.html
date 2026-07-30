@@ -1305,13 +1305,19 @@ function toggleSugerencias() {
   try { localStorage.setItem('vvs_sug_open_' + HOY, abierto ? '0' : '1'); } catch(e) {}
   renderSugerencias(todosEventos || []);
 }
-const HOY = new Date().toISOString().slice(0,10);
+// Fecha local (NO UTC): toISOString() usa UTC y en México (UTC-6) adelanta
+// un día a partir de las 6:00 PM. fechaLocal() siempre da el día real.
+function fechaLocal(d) {
+  var f = d || new Date();
+  return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+}
+const HOY = fechaLocal();
 const _hoy = new Date();
 const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.4';
+var APP_VERSION = 'v4.5';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -4108,14 +4114,14 @@ async function verificarEventosVencidos() {
     var manana = new Date(); manana.setDate(manana.getDate() + 1); manana.setHours(0,0,0,0);
 
     // Check 24hr reminders - show banner for events tomorrow
-    var hoyStr = new Date().toISOString().slice(0,10);
+    var hoyStr = fechaLocal();
     var recordatoriosMostrados = JSON.parse(localStorage.getItem('vvs_r24_' + hoyStr) || '[]');
 
     eventos.forEach(function(ev) {
       if (ev.estado !== 'Agendado' || !ev.fecha_evento) return;
       var fechaEv = new Date(ev.fecha_evento + 'T00:00:00');
       var mananaDate = new Date(); mananaDate.setDate(mananaDate.getDate() + 1);
-      var mananaStr = mananaDate.toISOString().slice(0,10);
+      var mananaStr = fechaLocal(mananaDate);
       if (ev.fecha_evento !== mananaStr) return;
       if (recordatoriosMostrados.indexOf(ev.id_evento) !== -1) return;
 
