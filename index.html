@@ -377,6 +377,10 @@
     .fin-ev-btns{display:flex;gap:8px;margin-top:8px}
     .fin-btn-edit{flex:1;background:var(--beige-mid);color:var(--text-main);border:0.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:7px;font-size:12px;cursor:pointer;font-weight:500}
     .fin-btn-aprobar{flex:1;background:var(--black);color:var(--white);border:none;border-radius:var(--radius-sm);padding:7px;font-size:12px;cursor:pointer;font-weight:500}
+    .lock-dot{width:11px;height:11px;border-radius:50%;border:1px solid #5c4a38;transition:background .15s}
+    .lock-dot.filled{background:#e8ddd0;border-color:#e8ddd0}
+    .lock-btn{padding:13px 0;border:0.5px solid #3a2f26;border-radius:10px;background:none;color:#f5f0ea;font-size:18px;font-family:Jost,sans-serif;cursor:pointer}
+    .lock-btn:active{background:#3a2f26}
     .fin-pin-overlay{display:none;position:fixed;inset:0;background:rgba(26,20,16,.5);z-index:600;align-items:center;justify-content:center}
     .fin-pin-overlay.open{display:flex}
     .fin-pin-sheet{background:var(--white);border-radius:var(--radius);padding:28px 24px;width:280px;text-align:center}
@@ -730,6 +734,36 @@
   </div>
 </div>
 
+<!-- PANTALLA DE BLOQUEO -->
+<div id="lock-screen" style="display:none;position:fixed;inset:0;background:#1a1410;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;text-align:center">
+  <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0ea">Vanessa Velasco Studio</div>
+  <div style="font-size:10px;letter-spacing:.2em;color:#8b7355;margin-bottom:22px">F O T O G R A F Í A</div>
+  <div id="lock-bio-wrap" style="display:none;flex-direction:column;align-items:center;margin-bottom:6px">
+    <button onclick="intentarBiometrico()" style="width:64px;height:64px;border-radius:50%;border:1.5px solid #8b7355;background:none;color:#e8ddd0;font-size:28px;cursor:pointer">☺</button>
+    <div style="font-size:12px;color:#b8a68f;margin-top:8px">Toca para desbloquear con Face ID</div>
+  </div>
+  <div id="lock-bio-aviso" style="display:none;font-size:11px;color:#8b7355;margin-bottom:10px;max-width:260px;line-height:1.5"></div>
+  <div style="display:flex;justify-content:center;gap:12px;margin:16px 0">
+    <div class="lock-dot" id="lock-dot-0"></div><div class="lock-dot" id="lock-dot-1"></div>
+    <div class="lock-dot" id="lock-dot-2"></div><div class="lock-dot" id="lock-dot-3"></div>
+  </div>
+  <div id="lock-error" style="font-size:12px;color:#c17e6a;min-height:16px;margin-bottom:6px"></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;width:100%;max-width:250px">
+    <button class="lock-btn" onclick="lockDigit('1')">1</button>
+    <button class="lock-btn" onclick="lockDigit('2')">2</button>
+    <button class="lock-btn" onclick="lockDigit('3')">3</button>
+    <button class="lock-btn" onclick="lockDigit('4')">4</button>
+    <button class="lock-btn" onclick="lockDigit('5')">5</button>
+    <button class="lock-btn" onclick="lockDigit('6')">6</button>
+    <button class="lock-btn" onclick="lockDigit('7')">7</button>
+    <button class="lock-btn" onclick="lockDigit('8')">8</button>
+    <button class="lock-btn" onclick="lockDigit('9')">9</button>
+    <button class="lock-btn" id="lock-bio-btn" onclick="intentarBiometrico()" style="border-color:transparent;color:#8b7355;display:none">☺</button>
+    <button class="lock-btn" onclick="lockDigit('0')">0</button>
+    <button class="lock-btn" onclick="lockBorrar()" style="border-color:transparent;color:#8b7355">⌫</button>
+  </div>
+</div>
+
 <!-- PIN MODAL -->
 <div class="fin-pin-overlay" id="modal-pin" onclick="if(event.target===this)cerrarPIN()">
   <div class="fin-pin-sheet">
@@ -807,6 +841,15 @@
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closeSettings()">Cancelar</button>
       <button class="btn-modal-save" onclick="saveSettings()">Guardar</button>
+    </div>
+    <div style="border-top:1px solid var(--beige-dark);margin-top:16px;padding-top:14px">
+      <div class="modal-label">🔒 Seguridad</div>
+      <input type="password" inputmode="numeric" maxlength="4" id="pin-actual-input" class="modal-input" placeholder="PIN actual" style="margin-bottom:8px"/>
+      <input type="password" inputmode="numeric" maxlength="4" id="pin-nuevo-input" class="modal-input" placeholder="Nuevo PIN (4 dígitos)" style="margin-bottom:8px"/>
+      <button class="btn-modal-save" onclick="guardarNuevoPIN()">Cambiar PIN</button>
+      <button class="btn-modal-save" style="margin-top:8px;background:var(--brown-soft)" onclick="activarBiometrico()">☺ Activar Face ID</button>
+      <div id="bio-aviso-settings" style="display:none;font-size:11px;color:var(--error);margin-top:8px;line-height:1.5"></div>
+      <div id="pin-cambio-msg" style="display:none;font-size:12px;margin-top:8px"></div>
     </div>
   </div>
 </div>
@@ -1317,7 +1360,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.5';
+var APP_VERSION = 'v4.6';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -1446,6 +1489,7 @@ let mesDetailActual = null; // mes config actualmente abierto en detalle
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
+  mostrarBloqueo(); // pedir PIN / Face ID antes de nada
   setDefaultFecha();
   await cargarPrecios();
   renderCatGrid();
@@ -2229,9 +2273,30 @@ function renderResumen(resumen, resEventos) {
   var porEditar = (resEventos && resEventos.porEditar) || [];
   var porEntregar = (resEventos && resEventos.porEntregar) || [];
 
-  // SECCION 1: Ingresos por mes
-  if (resumen.length) {
-    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Ingresos por mes</div>';
+  // Helper de tarjeta de ingresos de un mes
+  function tarjetaIngresoMes(r) {
+    var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
+    var cats = Object.entries(r.categorias).filter(function(e) {
+      return e[1] > 0 || esCurrent;
+    }).map(function(e) {
+      var catLbl = (e[0] === 'Personalizado/Extra' || e[0] === 'Personalizado') ? 'Postventa' : e[0];
+      return '<div class="resumen-cat-row"><span>' + catLbl + '</span><span class="resumen-cat-monto ' + (e[1]===0?'cero':'') + '">' + fmtMXN(e[1]) + '</span></div>';
+    }).join('');
+    var mesAnio = r.anio || ANIO_ACTUAL;
+    return '<div class="resumen-mes-card"><div class="resumen-mes-header' + (esCurrent?' current':'') + '"><span class="resumen-mes-nombre">' + r.mes + ' ' + mesAnio + (esCurrent?' ●':'') + '</span><span class="resumen-mes-total">' + fmtMXN(r.total) + '</span></div><div class="resumen-cats">' + cats + '</div></div>';
+  }
+
+  // SECCIÓN 1: MES ACTUAL (arriba, sin encabezado)
+  var mesActualObj = resumen.filter(function(r) { return r.mes === MES_ACTUAL_NOMBRE; })[0];
+  if (mesActualObj) html += '<div style="margin-bottom:18px">' + tarjetaIngresoMes(mesActualObj) + '</div>';
+
+  // (Ingresos por mes y Eventos por mes se arman más abajo, colapsados)
+  var htmlIngresosMeses = '';
+  var mesesPrevios = resumen.filter(function(r) { return r.mes !== MES_ACTUAL_NOMBRE; });
+  if (mesesPrevios.length) {
+    mesesPrevios.forEach(function(r) { htmlIngresosMeses += tarjetaIngresoMes(r); });
+  }
+  if (false) {
     resumen.forEach(function(r) {
       var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
       // Solo mostrar categorías con monto > 0 (o todas si es mes actual)
@@ -2349,8 +2414,8 @@ function renderResumen(resumen, resEventos) {
 
   // SECCION 2: Sumario por mes
   var resEv = (resEventos && resEventos.resumen) || [];
+  var htmlEv = '';
   if (resEv.length) {
-    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;margin-top:20px">Eventos por mes</div>';
     var estadoDesc = {
       Agendado:  'Próximos a realizarse',
       Cubierto:  'Realizados, pendientes de edición',
@@ -2360,36 +2425,63 @@ function renderResumen(resumen, resEventos) {
     };
     resEv.forEach(function(r) {
       var esCurrent = r.mes === MES_ACTUAL_NOMBRE;
+      var anioMes = r.anio || ANIO_ACTUAL; // fix multi-año
       var mesId = 'resumen-mes-' + r.mes.replace(/\s/g,'');
-      html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">';
+      htmlEv += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;box-shadow:var(--shadow)">';
       // Header clickeable
-      html += '<div style="background:' + (esCurrent ? 'var(--brown-dark)' : 'var(--black)') + ';color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleEventosMes(\'' + r.mes + '\',\'' + mesId + '\')">';
-      html += '<span style="font-family:Cormorant Garamond,serif;font-size:16px">' + r.mes + ' ' + ANIO_ACTUAL + (esCurrent ? ' ●' : '') + '</span>';
-      html += '<div style="display:flex;align-items:center;gap:12px"><span style="font-family:Cormorant Garamond,serif;font-size:18px">' + r.total + ' evento' + (r.total !== 1 ? 's' : '') + '</span><span style="font-size:12px;opacity:.6" id="arrow-' + mesId + '">▼</span></div></div>';
+      htmlEv += '<div style="background:' + (esCurrent ? 'var(--brown-dark)' : 'var(--black)') + ';color:var(--white);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleEventosMes(\'' + r.mes + '\',\'' + mesId + '\')">';
+      htmlEv += '<span style="font-family:Cormorant Garamond,serif;font-size:16px">' + r.mes + ' ' + anioMes + (esCurrent ? ' ●' : '') + '</span>';
+      htmlEv += '<div style="display:flex;align-items:center;gap:12px"><span style="font-family:Cormorant Garamond,serif;font-size:18px">' + r.total + ' evento' + (r.total !== 1 ? 's' : '') + '</span><span style="font-size:12px;opacity:.6" id="arrow-' + mesId + '">▼</span></div></div>';
       // Desglose por estado
-      html += '<div style="padding:8px 16px">';
+      htmlEv += '<div style="padding:8px 16px">';
       var estadosOrden = ['Agendado','Cubierto','Editado','Entregado','Cancelado'];
       estadosOrden.forEach(function(est) {
         var count = r.estados[est] || 0;
         if (count === 0) return;
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--beige-light)">';
-        html += '<div><span style="font-size:13px;color:var(--text-main)">' + est + '</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + estadoDesc[est] + '</span></div>';
-        html += '<span style="font-size:15px;font-weight:500;color:var(--brown-dark)">' + count + '</span></div>';
+        htmlEv += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--beige-light)">';
+        htmlEv += '<div><span style="font-size:13px;color:var(--text-main)">' + est + '</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + estadoDesc[est] + '</span></div>';
+        htmlEv += '<span style="font-size:15px;font-weight:500;color:var(--brown-dark)">' + count + '</span></div>';
       });
-      html += '</div>';
+      htmlEv += '</div>';
       // Panel expandible con lista de eventos
-      html += '<div id="' + mesId + '" style="display:none;border-top:1px solid var(--beige-dark)">';
-      html += '<div style="padding:10px 16px 4px;font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Todos los eventos</div>';
-      html += '<div id="' + mesId + '-list" style="padding:0 16px 14px"><div style="color:var(--text-muted);font-size:13px;padding:12px 0;text-align:center">Cargando...</div></div>';
-      html += '</div>';
-      html += '</div>';
+      htmlEv += '<div id="' + mesId + '" style="display:none;border-top:1px solid var(--beige-dark)">';
+      htmlEv += '<div style="padding:10px 16px 4px;font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Todos los eventos</div>';
+      htmlEv += '<div id="' + mesId + '-list" style="padding:0 16px 14px"><div style="color:var(--text-muted);font-size:13px;padding:12px 0;text-align:center">Cargando...</div></div>';
+      htmlEv += '</div>';
+      htmlEv += '</div>';
     });
   }
 
 
 
+  // ── SECCIONES COLAPSABLES (inician cerradas) ──
+  var htmlEventosMeses = htmlEv || '';
+  if (htmlIngresosMeses) {
+    html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:10px;overflow:hidden">';
+    html += '<div onclick="toggleSeccionResumen(\'sec-ingresos\')" style="padding:13px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer">';
+    html += '<span style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)">Ingresos por mes</span>';
+    html += '<span id="arrow-sec-ingresos" style="font-size:11px;color:var(--text-muted)">▼</span></div>';
+    html += '<div id="sec-ingresos" style="display:none;padding:0 12px 12px">' + htmlIngresosMeses + '</div></div>';
+  }
+  if (htmlEventosMeses) {
+    html += '<div style="background:var(--white);border:1px solid var(--beige-dark);border-radius:var(--radius);margin-bottom:10px;overflow:hidden">';
+    html += '<div onclick="toggleSeccionResumen(\'sec-eventos\')" style="padding:13px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer">';
+    html += '<span style="font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)">Eventos por mes</span>';
+    html += '<span id="arrow-sec-eventos" style="font-size:11px;color:var(--text-muted)">▼</span></div>';
+    html += '<div id="sec-eventos" style="display:none;padding:0 12px 12px">' + htmlEventosMeses + '</div></div>';
+  }
+
   if (!html) html = '<div class="resumen-loading">Sin datos aun</div>';
   el.innerHTML = html;
+}
+
+function toggleSeccionResumen(id) {
+  var b = document.getElementById(id);
+  var a = document.getElementById('arrow-' + id);
+  if (!b) return;
+  var abierto = b.style.display !== 'none';
+  b.style.display = abierto ? 'none' : 'block';
+  if (a) a.textContent = abierto ? '▼' : '▲';
 }
 
 // ============================================================
@@ -4654,7 +4746,110 @@ function enviarWhatsApp() {
 var _finanzasData = null;
 var _pinCallback = null;
 var _pinActual = '';
-var FIN_PIN = localStorage.getItem('vvs_pin') || '1234';
+var FIN_PIN = localStorage.getItem('vvs_pin') || '8269';
+
+// ════════════════════════════════════════════════════════════
+// BLOQUEO DE ARRANQUE — PIN + Face ID opcional
+// ════════════════════════════════════════════════════════════
+var _lockActual = '';
+function mostrarBloqueo() {
+  _lockActual = '';
+  actualizarPuntosLock();
+  var ls = document.getElementById('lock-screen');
+  if (ls) ls.style.display = 'flex';
+  // Mostrar opción biométrica solo si ya fue activada en este dispositivo
+  var bioOn = localStorage.getItem('vvs_bio') === '1';
+  var wrap = document.getElementById('lock-bio-wrap');
+  var btn = document.getElementById('lock-bio-btn');
+  if (bioOn && window.PublicKeyCredential) {
+    if (wrap) wrap.style.display = 'flex';
+    if (btn) btn.style.display = 'block';
+    setTimeout(intentarBiometrico, 350);
+  }
+}
+function ocultarBloqueo() {
+  var ls = document.getElementById('lock-screen');
+  if (ls) ls.style.display = 'none';
+  _lockActual = '';
+}
+function lockDigit(d) {
+  if (_lockActual.length >= 4) return;
+  _lockActual += d;
+  actualizarPuntosLock();
+  if (_lockActual.length === 4) {
+    setTimeout(function() {
+      if (_lockActual === FIN_PIN) { ocultarBloqueo(); }
+      else {
+        var e = document.getElementById('lock-error');
+        if (e) e.textContent = 'PIN incorrecto';
+        _lockActual = ''; actualizarPuntosLock();
+      }
+    }, 150);
+  }
+}
+function lockBorrar() { _lockActual = _lockActual.slice(0, -1); actualizarPuntosLock(); }
+function actualizarPuntosLock() {
+  for (var i = 0; i < 4; i++) {
+    var d = document.getElementById('lock-dot-' + i);
+    if (d) d.classList.toggle('filled', i < _lockActual.length);
+  }
+}
+
+// ── Biometría (WebAuthn / Face ID) ──
+async function biometricoDisponible() {
+  if (!window.PublicKeyCredential || !navigator.credentials) return false;
+  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch(e) { return false; }
+}
+async function activarBiometrico() {
+  var aviso = document.getElementById('bio-aviso-settings');
+  var disp = await biometricoDisponible();
+  if (!disp) {
+    if (aviso) { aviso.style.display = 'block'; aviso.textContent = '⚠ Este dispositivo o navegador no permite Face ID en la app. Seguirás usando el PIN.'; }
+    return;
+  }
+  try {
+    var reto = new Uint8Array(32); crypto.getRandomValues(reto);
+    var uid = new Uint8Array(16); crypto.getRandomValues(uid);
+    await navigator.credentials.create({ publicKey: {
+      challenge: reto,
+      rp: { name: 'Vanessa Velasco Studio' },
+      user: { id: uid, name: 'vvs', displayName: 'VV Studio' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }});
+    localStorage.setItem('vvs_bio', '1');
+    if (aviso) { aviso.style.display = 'block'; aviso.style.color = 'var(--success, #3b6d11)'; aviso.textContent = '✓ Face ID activado. La próxima vez podrás entrar con tu cara (el PIN sigue disponible).'; }
+  } catch(e) {
+    if (aviso) { aviso.style.display = 'block'; aviso.textContent = '⚠ No se pudo activar Face ID: ' + (e.name === 'NotAllowedError' ? 'permiso denegado o cancelado.' : 'no disponible aquí.') + ' Seguirás usando el PIN.'; }
+  }
+}
+async function intentarBiometrico() {
+  if (localStorage.getItem('vvs_bio') !== '1') return;
+  try {
+    var reto = new Uint8Array(32); crypto.getRandomValues(reto);
+    await navigator.credentials.get({ publicKey: { challenge: reto, userVerification: 'required', timeout: 60000 }});
+    ocultarBloqueo();
+  } catch(e) {
+    var el = document.getElementById('lock-error');
+    if (el) el.textContent = 'Usa tu PIN para entrar';
+  }
+}
+
+// ── Cambiar PIN desde ajustes ──
+function guardarNuevoPIN() {
+  var actual = document.getElementById('pin-actual-input').value.trim();
+  var nuevo = document.getElementById('pin-nuevo-input').value.trim();
+  var msg = document.getElementById('pin-cambio-msg');
+  if (actual !== FIN_PIN) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'El PIN actual no es correcto'; return; }
+  if (!/^\d{4}$/.test(nuevo)) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'El nuevo PIN debe tener 4 dígitos'; return; }
+  localStorage.setItem('vvs_pin', nuevo);
+  FIN_PIN = nuevo;
+  document.getElementById('pin-actual-input').value = '';
+  document.getElementById('pin-nuevo-input').value = '';
+  msg.style.display = 'block'; msg.style.color = '#3b6d11'; msg.textContent = '✓ PIN actualizado';
+}
 
 // ── PIN ──────────────────────────────────────────────────────
 function abrirPIN(label, callback) {
