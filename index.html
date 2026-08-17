@@ -6113,5 +6113,1072 @@ function saveSettings() {
 </div>
  
 <!-- ===================== FIN DEL BLOQUE C ===================== -->
+<script>
+/* ============ Navidad 2026 · módulo de temporadas · v4.8 ============ */
+ 
+var NAV_ID = 'NAV2026';
+var NAV_D = { camp:null, paquetes:[], precios:[], dias:[], sesiones:[], gastos:[] };
+var NAV_FASES = ['Apartada','Realizada','Preselección','Edición','Entregada'];
+var NAV_COLORES = ['#8fa8c4','#a4907c','#c9a86c','#9a8bb5','#7fa07f'];
+var NAV_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto',
+  'Septiembre','Octubre','Noviembre','Diciembre'];
+var NAV_DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+var NAV_sesionActual = null, NAV_waTel = '', NAV_waTexto = '';
+var NAV_mesActual = null, NAV_diaActual = null, NAV_cargado = false;
+ 
+/* ---------------- utilidades ---------------- */
+ 
+function NAV_esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function NAV_n(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function NAV_money(v) { return (typeof fmtMXN === 'function') ? fmtMXN(NAV_n(v))
+  : '$' + NAV_n(v).toLocaleString('es-MX'); }
+function NAV_hoyISO() {
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+}
+function NAV_dias(a, b) {
+  if (!a || !b) return null;
+  var d1 = new Date(a + 'T12:00:00'), d2 = new Date(b + 'T12:00:00');
+  if (isNaN(d1) || isNaN(d2)) return null;
+  return Math.round((d2 - d1) / 86400000);
+}
+function NAV_fechaCorta(f) {
+  if (!f) return '';
+  var p = String(f).split('-');
+  if (p.length < 3) return f;
+  return parseInt(p[2],10) + ' ' + NAV_MESES[parseInt(p[1],10)-1].substring(0,3).toLowerCase();
+}
+function NAV_fechaLarga(f) {
+  if (!f) return '';
+  var d = new Date(f + 'T12:00:00');
+  return NAV_DIAS[d.getDay()] + ' ' + d.getDate() + ' de ' + NAV_MESES[d.getMonth()].toLowerCase();
+}
+function NAV_toast(msg) {
+  var t = document.getElementById('nav-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('nav-on');
+  setTimeout(function(){ t.classList.remove('nav-on'); }, 2200);
+}
+function NAV_error(cont, msg) {
+  var el = document.getElementById(cont);
+  if (el) el.innerHTML = '<div class="nav-err">' + NAV_esc(msg) + '</div>';
+}
+ 
+/* ---------------- comunicación ---------------- */
+ 
+function NAV_get(action, extra) {
+  if (!SCRIPT_URL) return Promise.reject(new Error('Falta configurar la URL del script'));
+  var url = SCRIPT_URL + '?token=' + encodeURIComponent(SECRET_TOKEN) +
+    '&action=' + encodeURIComponent(action) + '&id_campania=' + encodeURIComponent(NAV_ID);
+  if (extra) for (var k in extra) url += '&' + k + '=' + encodeURIComponent(extra[k]);
+  return fetch(url).then(function(r){ return r.json(); });
+}
+function NAV_post(action, datos) {
+  if (!SCRIPT_URL) return Promise.reject(new Error('Falta configurar la URL del script'));
+  var body = { token: SECRET_TOKEN, action: action, id_campania: NAV_ID };
+  if (datos) for (var k in datos) body[k] = datos[k];
+  return fetch(SCRIPT_URL, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body)
+  }).then(function(r){ return r.json(); });
+}
+ 
+/* ---------------- arranque ---------------- */
+ 
+function NAV_init() {
+  if (!SCRIPT_URL) return;
+  NAV_get('NAV_getCampania').then(function(r){
+    if (!r || !r.ok || !r.campania) return;
+    NAV_D.camp = r.campania;
+    NAV_D.paquetes = r.paquetes || [];
+    NAV_D.precios = r.precios || [];
+    NAV_D.dias = r.dias || [];
+    if (String(NAV_D.camp.estado) === 'Cerrada') return;
+    var btn = document.getElementById('nav-btn');
+    if (btn) btn.style.display = 'flex';
+    document.getElementById('nav-btn-nombre').textContent = NAV_D.camp.nombre;
+    document.getElementById('nav-ttl').textContent = NAV_D.camp.nombre;
+    document.getElementById('nav-estado').textContent = NAV_D.camp.estado;
+    NAV_get('NAV_getSesiones').then(function(s){
+      NAV_D.sesiones = (s && s.sesiones) ? s.sesiones : [];
+      NAV_subtitulo();
+    });
+  }).catch(function(){});
+}
+ 
+function NAV_subtitulo() {
+  var el = document.getElementById('nav-btn-sub');
+  if (!el || !NAV_D.camp) return;
+  var act = NAV_activas();
+  var meta = NAV_n(NAV_D.camp.meta_sesiones);
+  var falta = NAV_dias(NAV_hoyISO(), NAV_D.camp.fecha_entrega_max);
+  el.textContent = act.length + ' DE ' + meta +
+    (falta !== null && falta >= 0 ? ' · ' + falta + ' DÍAS PARA LA ENTREGA' : '');
+}
+function NAV_activas() {
+  return NAV_D.sesiones.filter(function(s){ return String(s.estado) !== 'Cancelada'; });
+}
+ 
+/* ---------------- navegación de capas ---------------- */
+ 
+function NAV_abrir() {
+  document.getElementById('nav-ov').classList.add('nav-open');
+  document.getElementById('nav-ov').scrollTop = 0;
+  if (!NAV_cargado) { NAV_recargar(); NAV_cargado = true; }
+  else NAV_tablero();
+}
+function NAV_cerrar() {
+  document.getElementById('nav-ov').classList.remove('nav-open');
+  NAV_subtitulo();
+}
+function NAV_cerrarCapa(id) {
+  document.getElementById(id).classList.remove('nav-open');
+}
+function NAV_abrirCapa(id) {
+  var c = document.getElementById(id);
+  c.classList.add('nav-open');
+  c.scrollTop = 0;
+}
+function NAV_tab(btn, id) {
+  var bs = btn.parentNode.querySelectorAll('button');
+  for (var i=0;i<bs.length;i++) bs[i].classList.remove('nav-on');
+  btn.classList.add('nav-on');
+  ['tab','cal','din','bus','adm'].forEach(function(k){
+    document.getElementById('nav-p-'+k).classList.toggle('nav-on', k===id);
+  });
+  document.getElementById('nav-ov').scrollTop = 0;
+  if (id==='cal') NAV_calendario();
+  if (id==='din') NAV_dinero();
+  if (id==='adm') NAV_ajustes();
+  if (id==='bus') NAV_buscar();
+}
+function NAV_sub(btn, pre, id, ids) {
+  var bs = btn.parentNode.querySelectorAll('button');
+  for (var i=0;i<bs.length;i++) bs[i].classList.remove('nav-on');
+  btn.classList.add('nav-on');
+  ids.forEach(function(k){
+    document.getElementById(pre+k).classList.toggle('nav-on', k===id);
+  });
+  document.getElementById('nav-ov').scrollTop = 0;
+  if (id==='mes') NAV_pintarMes();
+  if (id==='dia') NAV_pintarDia();
+  if (id==='dis') NAV_disponibilidad();
+  if (id==='gas') NAV_gastos();
+  if (id==='exp') NAV_expInfo();
+}
+ 
+function NAV_recargar() {
+  document.getElementById('nav-tb').innerHTML = '<div class="nav-load">Cargando…</div>';
+  return Promise.all([NAV_get('NAV_getCampania'), NAV_get('NAV_getSesiones')])
+    .then(function(res){
+      var c = res[0], s = res[1];
+      if (c && c.ok && c.campania) {
+        NAV_D.camp = c.campania; NAV_D.paquetes = c.paquetes||[];
+        NAV_D.precios = c.precios||[]; NAV_D.dias = c.dias||[];
+      }
+      NAV_D.sesiones = (s && s.sesiones) ? s.sesiones : [];
+      NAV_tablero(); NAV_subtitulo();
+    })
+    .catch(function(e){ NAV_error('nav-tb', 'No se pudo cargar: ' + e.message); });
+}
+ 
+/* ---------------- tablero ---------------- */
+ 
+function NAV_aging(s) {
+  if (!s.fecha_realizada) return null;
+  var hasta = s.fecha_entregada || NAV_hoyISO();
+  return NAV_dias(s.fecha_realizada, hasta);
+}
+function NAV_paqNombre(id) {
+  for (var i=0;i<NAV_D.paquetes.length;i++)
+    if (NAV_D.paquetes[i].id_paquete === id) return NAV_D.paquetes[i].nombre;
+  return id || '';
+}
+function NAV_saldo(s) {
+  return NAV_n(s.total) - NAV_n(s.anticipo) - NAV_n(s.saldo_pagado);
+}
+ 
+function NAV_tablero() {
+  if (!NAV_D.camp) return;
+  var falta = NAV_dias(NAV_hoyISO(), NAV_D.camp.fecha_entrega_max);
+  document.getElementById('nav-dl-n').textContent = (falta===null?'—':falta);
+  document.getElementById('nav-dl-t').textContent =
+    'Días para el ' + NAV_fechaLarga(NAV_D.camp.fecha_entrega_max);
+  var act = NAV_activas();
+  var pend = act.filter(function(s){ return NAV_n(s.fase) < 5; }).length;
+  document.getElementById('nav-dl-s').textContent =
+    pend ? 'Faltan ' + pend + ' sesiones por entregar' : 'Todo entregado';
+ 
+  var h = '';
+  for (var f=1; f<=5; f++) {
+    var L = act.filter(function(s){ return NAV_n(s.fase) === f; });
+    L.sort(function(a,b){ return (NAV_aging(b)||0) - (NAV_aging(a)||0); });
+    var atr = L.filter(function(s){ var a=NAV_aging(s); return a!==null && a>=15; }).length;
+    var sub;
+    if (f===1) {
+      var sinInfo = L.filter(function(s){ return !s.brochure_enviado; }).length;
+      var sinPago = L.filter(function(s){ return NAV_n(s.anticipo)===0; }).length;
+      sub = sinInfo + ' sin brochure' + (sinPago ? ' · ' + sinPago + ' por cobrar' : '');
+    } else if (f===5) {
+      var suma=0, n=0;
+      L.forEach(function(s){ var a=NAV_aging(s); if(a!==null){suma+=a;n++;} });
+      sub = n ? 'ciclo promedio ' + Math.round(suma/n) + ' días' : 'sin datos';
+    } else {
+      sub = atr ? atr + ' con más de 15 días' : 'todo al día';
+    }
+ 
+    var body = L.length ? '' : '<div class="nav-tempty">Nada aquí</div>';
+    L.forEach(function(s){
+      var ag = NAV_aging(s), cls = '';
+      if (ag !== null) cls = ag>=20 ? 'nav-crit' : (ag>=15 ? 'nav-old' : '');
+      var flags = '';
+      if (f===1 && !s.brochure_enviado) flags += '<span class="nav-fl nav-esp">sin brochure</span>';
+      if (f===1 && !s.confirmo_asistencia) flags += '<span class="nav-fl nav-tur">sin confirmar</span>';
+      if (f===3) flags += '<span class="nav-fl ' + (s.fecha_presel_recibida?'nav-tur':'nav-esp') +
+        '">' + (s.fecha_presel_recibida?'recibida':'esperando') + '</span>';
+      if (NAV_n(s.anticipo)===0) flags += '<span class="nav-fl nav-deb">pago pendiente</span>';
+      var derecha = (ag===null)
+        ? '<span class="nav-ag">'+NAV_fechaCorta(s.fecha_sesion)+'<small>agendada</small></span>'
+        : (f===5
+          ? '<span class="nav-ag">'+ag+'d<small>ciclo</small></span>'
+          : '<span class="nav-ag '+cls+'">'+ag+'d<small>desde toma</small></span>');
+      body += '<div class="nav-tc">' +
+        '<span class="nav-ck" onclick="NAV_avanzar(\''+s.folio+'\','+(f+1)+',event)"></span>' +
+        '<span class="nav-tx" onclick="NAV_verSesion(\''+s.folio+'\')">' +
+        '<span class="nav-nm">'+NAV_esc(s.cliente)+'</span>' +
+        '<span class="nav-mt">'+NAV_esc(NAV_paqNombre(s.id_paquete))+flags+'</span></span>' +
+        derecha + '</div>';
+    });
+    h += '<div class="nav-tcol"><div class="nav-th">' +
+      '<i style="background:'+NAV_COLORES[f-1]+'"></i>' +
+      '<span class="nav-n">'+NAV_FASES[f-1]+'</span>' +
+      '<span class="nav-c">'+L.length+'</span></div>' +
+      '<div class="nav-tsub'+(atr?' nav-al':'')+'">'+sub+'</div>' +
+      '<div class="nav-tbody">'+body+'</div></div>';
+  }
+  document.getElementById('nav-tb').innerHTML = h;
+ 
+  var porCobrar = 0;
+  act.forEach(function(s){ porCobrar += Math.max(0, NAV_saldo(s)); });
+  var sinBro = act.filter(function(s){ return NAV_n(s.fase)>=1 && !s.brochure_enviado; }).length;
+  var sinAnt = act.filter(function(s){ return NAV_n(s.anticipo)===0; }).length;
+  document.getElementById('nav-facts').innerHTML =
+    '<div class="nav-fact"><div class="nav-n">'+act.length+'</div><div class="nav-l">Agendadas</div></div>'+
+    '<div class="nav-fact"><div class="nav-n">'+NAV_money(porCobrar)+'</div><div class="nav-l">Por cobrar</div></div>'+
+    '<div class="nav-fact"><div class="nav-n">'+sinBro+'</div><div class="nav-l">Sin brochure</div></div>'+
+    '<div class="nav-fact"><div class="nav-n">'+sinAnt+'</div><div class="nav-l">Pago pendiente</div></div>';
+ 
+  var man = NAV_hoyISO();
+  var d = new Date(); d.setDate(d.getDate()+1);
+  man = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+  var deManana = act.filter(function(s){ return s.fecha_sesion === man; });
+  var sinConf = deManana.filter(function(s){ return !s.confirmo_asistencia; });
+  document.getElementById('nav-lotes').innerHTML =
+    '<div class="nav-row"><div><div class="nav-vl">Brochure e instrucciones</div>' +
+    '<div class="nav-lb">'+sinBro+' sin enviar</div></div></div>' +
+    '<div class="nav-sep"></div>' +
+    '<div class="nav-row"><div><div class="nav-vl">Confirmación de mañana</div>' +
+    '<div class="nav-lb">'+deManana.length+' sesiones · '+sinConf.length+' sin confirmar</div></div></div>' +
+    (deManana.length ? '<div class="nav-sep"></div>' + deManana.map(function(s){
+      return '<div class="nav-row" style="margin-top:9px"><div><div class="nav-vl">'+
+        NAV_esc(s.cliente)+'</div><div class="nav-lb">'+NAV_esc(s.hora)+
+        (s.confirmo_asistencia?' · confirmó':'')+'</div></div>'+
+        '<button class="nav-bk" style="color:#25623f" onclick="NAV_msg(\''+s.folio+
+        '\',\'confirma\')">WhatsApp</button></div>';
+    }).join('') : '');
+}
+ 
+function NAV_avanzar(folio, fase, ev) {
+  if (ev) ev.stopPropagation();
+  if (fase > 5) return;
+  var el = ev ? ev.target : null;
+  if (el) { el.classList.add('nav-ok'); el.textContent = '✓'; }
+  NAV_post('NAV_avanzarFase', { folio: folio, fase: fase }).then(function(r){
+    if (r && r.ok) {
+      NAV_toast('Avanzó a ' + NAV_FASES[fase-1]);
+      NAV_recargar();
+    } else {
+      NAV_toast('No se pudo: ' + ((r&&r.error)||'error'));
+      if (el) { el.classList.remove('nav-ok'); el.textContent = ''; }
+    }
+  }).catch(function(e){ NAV_toast('Sin conexión'); });
+}
+ 
+/* ---------------- calendario ---------------- */
+ 
+function NAV_calendario() {
+  if (!NAV_mesActual && NAV_D.camp) NAV_mesActual = NAV_D.camp.fecha_inicio.substring(0,7);
+  NAV_pintarMes();
+}
+function NAV_mes(delta) {
+  if (!NAV_mesActual) return;
+  var p = NAV_mesActual.split('-');
+  var d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1+delta, 1);
+  NAV_mesActual = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);
+  NAV_pintarMes();
+}
+function NAV_ocupacion(fecha) {
+  return NAV_activas().filter(function(s){ return s.fecha_sesion === fecha; });
+}
+function NAV_cupoDe(fecha) {
+  for (var i=0;i<NAV_D.dias.length;i++)
+    if (NAV_D.dias[i].fecha === fecha && NAV_n(NAV_D.dias[i].cupo))
+      return NAV_n(NAV_D.dias[i].cupo);
+  return NAV_n(NAV_D.camp.cupo_dia) || 7;
+}
+function NAV_esExcepcion(fecha) {
+  for (var i=0;i<NAV_D.dias.length;i++)
+    if (NAV_D.dias[i].fecha === fecha) return true;
+  return false;
+}
+function NAV_esDiaTrabajo(fecha) {
+  if (!NAV_D.camp) return false;
+  if (fecha < NAV_D.camp.fecha_inicio || fecha > NAV_D.camp.fecha_fin) return false;
+  if (NAV_esExcepcion(fecha)) return true;
+  var dw = new Date(fecha+'T12:00:00').getDay();
+  var lista = String(NAV_D.camp.dias_semana).split(',').map(function(x){return parseInt(x,10);});
+  return lista.indexOf(dw) >= 0;
+}
+function NAV_pintarMes() {
+  if (!NAV_D.camp || !NAV_mesActual) return;
+  var p = NAV_mesActual.split('-');
+  var anio = parseInt(p[0],10), mes = parseInt(p[1],10)-1;
+  document.getElementById('nav-mes-lbl').textContent = NAV_MESES[mes] + ' ' + anio;
+  var primero = new Date(anio, mes, 1).getDay();
+  var dim = new Date(anio, mes+1, 0).getDate();
+  var h = '';
+  for (var i=0;i<primero;i++) h += '<div class="nav-d"></div>';
+  var totalMes = 0, ocupMes = 0;
+  for (var d=1; d<=dim; d++) {
+    var f = anio+'-'+('0'+(mes+1)).slice(-2)+'-'+('0'+d).slice(-2);
+    if (!NAV_esDiaTrabajo(f)) { h += '<div class="nav-d">'+d+'</div>'; continue; }
+    var cupo = NAV_cupoDe(f), ocup = NAV_ocupacion(f).length;
+    totalMes += cupo; ocupMes += ocup;
+    var pct = cupo ? ocup/cupo : 0;
+    var cls = 'nav-d nav-hay' + (pct>=1?' nav-full':(pct>=0.7?' nav-mid':'')) +
+      (NAV_esExcepcion(f)?' nav-exc':'');
+    h += '<div class="'+cls+'" onclick="NAV_verDia(\''+f+'\')">' +
+      '<span>'+d+'</span><span class="nav-oc">'+ocup+'/'+cupo+'</span></div>';
+  }
+  document.getElementById('nav-mes-grid').innerHTML = h;
+ 
+  var ingreso = 0, cobrado = 0;
+  NAV_activas().forEach(function(s){
+    if (String(s.fecha_sesion).substring(0,7) !== NAV_mesActual) return;
+    ingreso += NAV_n(s.total);
+    cobrado += NAV_n(s.anticipo) + NAV_n(s.saldo_pagado);
+  });
+  document.getElementById('nav-mes-res').innerHTML =
+    '<div class="nav-row"><span class="nav-lb">Sesiones agendadas</span>' +
+    '<span class="nav-vl">'+ocupMes+' / '+totalMes+'</span></div>' +
+    '<div class="nav-bar"><i style="width:'+(totalMes?Math.round(ocupMes/totalMes*100):0)+'%"></i></div>' +
+    '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Ingreso del mes</span>' +
+    '<span class="nav-vl nav-m">'+NAV_money(ingreso)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Cobrado</span>' +
+    '<span class="nav-vl nav-m">'+NAV_money(cobrado)+'</span></div>';
+}
+function NAV_verDia(f) {
+  NAV_diaActual = f;
+  var segs = document.querySelectorAll('#nav-p-cal > .nav-seg button');
+  NAV_sub(segs[1], 'nav-c-', 'dia', ['mes','dia','dis']);
+}
+function NAV_horasDia() {
+  var c = NAV_D.camp, slot = NAV_n(c.slot_min)||60, out = [];
+  [[c.hora_am_inicio,c.hora_am_fin],[c.hora_pm_inicio,c.hora_pm_fin]].forEach(function(b){
+    if (!b[0] || !b[1]) return;
+    var m0 = NAV_min(b[0]), m1 = NAV_min(b[1]);
+    for (var m=m0; m+slot<=m1; m+=slot) out.push(NAV_hhmm(m));
+  });
+  return out;
+}
+function NAV_min(h){ var p=String(h).split(':'); return parseInt(p[0],10)*60+parseInt(p[1]||'0',10); }
+function NAV_hhmm(m){ return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+(m%60)).slice(-2); }
+ 
+function NAV_pintarDia() {
+  if (!NAV_diaActual) NAV_diaActual = NAV_D.camp.fecha_inicio;
+  document.getElementById('nav-dia-ttl').textContent = NAV_fechaLarga(NAV_diaActual);
+  var ses = NAV_ocupacion(NAV_diaActual), cupo = NAV_cupoDe(NAV_diaActual);
+  var pers = 0; ses.forEach(function(s){ pers += NAV_n(s.personas); });
+  document.getElementById('nav-dia-res').innerHTML =
+    '<div class="nav-row"><span class="nav-lb">Ocupación</span>' +
+    '<span class="nav-vl">'+ses.length+' de '+cupo+'</span></div>' +
+    '<div class="nav-bar"><i style="width:'+(cupo?Math.round(ses.length/cupo*100):0)+'%"></i></div>' +
+    '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Personas en el set</span>' +
+    '<span class="nav-vl">'+pers+'</span></div>';
+ 
+  var horas = NAV_horasDia(), h = '', slot = NAV_n(NAV_D.camp.slot_min)||60;
+  for (var i=0;i<horas.length;i++) {
+    var hora = horas[i];
+    var s = null;
+    for (var j=0;j<ses.length;j++) if (String(ses[j].hora)===hora) s = ses[j];
+    if (s) {
+      var pag = NAV_saldo(s) <= 0;
+      h += '<div class="nav-slot" onclick="NAV_verSesion(\''+s.folio+'\')" style="cursor:pointer">' +
+        '<div class="nav-t">'+hora+'</div><div class="nav-bd">' +
+        '<div class="nav-nm">'+NAV_esc(s.cliente)+'</div>' +
+        '<div class="nav-me">'+NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+NAV_n(s.personas)+' personas</div>' +
+        '</div><span class="nav-s '+(pag?'nav-pg':'nav-an')+'">'+(pag?'Pagado':'Anticipo')+'</span></div>';
+    } else {
+      h += '<div class="nav-slot nav-fr"><div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd"><span class="nav-pl">+</span> Libre</div></div>';
+    }
+    var sig = horas[i+1];
+    if (sig && NAV_min(sig) - NAV_min(hora) > slot) {
+      h += '<div class="nav-brk"><div class="nav-t">'+NAV_hhmm(NAV_min(hora)+slot)+'</div>' +
+        '<div>Comida · '+NAV_hhmm(NAV_min(hora)+slot)+' – '+sig+'</div></div>';
+    } else if (sig) {
+      h += '<div class="nav-gp">reacomodo</div>';
+    }
+  }
+  document.getElementById('nav-dia-slots').innerHTML = h;
+}
+ 
+/* ---------------- disponibilidad ---------------- */
+ 
+function NAV_disponibilidad() {
+  NAV_get('NAV_getDisponibilidad').then(function(r){
+    if (!r || !r.ok) { NAV_error('nav-dis-meses','No se pudo cargar la disponibilidad'); return; }
+    NAV_dispDatos = r.dias || [];
+    var meses = [];
+    NAV_dispDatos.forEach(function(d){
+      var m = d.fecha.substring(0,7);
+      if (meses.indexOf(m) < 0) meses.push(m);
+    });
+    NAV_dispMeses = meses;
+    document.getElementById('nav-dis-meses').innerHTML = meses.map(function(m,i){
+      var mm = parseInt(m.split('-')[1],10);
+      return '<button class="'+(i===0?'nav-on':'')+'" onclick="NAV_dispMes(this,\''+m+'\')">' +
+        NAV_MESES[mm-1] + '</button>';
+    }).join('');
+    if (meses.length) NAV_dibujarDisp(meses[0]);
+  }).catch(function(e){ NAV_error('nav-dis-meses', e.message); });
+}
+var NAV_dispDatos = [], NAV_dispMeses = [], NAV_dispActual = '';
+ 
+function NAV_dispMes(btn, m) {
+  var bs = btn.parentNode.querySelectorAll('button');
+  for (var i=0;i<bs.length;i++) bs[i].classList.remove('nav-on');
+  btn.classList.add('nav-on');
+  NAV_dibujarDisp(m);
+}
+function NAV_dibujarDisp(m) {
+  NAV_dispActual = m;
+  var libres = NAV_dispDatos.filter(function(d){ return d.fecha.substring(0,7) === m; });
+  var cv = document.getElementById('nav-cv'), x = cv.getContext('2d');
+  var CW=232, CH=126, PAD=22, top=196, cols=3;
+  var rows = Math.max(1, Math.ceil(libres.length/cols));
+  var W = PAD*2+CW*cols, H = top+rows*CH+70;
+  cv.width = W; cv.height = H;
+  x.fillStyle='#f5f0ea'; x.fillRect(0,0,W,H);
+  x.fillStyle='#e8ddd0'; x.fillRect(0,0,W,126);
+  x.textAlign='center'; x.fillStyle='#1a1410';
+  x.font='500 40px "Cormorant Garamond", Georgia, serif';
+  x.fillText('Vanessa Velasco Studio', W/2, 54);
+  x.font='500 15px Jost, sans-serif'; x.fillStyle='#8b7355';
+  x.fillText('SESIONES NAVIDEÑAS  ·  LUGARES DISPONIBLES', W/2, 82);
+  x.font='500 27px "Cormorant Garamond", Georgia, serif'; x.fillStyle='#1a1410';
+  var mm = parseInt(m.split('-')[1],10);
+  x.fillText(NAV_MESES[mm-1] + ' ' + m.split('-')[0], W/2, 113);
+  if (!libres.length) {
+    x.font='300 17px Jost, sans-serif'; x.fillStyle='#7a6a58';
+    x.fillText('Sin lugares disponibles este mes', W/2, top+40);
+  }
+  libres.forEach(function(r,i){
+    var cx = PAD+(i%cols)*CW, cy = top+Math.floor(i/cols)*CH;
+    x.fillStyle='#fdfaf7'; x.strokeStyle='#d4c4b0'; x.lineWidth=2;
+    x.beginPath();
+    if (x.roundRect) x.roundRect(cx+5, cy, CW-10, CH-12, 10);
+    else x.rect(cx+5, cy, CW-10, CH-12);
+    x.fill(); x.stroke();
+    var d = new Date(r.fecha+'T12:00:00');
+    x.textAlign='left'; x.fillStyle='#1a1410';
+    x.font='500 24px "Cormorant Garamond", Georgia, serif';
+    x.fillText(NAV_DIAS[d.getDay()]+' '+d.getDate(), cx+20, cy+32);
+    x.font='400 14px Jost, sans-serif'; x.fillStyle='#5c4a32';
+    x.fillText(r.horas.slice(0,4).join('   '), cx+20, cy+62);
+    if (r.horas.length>4) x.fillText(r.horas.slice(4).join('   '), cx+20, cy+85);
+    x.font='300 11px Jost, sans-serif'; x.fillStyle='#a89880';
+    x.fillText(r.horas.length + (r.horas.length===1?' lugar':' lugares'), cx+20, cy+CH-24);
+  });
+  x.textAlign='center'; x.fillStyle='#7a6a58'; x.font='300 14px Jost, sans-serif';
+  x.fillText('Se aparta con anticipo de ' + NAV_money(NAV_D.camp.anticipo_monto), W/2, H-42);
+  x.font='300 12px Jost, sans-serif'; x.fillStyle='#a89880';
+  var hoy = new Date();
+  x.fillText('Disponibilidad al ' + hoy.getDate() + ' ' +
+    NAV_MESES[hoy.getMonth()].toLowerCase() + ' ' + hoy.getFullYear() +
+    ' — sujeta a cambios', W/2, H-20);
+}
+function NAV_descargarImagen() {
+  var a = document.createElement('a');
+  a.download = 'disponibilidad-' + (NAV_dispActual||'navidad') + '.png';
+  a.href = document.getElementById('nav-cv').toDataURL('image/png');
+  a.click();
+}
+ 
+/* ---------------- dinero ---------------- */
+ 
+function NAV_dinero() {
+  var act = NAV_activas();
+  var cobrado=0, porCobrar=0, comis=0, extras=0, regalos=0, nRegalos=0;
+  act.forEach(function(s){
+    cobrado += NAV_n(s.anticipo) + NAV_n(s.saldo_pagado);
+    porCobrar += Math.max(0, NAV_saldo(s));
+    comis += NAV_n(s.comision_total);
+    (s.extras||[]).forEach(function(e){
+      if (String(e.es_regalo)==='SI') { regalos += NAV_n(e.valor_lista); nRegalos += NAV_n(e.cantidad); }
+      else extras += NAV_n(e.monto_cobrado);
+    });
+  });
+  var reels = act.filter(function(s){ return NAV_n(s.reel_lugar)>0; }).length;
+  var canc = NAV_D.sesiones.length - act.length;
+ 
+  NAV_get('NAV_getGastos').then(function(g){
+    NAV_D.gastos = (g && g.gastos) ? g.gastos : [];
+    var totalGastos = 0;
+    NAV_D.gastos.forEach(function(x){ totalGastos += NAV_n(x.monto); });
+    document.getElementById('nav-din-res').innerHTML =
+      '<div class="nav-card">' +
+      '<div class="nav-row"><span class="nav-lb">Cobrado</span><span class="nav-vl nav-m">'+NAV_money(cobrado)+'</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Por cobrar</span><span class="nav-vl nav-w">'+NAV_money(porCobrar)+'</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Gastos</span><span class="nav-vl nav-m">'+NAV_money(totalGastos)+'</span></div>' +
+      '<div class="nav-sep"></div>' +
+      '<div class="nav-row"><span class="nav-lb">Utilidad</span><span class="nav-vl" style="font-size:17px">'+NAV_money(cobrado-totalGastos)+'</span></div>' +
+      '<p class="nav-hint">Los ingresos entran a Log_Ingresos con la categoría «'+NAV_esc(NAV_D.camp.nombre)+'», así que Finanzas los muestra aparte.</p></div>' +
+ 
+      '<div class="nav-lab">Promociones</div><div class="nav-card">' +
+      '<div class="nav-row"><span class="nav-lb">Fotos regaladas</span><span class="nav-vl">'+nRegalos+' · '+NAV_money(regalos)+'</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Reels entregados</span><span class="nav-vl">'+reels+' de '+NAV_n(NAV_D.camp.promo_reel_limite)+'</span></div>' +
+      '<p class="nav-hint">Las cortesías cobran $0 pero conservan su valor de lista.</p></div>' +
+ 
+      '<div class="nav-lab">Extras y comisiones</div><div class="nav-card">' +
+      '<div class="nav-row"><span class="nav-lb">Extras vendidos</span><span class="nav-vl">'+NAV_money(extras)+'</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Comisiones de pasarela</span><span class="nav-vl nav-w">'+NAV_money(comis)+'</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Sesiones canceladas</span><span class="nav-vl">'+canc+'</span></div></div>';
+  }).catch(function(e){ NAV_error('nav-din-res', e.message); });
+}
+ 
+function NAV_gastos() {
+  var f = document.getElementById('nav-gas-fecha');
+  if (f && !f.value) f.value = NAV_hoyISO();
+  NAV_get('NAV_getGastos').then(function(g){
+    NAV_D.gastos = (g && g.gastos) ? g.gastos : [];
+    var total=0, porCat={};
+    NAV_D.gastos.forEach(function(x){
+      total += NAV_n(x.monto);
+      porCat[x.categoria] = (porCat[x.categoria]||0) + NAV_n(x.monto);
+    });
+    var cats = '';
+    for (var c in porCat) cats += '<div class="nav-row"><span class="nav-lb">'+NAV_esc(c)+
+      '</span><span class="nav-vl">'+NAV_money(porCat[c])+'</span></div>';
+    document.getElementById('nav-gastos-res').innerHTML =
+      '<div class="nav-card"><div class="nav-row"><span class="nav-lb">Total de gastos</span>' +
+      '<span class="nav-vl" style="font-size:17px">'+NAV_money(total)+'</span></div>' +
+      (cats ? '<div class="nav-sep"></div>'+cats : '') + '</div>';
+    document.getElementById('nav-gastos-lista').innerHTML = NAV_D.gastos.length
+      ? NAV_D.gastos.slice().reverse().map(function(x){
+          return '<div class="nav-gr"><div class="nav-tx"><div class="nav-vl">'+
+            NAV_esc(x.descripcion)+'</div><div class="nav-lb">'+NAV_esc(x.categoria)+
+            ' · '+NAV_esc(x.mes)+'</div></div><div class="nav-vl">'+NAV_money(x.monto)+'</div></div>';
+        }).join('')
+      : '<div class="nav-tempty">Sin gastos registrados</div>';
+  }).catch(function(e){ NAV_error('nav-gastos-res', e.message); });
+}
+ 
+function NAV_guardarGasto() {
+  var desc = document.getElementById('nav-gas-desc').value.trim();
+  var cat = document.getElementById('nav-gas-cat').value;
+  var monto = parseFloat(document.getElementById('nav-gas-monto').value) || 0;
+  var fecha = document.getElementById('nav-gas-fecha').value || NAV_hoyISO();
+  if (!desc || !monto) { NAV_toast('Falta descripción o monto'); return; }
+  var btn = document.getElementById('nav-gas-btn');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  NAV_post('NAV_guardarGasto', { descripcion:desc, categoria:cat, monto:monto, fecha:fecha })
+    .then(function(r){
+      btn.disabled = false; btn.textContent = 'Guardar gasto';
+      if (r && r.ok) {
+        document.getElementById('nav-gas-desc').value = '';
+        document.getElementById('nav-gas-monto').value = '';
+        NAV_toast('Gasto guardado');
+        NAV_gastos();
+      } else NAV_toast('No se pudo guardar');
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = 'Guardar gasto';
+      NAV_toast('Sin conexión');
+    });
+}
+ 
+function NAV_expInfo() {
+  document.getElementById('nav-exp-n').textContent = NAV_D.sesiones.length;
+}
+function NAV_exportar() {
+  var btn = document.getElementById('nav-exp-btn');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  NAV_post('NAV_export', {}).then(function(r){
+    btn.disabled = false; btn.textContent = 'Generar hoja de export';
+    if (r && r.ok) NAV_toast(r.filas + ' sesiones exportadas a "' + r.hoja + '"');
+    else NAV_toast('No se pudo exportar');
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = 'Generar hoja de export';
+    NAV_toast('Sin conexión');
+  });
+}
+ 
+/* ---------------- buscar ---------------- */
+ 
+function NAV_buscar() {
+  var q = (document.getElementById('nav-buscar').value||'').trim().toLowerCase();
+  var out = document.getElementById('nav-buscar-out');
+  if (!q) { out.innerHTML = '<div class="nav-tempty">Escribe un nombre o teléfono</div>'; return; }
+  var res = NAV_D.sesiones.filter(function(s){
+    return String(s.cliente).toLowerCase().indexOf(q) >= 0 ||
+           String(s.telefono).replace(/\D/g,'').indexOf(q.replace(/\D/g,'')) >= 0;
+  }).slice(0,15);
+  if (!res.length) { out.innerHTML = '<div class="nav-tempty">Sin resultados</div>'; return; }
+  out.innerHTML = '<div class="nav-card" style="padding:0;overflow:hidden">' +
+    res.map(function(s){
+      var mini = '';
+      for (var i=0;i<5;i++) mini += '<b style="'+(i < NAV_n(s.fase) ?
+        'background:'+NAV_COLORES[i] : '')+'"></b>';
+      var canc = String(s.estado)==='Cancelada';
+      return '<div class="nav-sr" onclick="NAV_verSesion(\''+s.folio+'\')">' +
+        '<div class="nav-nm" style="'+(canc?'text-decoration:line-through;opacity:.5':'')+'">' +
+        NAV_esc(s.cliente)+'</div>' +
+        '<div class="nav-mt">'+(canc?'Cancelada · ':'')+NAV_FASES[NAV_n(s.fase)-1]+' · '+
+        NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+NAV_fechaCorta(s.fecha_sesion)+'</div>' +
+        '<div class="nav-mini">'+mini+'</div></div>';
+    }).join('') + '</div>';
+}
+ 
+/* ---------------- ajustes ---------------- */
+ 
+function NAV_ajustes() {
+  var c = NAV_D.camp;
+  if (!c) return;
+  var precios = '';
+  NAV_D.paquetes.forEach(function(p){
+    var filas = '';
+    NAV_D.precios.filter(function(x){
+      return x.tipo==='paquete' && x.referencia===p.id_paquete;
+    }).sort(function(a,b){ return NAV_n(a.mes)-NAV_n(b.mes); }).forEach(function(x){
+      var normal = NAV_n(x.precio), pre = normal - NAV_n(c.preventa_descuento);
+      filas += '<div class="nav-row"><span class="nav-lb">'+NAV_MESES[NAV_n(x.mes)-1]+'</span>' +
+        '<span class="nav-vl"><span class="nav-g">'+NAV_money(pre)+'</span> · '+NAV_money(normal)+'</span></div>';
+    });
+    precios += '<div class="nav-lab">'+NAV_esc(p.nombre)+'</div><div class="nav-card">' +
+      '<div class="nav-row"><span class="nav-lb">Duración</span><span class="nav-vl">'+NAV_n(p.duracion_min)+' min</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Fotos</span><span class="nav-vl">'+NAV_n(p.fotos)+'</span></div>' +
+      '<div class="nav-row"><span class="nav-lb">Personas</span><span class="nav-vl">'+NAV_esc(p.personas_desc)+'</span></div>' +
+      (String(p.sorteo_album)==='SI' ? '<div class="nav-row"><span class="nav-lb">Sorteo de álbum</span><span class="nav-vl nav-g">Incluido</span></div>' : '') +
+      '<div class="nav-sep"></div>' + filas +
+      '<p class="nav-hint">Preventa en verde · precio normal a la derecha.</p></div>';
+  });
+ 
+  var extras = '';
+  NAV_D.precios.filter(function(x){ return x.tipo==='extra'; }).forEach(function(x){
+    extras += '<div class="nav-row"><span class="nav-lb">'+NAV_esc(x.referencia)+
+      '</span><span class="nav-vl">'+NAV_money(x.precio)+'</span></div>';
+  });
+ 
+  document.getElementById('nav-ajustes').innerHTML =
+    '<div class="nav-lab">Temporada</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Nombre</span><span class="nav-vl">'+NAV_esc(c.nombre)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Estado</span><span class="nav-vl">'+NAV_esc(c.estado)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Sesiones</span><span class="nav-vl">'+NAV_fechaCorta(c.fecha_inicio)+' al '+NAV_fechaCorta(c.fecha_fin)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Entrega máxima</span><span class="nav-vl">'+NAV_fechaCorta(c.fecha_entrega_max)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Meta</span><span class="nav-vl">'+NAV_n(c.meta_sesiones)+' sesiones</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Lugares por día</span><span class="nav-vl">'+NAV_n(c.cupo_dia)+'</span></div>' +
+    '</div>' +
+ 
+    '<div class="nav-lab">Horario</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Mañana</span><span class="nav-vl">'+NAV_esc(c.hora_am_inicio)+' – '+NAV_esc(c.hora_am_fin)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Tarde</span><span class="nav-vl">'+NAV_esc(c.hora_pm_inicio)+' – '+NAV_esc(c.hora_pm_fin)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Duración del lugar</span><span class="nav-vl">'+NAV_n(c.slot_min)+' min</span></div></div>' +
+ 
+    '<div class="nav-lab">Preventa</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Ventana</span><span class="nav-vl">'+NAV_esc(c.preventa_inicio)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Descuento</span><span class="nav-vl">'+NAV_money(c.preventa_descuento)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Anticipo</span><span class="nav-vl">'+NAV_money(c.anticipo_monto)+'</span></div></div>' +
+ 
+    precios +
+ 
+    '<div class="nav-lab">Extras</div><div class="nav-card">' + extras +
+    '<div class="nav-row"><span class="nav-lb">Persona adicional</span><span class="nav-vl">'+NAV_money(c.costo_persona_extra)+'</span></div></div>' +
+ 
+    '<div class="nav-lab">Cobros con tarjeta</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Comisión</span><span class="nav-vl">'+NAV_n(c.mp_pct)+'% + '+NAV_money(c.mp_fija)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">IVA sobre comisión</span><span class="nav-vl">'+NAV_n(c.mp_iva)+'%</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Cobro de $1,000</span><span class="nav-vl nav-w">'+NAV_money(NAV_comision(1000))+'</span></div>' +
+    '<p class="nav-hint">La comisión se absorbe y se registra sola como gasto.</p></div>' +
+ 
+    '<div class="nav-lab">Enlaces</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Brochure</span><span class="nav-vl">'+(c.brochure_url?'configurado':'pendiente')+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Encuesta</span><span class="nav-vl">'+(c.encuesta_url?'configurada':'pendiente')+'</span></div>' +
+    '<p class="nav-hint">Se editan directo en la hoja Campanias del Sheet.</p></div>';
+}
+ 
+function NAV_comision(monto) {
+  var c = NAV_D.camp;
+  if (!c) return 0;
+  return Math.round((NAV_n(monto)*NAV_n(c.mp_pct)/100 + NAV_n(c.mp_fija)) *
+    (1+NAV_n(c.mp_iva)/100) * 100)/100;
+}
+ 
+/* ---------------- sesión ---------------- */
+ 
+function NAV_buscarSesion(folio) {
+  for (var i=0;i<NAV_D.sesiones.length;i++)
+    if (NAV_D.sesiones[i].folio === folio) return NAV_D.sesiones[i];
+  return null;
+}
+ 
+function NAV_verSesion(folio) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  NAV_sesionActual = s;
+  document.getElementById('nav-ses-ttl').textContent = s.cliente;
+  document.getElementById('nav-ses-folio').textContent = s.folio;
+ 
+  var fasesCampos = ['fecha_apartado','fecha_realizada','fecha_presel_recibida',
+    'fecha_editada','fecha_entregada'];
+  var fh = '';
+  for (var f=0; f<5; f++) {
+    var hecho = NAV_n(s.fase) > f;
+    var actual = NAV_n(s.fase) === f+1;
+    var cls = hecho ? 'nav-ok' : (actual ? 'nav-now' : '');
+    fh += '<div class="nav-fl2"><span class="nav-bx '+cls+'" onclick="NAV_avanzar(\''+
+      s.folio+'\','+(f+1)+',event)">'+(hecho?'✓':'')+'</span>' +
+      '<span class="nav-tx">'+NAV_FASES[f]+'</span>' +
+      '<span class="nav-dt">'+(s[fasesCampos[f]] ? NAV_fechaCorta(s[fasesCampos[f]]) : '—')+'</span></div>';
+  }
+  var ag = NAV_aging(s);
+  var alCierre = NAV_dias(NAV_hoyISO(), NAV_D.camp.fecha_entrega_max);
+ 
+  var extrasH = '';
+  var cobrExtras = 0, valRegalo = 0;
+  (s.extras||[]).forEach(function(e){
+    var reg = String(e.es_regalo)==='SI';
+    if (reg) valRegalo += NAV_n(e.valor_lista); else cobrExtras += NAV_n(e.monto_cobrado);
+    extrasH += '<div class="nav-ex"><span class="nav-tx">'+NAV_esc(e.concepto)+
+      ' ×'+NAV_n(e.cantidad)+'<small>'+(reg?'Regalo':'Vendido')+'</small></span>' +
+      '<span class="nav-pr">'+NAV_money(e.monto_cobrado)+
+      (reg?'<s>'+NAV_money(e.valor_lista)+'</s>':'')+'</span>' +
+      '<button class="nav-del" onclick="NAV_borrarExtra(\''+e.id_extra+'\')">×</button></div>';
+  });
+ 
+  var saldo = NAV_saldo(s);
+  var canc = String(s.estado)==='Cancelada';
+ 
+  document.getElementById('nav-ses-body').innerHTML =
+    (canc ? '<div class="nav-err">Sesión cancelada · '+NAV_esc(s.motivo_cancelacion)+'</div>' : '') +
+ 
+    '<div class="nav-lab">Fases</div><div class="nav-card">' + fh +
+    '<div class="nav-sep"></div>' +
+    '<div class="nav-row"><span class="nav-lb">Días desde la toma</span><span class="nav-vl'+
+      (ag!==null&&ag>=15?' nav-w':'')+'">'+(ag===null?'sin sesión aún':ag+' días')+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Para la entrega</span><span class="nav-vl">'+
+      (alCierre!==null?'faltan '+alCierre:'—')+'</span></div></div>' +
+ 
+    '<div class="nav-lab">Seguimiento</div><div class="nav-card">' +
+    NAV_chkEnvio(s,'brochure_enviado','Brochure enviado','brochure') +
+    NAV_chkEnvio(s,'confirmo_asistencia','Confirmó asistencia','confirma') +
+    NAV_chkEnvio(s,'encuesta_enviada','Encuesta enviada','encuesta') +
+    '<div class="nav-sep"></div>' +
+    '<button class="nav-btn nav-wapp" style="margin-top:0" onclick="NAV_msg(\''+s.folio+'\',\'apartado\')">Abrir WhatsApp</button>' +
+    '<button class="nav-btn nav-gh" onclick="NAV_recibo(\''+s.folio+'\')">Ver recibo</button></div>' +
+ 
+    '<div class="nav-lab">Cliente</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Teléfono</span><span class="nav-vl">'+NAV_esc(s.telefono)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Personas</span><span class="nav-vl">'+NAV_n(s.personas)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Temporadas previas</span><span class="nav-vl">'+
+      (s.temporadas_previas===''?'—':NAV_n(s.temporadas_previas))+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Origen</span><span class="nav-vl">'+NAV_esc(s.origen||'—')+'</span></div></div>' +
+ 
+    '<div class="nav-lab">Sesión</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Fecha</span><span class="nav-vl">'+NAV_fechaLarga(s.fecha_sesion)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Hora</span><span class="nav-vl">'+NAV_esc(s.hora)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Paquete</span><span class="nav-vl">'+NAV_esc(NAV_paqNombre(s.id_paquete))+'</span></div>' +
+    (NAV_n(s.reel_lugar)>0 ? '<div class="nav-row"><span class="nav-lb">Reel de sesión</span><span class="nav-vl nav-g">Incluido</span></div>' : '') +
+    '</div>' +
+ 
+    '<div class="nav-lab">Cortesías y extras</div><div class="nav-card">' +
+    (extrasH || '<div class="nav-tempty">Sin extras</div>') +
+    (valRegalo ? '<div class="nav-sep"></div><div class="nav-row"><span class="nav-lb">Regalado</span><span class="nav-vl nav-g">'+NAV_money(valRegalo)+'</span></div>' : '') +
+    '<button class="nav-btn nav-gh" onclick="NAV_agregarExtra()">Agregar extra o cortesía</button></div>' +
+ 
+    '<div class="nav-lab">Precio</div><div class="nav-card">' +
+    '<div class="nav-row"><span class="nav-lb">Paquete</span><span class="nav-vl">'+NAV_money(s.precio_paquete)+'</span></div>' +
+    (NAV_n(s.descuento_preventa) ? '<div class="nav-row"><span class="nav-lb">Preventa</span><span class="nav-vl nav-g">−'+NAV_money(s.descuento_preventa)+'</span></div>' : '') +
+    (NAV_n(s.monto_personas_extra) ? '<div class="nav-row"><span class="nav-lb">Personas extra</span><span class="nav-vl">'+NAV_money(s.monto_personas_extra)+'</span></div>' : '') +
+    (cobrExtras ? '<div class="nav-row"><span class="nav-lb">Extras</span><span class="nav-vl">'+NAV_money(cobrExtras)+'</span></div>' : '') +
+    '<div class="nav-sep"></div>' +
+    '<div class="nav-row"><span class="nav-lb">Total</span><span class="nav-vl" style="font-size:17px">'+NAV_money(s.total)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Anticipo</span><span class="nav-vl">'+NAV_money(s.anticipo)+
+      (s.anticipo_forma?' · '+NAV_esc(s.anticipo_forma):'')+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Liquidación</span><span class="nav-vl">'+NAV_money(s.saldo_pagado)+
+      (s.saldo_forma?' · '+NAV_esc(s.saldo_forma):'')+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Saldo</span><span class="nav-vl '+(saldo>0?'nav-w':'nav-g')+'">'+NAV_money(saldo)+'</span></div>' +
+    (NAV_n(s.comision_total) ? '<div class="nav-row"><span class="nav-lb">Comisiones</span><span class="nav-vl nav-w">'+NAV_money(s.comision_total)+'</span></div>' : '') +
+    (saldo>0 ? '<button class="nav-btn" onclick="NAV_cobrar()">Registrar pago</button>' : '') +
+    '</div>' +
+ 
+    (canc ? '' : '<button class="nav-btn nav-dg" onclick="NAV_cancelar()">Cancelar sesión</button>');
+ 
+  NAV_abrirCapa('nav-ses');
+}
+ 
+function NAV_chkEnvio(s, campo, texto, tipoMsg) {
+  var hecho = !!s[campo];
+  return '<div class="nav-chk"><span class="nav-bx '+(hecho?'nav-ok':'')+
+    '" onclick="NAV_marcarEnvio(\''+s.folio+'\',\''+campo+'\','+(hecho?'true':'false')+')">'+
+    (hecho?'✓':'')+'</span>' +
+    '<span class="nav-tx">'+texto+'<small>'+(hecho?NAV_fechaCorta(s[campo]):'pendiente')+'</small></span>' +
+    '<button class="nav-go" onclick="NAV_msg(\''+s.folio+'\',\''+tipoMsg+'\')">Mensaje</button></div>';
+}
+ 
+function NAV_marcarEnvio(folio, campo, estaba) {
+  NAV_post('NAV_marcarEnvio', { folio:folio, campo:campo, limpiar: estaba?'SI':'NO' })
+    .then(function(r){
+      if (r && r.ok) {
+        NAV_toast(estaba ? 'Desmarcado' : 'Marcado');
+        NAV_recargar().then(function(){ NAV_verSesion(folio); });
+      } else NAV_toast('No se pudo');
+    }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+ 
+function NAV_cobrar() {
+  var s = NAV_sesionActual;
+  if (!s) return;
+  var saldo = NAV_saldo(s);
+  var tipo = NAV_n(s.anticipo) === 0 ? 'anticipo' : 'saldo';
+  var sug = tipo==='anticipo' ? NAV_n(NAV_D.camp.anticipo_monto) : saldo;
+  var monto = prompt('Monto a registrar (' + tipo + '):', sug);
+  if (monto === null) return;
+  monto = parseFloat(monto) || 0;
+  if (monto <= 0) { NAV_toast('Monto inválido'); return; }
+  var formas = ['Efectivo','Transferencia','Tarjeta · Mercado Pago'];
+  var idx = prompt('Forma de pago:\n1 Efectivo\n2 Transferencia\n3 Tarjeta', '1');
+  if (idx === null) return;
+  var forma = formas[(parseInt(idx,10)||1)-1] || 'Efectivo';
+  NAV_post('NAV_registrarPago', { folio:s.folio, tipo:tipo, monto:monto, forma:forma,
+    fecha_pago: NAV_hoyISO() }).then(function(r){
+    if (r && r.ok) {
+      NAV_toast('Pago registrado' + (r.comision ? ' · comisión ' + NAV_money(r.comision) : ''));
+      NAV_recargar().then(function(){ NAV_verSesion(s.folio); });
+    } else NAV_toast('No se pudo: ' + ((r&&r.error)||''));
+  }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+ 
+function NAV_agregarExtra() {
+  var s = NAV_sesionActual;
+  if (!s) return;
+  var cat = NAV_D.precios.filter(function(x){ return x.tipo==='extra'; });
+  var lista = cat.map(function(x,i){ return (i+1)+' '+x.referencia+' '+NAV_money(x.precio); }).join('\n');
+  var idx = prompt('¿Qué extra?\n'+lista, '1');
+  if (idx === null) return;
+  var e = cat[(parseInt(idx,10)||1)-1];
+  if (!e) return;
+  var cant = parseInt(prompt('¿Cuántos?', '1'),10) || 1;
+  var reg = confirm('¿Es cortesía? Aceptar = regalo (cobra $0)\nCancelar = se cobra');
+  NAV_post('NAV_agregarExtra', { folio:s.folio, concepto:e.referencia, cantidad:cant,
+    precio_unitario:NAV_n(e.precio), es_regalo: reg?'SI':'NO' }).then(function(r){
+    if (r && r.ok) {
+      NAV_toast(reg ? 'Cortesía agregada' : 'Extra agregado');
+      NAV_recargar().then(function(){ NAV_verSesion(s.folio); });
+    } else NAV_toast('No se pudo');
+  }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+ 
+function NAV_borrarExtra(id) {
+  if (!confirm('¿Quitar este extra?')) return;
+  var folio = NAV_sesionActual.folio;
+  NAV_post('NAV_eliminarExtra', { id_extra:id }).then(function(r){
+    if (r && r.ok) { NAV_toast('Eliminado');
+      NAV_recargar().then(function(){ NAV_verSesion(folio); });
+    } else NAV_toast('No se pudo');
+  }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+ 
+function NAV_cancelar() {
+  var s = NAV_sesionActual;
+  if (!s) return;
+  var motivo = prompt('Motivo de la cancelación:');
+  if (motivo === null) return;
+  var libera = confirm('¿Liberar el lugar para revender?\nAceptar = sí · Cancelar = no');
+  NAV_post('NAV_cancelarSesion', { folio:s.folio, motivo:motivo,
+    libero_lugar: libera?'SI':'NO' }).then(function(r){
+    if (r && r.ok) {
+      NAV_toast('Sesión cancelada · el registro se conserva');
+      NAV_cerrarCapa('nav-ses');
+      NAV_recargar();
+    } else NAV_toast('No se pudo');
+  }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+ 
+/* ---------------- mensajes ---------------- */
+ 
+function NAV_msg(folio, tipo) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  var c = NAV_D.camp;
+  var nombre = String(s.cliente).split(' ')[0];
+  if (String(s.cliente).toLowerCase().indexOf('familia') === 0) nombre = s.cliente;
+  var paq = NAV_paqNombre(s.id_paquete);
+  var pobj = null;
+  NAV_D.paquetes.forEach(function(p){ if (p.id_paquete===s.id_paquete) pobj=p; });
+  var fotos = pobj ? NAV_n(pobj.fotos) : 0;
+  var regalo = 0;
+  (s.extras||[]).forEach(function(e){ if (String(e.es_regalo)==='SI') regalo += NAV_n(e.cantidad); });
+  var saldo = NAV_saldo(s);
+  var T = {
+    apartado: ['Al apartar',
+      '¡Hola '+nombre+'! 🎄 Tu sesión navideña quedó apartada.\n\n' +
+      '📅 '+NAV_fechaLarga(s.fecha_sesion)+', '+s.hora+'\n' +
+      '📸 '+paq+' · '+fotos+' fotos\n' +
+      '👥 '+NAV_n(s.personas)+' personas\n\n' +
+      'Anticipo recibido: '+NAV_money(s.anticipo)+'\n' +
+      'Saldo: '+NAV_money(saldo)+' — se liquida el día de la sesión o antes.\n\n' +
+      '¡Nos vemos pronto!'],
+    brochure: ['Brochure e instrucciones',
+      'Hola '+nombre+' 🎄 Falta poco para tu sesión del '+NAV_fechaLarga(s.fecha_sesion)+
+      ' a las '+s.hora+'.\n\n' +
+      'Aquí está toda la información del set y sugerencias de vestuario:\n' +
+      (c.brochure_url || '[falta configurar la liga del brochure]') + '\n\n' +
+      'Un par de recordatorios:\n• Llega 10 minutos antes\n' +
+      '• Hay 10 min de tolerancia; el tiempo de retraso se descuenta de la sesión\n\n' +
+      'Cualquier duda, aquí estoy 💛'],
+    confirma: ['Confirmación',
+      'Hola '+nombre+' 🎄 Te recordamos tu sesión mañana '+NAV_fechaLarga(s.fecha_sesion)+
+      ' a las '+s.hora+', para '+NAV_n(s.personas)+' personas.\n\n' +
+      '¿Nos confirmas tu asistencia por favor? Es necesario confirmar para conservar tu lugar.\n\n' +
+      'Recuerda que si no puedes asistir el anticipo no es reembolsable, ' +
+      'así que avísanos con tiempo si necesitas cambiar algo.'],
+    presel: ['Preselección',
+      'Hola '+nombre+' 🎄 ¡Ya está lista tu galería para preselección!\n\n' +
+      (s.galeria_url || '[falta la liga de la galería]') + '\n\n' +
+      'Escoge tus '+fotos+' fotos favoritas y mándamelas por aquí. ' +
+      'En cuanto las reciba empiezo la edición.' +
+      (regalo ? '\n\nTienes '+regalo+' fotos de regalo por tus temporadas anteriores 💛 ' +
+        'así que puedes elegir '+(fotos+regalo)+' en total.' : '')],
+    entrega: ['Entrega de galería',
+      '¡Hola '+nombre+'! 🎄 Tus fotos están listas.\n\n' +
+      (s.galeria_url || '[falta la liga de la galería]') + '\n\n' +
+      'Son '+(fotos+regalo)+' fotos editadas en alta resolución, listas para descargar.\n\n' +
+      'Fue un gusto tenerlos en el estudio esta Navidad 💛 ¡Felices fiestas!'],
+    encuesta: ['Encuesta',
+      'Hola '+nombre+' 🎄 Espero que te hayan encantado tus fotos.\n\n' +
+      '¿Nos regalas 2 minutos para contarnos cómo te fue?\n' +
+      (c.encuesta_url ? c.encuesta_url + '?folio=' + s.folio : '[falta configurar la encuesta]') +
+      '\n\n¡Gracias! 💛']
+  };
+  var t = T[tipo] || T.apartado;
+  NAV_waTel = s.telefono;
+  NAV_waTexto = t[1];
+  document.getElementById('nav-wa-ttl').textContent = t[0];
+  document.getElementById('nav-wa-av').textContent = String(s.cliente).charAt(0);
+  document.getElementById('nav-wa-who').innerHTML = NAV_esc(s.cliente) +
+    '<small>' + NAV_esc(s.telefono) + '</small>';
+  document.getElementById('nav-wa-bub').innerHTML =
+    NAV_esc(t[1]).replace(/(https?:\/\/[^\s]+)/g, '<span class="nav-lk">$1</span>') +
+    '<span class="nav-mt">Listo para enviar</span>';
+  NAV_abrirCapa('nav-wa');
+}
+ 
+function NAV_enviarWA() {
+  if (typeof waLink === 'function') {
+    var url = waLink(NAV_waTel, NAV_waTexto);
+    if (url) { window.open(url, '_blank'); return; }
+  }
+  var tel = String(NAV_waTel).replace(/\D/g,'');
+  if (tel.length === 10) tel = '52' + tel;
+  window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(NAV_waTexto), '_blank');
+}
+ 
+/* ---------------- recibo ---------------- */
+ 
+function NAV_recibo(folio) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  var c = NAV_D.camp;
+  var pobj = null;
+  NAV_D.paquetes.forEach(function(p){ if (p.id_paquete===s.id_paquete) pobj=p; });
+  var saldo = NAV_saldo(s);
+  var extrasFilas = '', cortesias = '';
+  (s.extras||[]).forEach(function(e){
+    if (String(e.es_regalo)==='SI')
+      cortesias += '<tr class="nav-ind"><td style="color:#27ae60">+ '+NAV_esc(e.concepto)+
+        ' ('+NAV_n(e.cantidad)+')</td><td class="nav-r" style="color:#27ae60">Sin costo</td></tr>';
+    else
+      extrasFilas += '<tr class="nav-ind"><td>+ '+NAV_esc(e.concepto)+' ('+NAV_n(e.cantidad)+
+        ')</td><td class="nav-r">'+NAV_money(e.monto_cobrado)+'</td></tr>';
+  });
+  if (NAV_n(s.reel_lugar)>0)
+    cortesias += '<tr class="nav-ind"><td style="color:#27ae60">+ Reel de sesión</td>' +
+      '<td class="nav-r" style="color:#27ae60">Sin costo</td></tr>';
+ 
+  var hoy = new Date();
+  document.getElementById('nav-rec-body').innerHTML =
+    '<div class="nav-doc"><div class="nav-hdr"><div>' +
+    '<h1>Vanessa Velasco Fotografía Familiar</h1>' +
+    '<div class="nav-sub">Recibo de Servicios Fotográficos</div></div>' +
+    '<div style="text-align:right;font-size:10px;color:#c4ae96">' +
+    hoy.getDate()+' '+NAV_MESES[hoy.getMonth()].toLowerCase()+' '+hoy.getFullYear()+'</div></div>' +
+ 
+    '<div class="nav-section"><div class="nav-stt">Datos del Cliente</div><table>' +
+    '<tr><td>Cliente</td><td class="nav-r"><strong>'+NAV_esc(s.cliente)+'</strong></td></tr>' +
+    '<tr class="nav-mut"><td>Teléfono</td><td class="nav-r">'+NAV_esc(s.telefono)+'</td></tr></table></div>' +
+ 
+    '<div class="nav-section"><div class="nav-stt">Servicio Contratado</div><table>' +
+    '<tr><td>Servicio</td><td class="nav-r"><strong>'+NAV_esc(c.nombre)+' · '+NAV_esc(NAV_paqNombre(s.id_paquete))+'</strong></td></tr>' +
+    '<tr><td>Fecha</td><td class="nav-r">'+NAV_fechaLarga(s.fecha_sesion)+' · '+NAV_esc(s.hora)+'</td></tr>' +
+    (pobj?'<tr class="nav-mut"><td>Duración</td><td class="nav-r">'+NAV_n(pobj.duracion_min)+' minutos</td></tr>':'') +
+    (pobj?'<tr class="nav-mut"><td>Fotos editadas incluidas</td><td class="nav-r">'+NAV_n(pobj.fotos)+'</td></tr>':'') +
+    '<tr class="nav-mut"><td>Personas</td><td class="nav-r">'+NAV_n(s.personas)+'</td></tr>' +
+    '<tr class="nav-mut"><td>Entrega</td><td class="nav-r">Digital · a más tardar '+NAV_fechaCorta(c.fecha_entrega_max)+'</td></tr></table></div>' +
+ 
+    '<div class="nav-section"><div class="nav-stt">Resumen de Pago</div><table>' +
+    '<tr><td>'+NAV_esc(NAV_paqNombre(s.id_paquete))+'</td><td class="nav-r">'+NAV_money(s.precio_paquete)+'</td></tr>' +
+    (NAV_n(s.descuento_preventa)?'<tr class="nav-grn"><td>Descuento preventa</td><td class="nav-r">- '+NAV_money(s.descuento_preventa)+'</td></tr>':'') +
+    (NAV_n(s.monto_personas_extra)?'<tr class="nav-ind"><td>+ Personas adicionales</td><td class="nav-r">'+NAV_money(s.monto_personas_extra)+'</td></tr>':'') +
+    (extrasFilas?'<tr><td colspan="2" style="font-size:11.5px;color:#666;padding-top:8px">Extras:</td></tr>'+extrasFilas:'') +
+    (cortesias?'<tr><td colspan="2" style="font-size:11.5px;color:#27ae60;padding-top:8px">Cortesías:</td></tr>'+cortesias:'') +
+    '<tr class="nav-tot"><td>Total</td><td class="nav-r">'+NAV_money(s.total)+'</td></tr>' +
+    '<tr class="nav-mut"><td>Pagado</td><td class="nav-r">'+NAV_money(NAV_n(s.anticipo)+NAV_n(s.saldo_pagado))+'</td></tr>' +
+    (saldo>0?'<tr class="nav-sal"><td>Saldo pendiente</td><td class="nav-r">'+NAV_money(saldo)+'</td></tr>':'') +
+    '</table>' +
+    (saldo>0?'<div class="nav-notep">* Liquidar en efectivo o transferencia el día de la sesión o antes.</div>':'') +
+    '</div>' +
+ 
+    '<div class="nav-section"><div class="nav-stt">Políticas de Cancelación</div><div class="nav-policy">' +
+    '<p>• El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia.</p>' +
+    '<p>• Es necesario confirmar asistencia el día previo para conservar el lugar.</p>' +
+    '<p>• Si el cliente no se presenta, se pierde el apartado y no hay reagenda.</p>' +
+    '<p>• Los cambios de fecha están sujetos a disponibilidad dentro de la temporada.</p></div></div>' +
+ 
+    '<div class="nav-section"><div class="nav-stt">Términos del Servicio</div><div class="nav-policy">' +
+    '<p>• Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.</p>' +
+    '<p>• El precio corresponde al mes de la sesión y queda fijo desde el apartado.</p>' +
+    '<p>• La entrega de la galería editada es a más tardar el '+NAV_fechaLarga(c.fecha_entrega_max)+'.</p>' +
+    '<p>• Las fotos se entregan en formato digital de alta resolución.</p>' +
+    '<p>• Vanessa Velasco conserva los derechos de autor de las imágenes.</p></div></div>' +
+ 
+    '<div class="nav-footer">Gracias por confiar en Vanessa Velasco Fotografía Familiar</div>' +
+    '<div class="nav-ig">@vanessavelascofoto · instagram.com/vanessavelascofoto</div></div>';
+  NAV_abrirCapa('nav-rec');
+}
+ 
+function NAV_imprimirRecibo() { window.print(); }
+ 
+/* ---------------- arranque diferido ---------------- */
+ 
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(NAV_init, 800); });
+} else {
+  setTimeout(NAV_init, 800);
+}
+</script>
+ 
 </body>
 </html>
