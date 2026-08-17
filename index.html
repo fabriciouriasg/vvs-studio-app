@@ -834,6 +834,16 @@
     <!-- ===== PANTALLA 0: CAPTURA ===== -->
     <div class="screen" id="screen-captura">
       <div class="container">
+       <button id="nav-btn" style="display:none" onclick="NAV_abrir()">
+  <span class="nav-ic">🎄</span>
+  <span class="nav-tx">
+    <span class="nav-nm" id="nav-btn-nombre">Navidad 2026</span>
+    <span class="nav-ds" id="nav-btn-sub">Cargando…</span>
+  </span>
+  <span class="nav-ar">›</span>
+</button>
+
+<div class="section-label">CATEGORÍA</div>
         <div class="section-label">Categoría</div>
         <div class="cat-grid" id="cat-grid"></div>
 
@@ -1750,7 +1760,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.6';
+var APP_VERSION = 'v4.7';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
