@@ -1760,7 +1760,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.7';
+var APP_VERSION = 'v4.8';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -5914,5 +5914,204 @@ function saveSettings() {
   if (url) { SCRIPT_URL = url; localStorage.setItem('vvs_script_url', url); closeSettings(); cargarLog(); cargarAcumulados(); resumenCargado = false; calCargado = false; }
 }
 </script>
+<!-- ============ CAPA 1 · MÓDULO ============ -->
+<div id="nav-ov">
+  <div class="nav-lh"><div class="nav-lh-in">
+    <button class="nav-bk" onclick="NAV_cerrar()">‹ Volver</button>
+    <div class="nav-ttl" id="nav-ttl">Navidad 2026</div>
+    <div class="nav-st" id="nav-estado">—</div>
+  </div></div>
+ 
+  <div class="nav-tabs"><div class="nav-tabs-in">
+    <button class="nav-on" onclick="NAV_tab(this,'tab')">Tablero</button>
+    <button onclick="NAV_tab(this,'cal')">Calendario</button>
+    <button onclick="NAV_tab(this,'din')">Dinero</button>
+    <button onclick="NAV_tab(this,'bus')">Buscar</button>
+    <button onclick="NAV_tab(this,'adm')">Ajustes</button>
+  </div></div>
+ 
+  <div class="nav-wrap">
+ 
+    <!-- ---------- TABLERO ---------- -->
+    <div class="nav-pane nav-on" id="nav-p-tab">
+      <div class="nav-dl">
+        <div class="nav-n" id="nav-dl-n">—</div>
+        <div class="nav-tx"><b id="nav-dl-t">Días para la entrega</b>
+          <span id="nav-dl-s"></span></div>
+      </div>
+      <div class="nav-tb" id="nav-tb"><div class="nav-load">Cargando…</div></div>
+      <div class="nav-facts" id="nav-facts"></div>
+      <p class="nav-hint">El contador corre desde que se tomaron las fotos y se detiene al
+        entregar. En Apartada no hay contador: se muestra la fecha agendada.</p>
+      <div class="nav-lab">Envíos en lote</div>
+      <div class="nav-card" id="nav-lotes"></div>
+    </div>
+ 
+    <!-- ---------- CALENDARIO ---------- -->
+    <div class="nav-pane" id="nav-p-cal">
+      <div class="nav-seg">
+        <button class="nav-on" onclick="NAV_sub(this,'nav-c-','mes',['mes','dia','dis'])">Mes</button>
+        <button onclick="NAV_sub(this,'nav-c-','dia',['mes','dia','dis'])">Día</button>
+        <button onclick="NAV_sub(this,'nav-c-','dis',['mes','dia','dis'])">Disponibilidad</button>
+      </div>
+ 
+      <div class="nav-pane nav-on" id="nav-c-mes">
+        <div class="nav-mnav">
+          <button onclick="NAV_mes(-1)">‹</button>
+          <b id="nav-mes-lbl">—</b>
+          <button onclick="NAV_mes(1)">›</button>
+        </div>
+        <div class="nav-dow">
+          <span>D</span><span>L</span><span>M</span><span>M</span>
+          <span>J</span><span>V</span><span>S</span>
+        </div>
+        <div class="nav-grid" id="nav-mes-grid"></div>
+        <div class="nav-leg">
+          <span><i style="background:var(--white);border:1px solid var(--beige-dark)"></i>Disponible</span>
+          <span><i style="background:#f5eeda;border:1px solid #e0d0a8"></i>Casi lleno</span>
+          <span><i style="background:#f5e4e4;border:1px solid #dfc0c0"></i>Lleno</span>
+          <span><i style="background:#ded5c6"></i>Bloqueado</span>
+          <span><i style="background:#9a8bb5"></i>Excepción</span>
+        </div>
+        <div class="nav-lab">Resumen del mes</div>
+        <div class="nav-card" id="nav-mes-res"></div>
+      </div>
+ 
+      <div class="nav-pane" id="nav-c-dia">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:13px">
+          <div class="nav-h3" id="nav-dia-ttl">—</div>
+        </div>
+        <div class="nav-card" style="margin-bottom:12px" id="nav-dia-res"></div>
+        <div class="nav-slots" id="nav-dia-slots"></div>
+      </div>
+ 
+      <div class="nav-pane" id="nav-c-dis">
+        <div class="nav-card">
+          <div class="nav-row"><div class="nav-h3">Disponibilidad</div></div>
+          <p class="nav-hint">Solo aparecen los días con lugares libres.</p>
+        </div>
+        <div class="nav-lab">Vista previa</div>
+        <div class="nav-prev"><canvas id="nav-cv" width="760" height="600"></canvas></div>
+        <div class="nav-seg" id="nav-dis-meses" style="margin-top:11px"></div>
+        <button class="nav-btn" onclick="NAV_descargarImagen()">Descargar imagen</button>
+        <p class="nav-hint">La imagen lleva la fecha de generación al pie, para que se note
+          cuándo caducó.</p>
+      </div>
+    </div>
+ 
+    <!-- ---------- DINERO ---------- -->
+    <div class="nav-pane" id="nav-p-din">
+      <div class="nav-seg">
+        <button class="nav-on" onclick="NAV_sub(this,'nav-g-','res',['res','gas','exp'])">Resumen</button>
+        <button onclick="NAV_sub(this,'nav-g-','gas',['res','gas','exp'])">Gastos</button>
+        <button onclick="NAV_sub(this,'nav-g-','exp',['res','gas','exp'])">Exportar</button>
+      </div>
+ 
+      <div class="nav-pane nav-on" id="nav-g-res"><div id="nav-din-res"></div></div>
+ 
+      <div class="nav-pane" id="nav-g-gas">
+        <div id="nav-gastos-res"></div>
+        <div class="nav-lab">Movimientos</div>
+        <div class="nav-glist" id="nav-gastos-lista"></div>
+        <div class="nav-lab">Nuevo gasto</div>
+        <div class="nav-card">
+          <label class="nav-f"><span>Descripción</span>
+            <input id="nav-gas-desc" placeholder="Ej. Marcos para el set"></label>
+          <div class="nav-f2">
+            <label class="nav-f"><span>Categoría</span>
+              <select id="nav-gas-cat">
+                <option>Set y decoración</option>
+                <option>Obsequios</option>
+                <option>Asistente</option>
+                <option>Catering</option>
+                <option>Alimentos</option>
+                <option>Comisiones de pago</option>
+                <option>Materiales</option>
+                <option>Transporte</option>
+                <option>Equipo y tecnología</option>
+                <option>Otros</option>
+              </select></label>
+            <label class="nav-f"><span>Monto</span>
+              <input id="nav-gas-monto" inputmode="decimal" placeholder="0.00"></label>
+          </div>
+          <label class="nav-f" style="margin-bottom:0"><span>Fecha</span>
+            <input type="date" id="nav-gas-fecha"></label>
+          <button class="nav-btn" id="nav-gas-btn" onclick="NAV_guardarGasto()">Guardar gasto</button>
+          <p class="nav-hint">Se etiqueta solo como gasto de esta temporada.</p>
+        </div>
+      </div>
+ 
+      <div class="nav-pane" id="nav-g-exp">
+        <div class="nav-card">
+          <div class="nav-row"><span class="nav-lb">Sesiones</span>
+            <span class="nav-vl" id="nav-exp-n">—</span></div>
+          <button class="nav-btn" id="nav-exp-btn" onclick="NAV_exportar()">Generar hoja de export</button>
+          <p class="nav-hint">Se sobrescribe cada vez. Es una foto del momento: lo que se
+            edite ahí no regresa a la app.</p>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- ---------- BUSCAR ---------- -->
+    <div class="nav-pane" id="nav-p-bus">
+      <label class="nav-f">
+        <input id="nav-buscar" placeholder="Buscar por nombre o teléfono…"
+               oninput="NAV_buscar()"></label>
+      <div id="nav-buscar-out"></div>
+    </div>
+ 
+    <!-- ---------- AJUSTES ---------- -->
+    <div class="nav-pane" id="nav-p-adm"><div id="nav-ajustes"></div></div>
+ 
+  </div>
+  <div class="nav-toast" id="nav-toast"></div>
+</div>
+ 
+<!-- ============ CAPA 2 · SESIÓN ============ -->
+<div id="nav-ses">
+  <div class="nav-lh"><div class="nav-lh-in">
+    <button class="nav-bk" onclick="NAV_cerrarCapa('nav-ses')">‹ Volver</button>
+    <div class="nav-ttl" id="nav-ses-ttl">Sesión</div>
+    <div class="nav-st" id="nav-ses-folio"></div>
+  </div></div>
+  <div class="nav-wrap" id="nav-ses-body"></div>
+</div>
+ 
+<!-- ============ CAPA 3 · WHATSAPP ============ -->
+<div id="nav-wa">
+  <div class="nav-lh"><div class="nav-lh-in">
+    <button class="nav-bk" onclick="NAV_cerrarCapa('nav-wa')">‹ Volver</button>
+    <div class="nav-ttl">Mensaje</div>
+    <div class="nav-st"></div>
+  </div></div>
+  <div class="nav-wrap">
+    <div class="nav-lab" id="nav-wa-ttl">Mensaje</div>
+    <div class="nav-wabox">
+      <div class="nav-watop">
+        <div class="nav-av" id="nav-wa-av">·</div>
+        <div class="nav-who" id="nav-wa-who"></div>
+      </div>
+      <div class="nav-bub" id="nav-wa-bub"></div>
+    </div>
+    <button class="nav-btn nav-wapp" onclick="NAV_enviarWA()">Abrir WhatsApp</button>
+    <button class="nav-btn nav-gh" onclick="NAV_cerrarCapa('nav-wa')">Cancelar</button>
+    <p class="nav-hint">La app llena el texto con los datos de la sesión y abre WhatsApp.
+      Tú lees, ajustas si quieres y mandas. Nada se envía solo.</p>
+  </div>
+</div>
+ 
+<!-- ============ CAPA 4 · RECIBO ============ -->
+<div id="nav-rec">
+  <div class="nav-lh"><div class="nav-lh-in">
+    <button class="nav-bk" onclick="NAV_cerrarCapa('nav-rec')">‹ Volver</button>
+    <div class="nav-ttl">Recibo</div>
+    <div class="nav-st">
+      <button class="nav-bk" style="color:var(--brown-soft)" onclick="NAV_imprimirRecibo()">PDF</button>
+    </div>
+  </div></div>
+  <div class="nav-wrap"><div id="nav-rec-body"></div></div>
+</div>
+ 
+<!-- ===================== FIN DEL BLOQUE C ===================== -->
 </body>
 </html>
