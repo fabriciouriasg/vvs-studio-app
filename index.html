@@ -6067,12 +6067,14 @@ function saveSettings() {
       <div class="nav-pane" id="nav-c-dis">
         <div class="nav-card">
           <div class="nav-row"><div class="nav-h3">Disponibilidad</div></div>
-          <p class="nav-hint">Solo aparecen los días con lugares libres, de hoy en adelante. Elige uno o varios meses.</p>
+          <p class="nav-hint">Elige meses y días para ver los lugares libres.</p>
         </div>
         <div class="nav-lab">Vista previa</div>
         <div class="nav-prev"><canvas id="nav-cv" width="760" height="600"></canvas></div>
-        <div class="nav-lab" style="margin-top:14px">Meses a incluir</div>
+        <div class="nav-lab" style="margin-top:14px">Meses</div>
         <div class="nav-chips" id="nav-dis-meses"></div>
+        <div class="nav-lab" style="margin-top:11px">Días</div>
+        <div class="nav-chips" id="nav-dis-dias"></div>
         <button class="nav-btn" onclick="NAV_descargarImagen()">Descargar imagen</button>
         <p class="nav-hint">La imagen lleva la fecha de generación al pie, para que se note
           cuándo caducó.</p>
@@ -6706,11 +6708,14 @@ function NAV_pintarDia() {
  
 /* ---------------- disponibilidad ---------------- */
  
-var NAV_dispMeses = [], NAV_dispSel = [];
+var NAV_dispMeses = [], NAV_dispSel = [], NAV_dispDias = [];
+/* dias_semana disponibles en la campaña (ej. "5,6,0") */
+var NAV_DIAS_SEM = [
+  { dw: 5, label: 'Viernes' },
+  { dw: 6, label: 'Sábados' },
+  { dw: 0, label: 'Domingos' }
+];
 
-/* Calcula la disponibilidad localmente, con los datos que ya tiene la app.
-   Ya no depende de NAV_getDisponibilidad, que era lo que tronaba con
-   "Load failed" cuando la petición al script no respondía. */
 function NAV_mesesCampania() {
   var c = NAV_D.camp;
   if (!c || !c.fecha_inicio || !c.fecha_fin) return [];
@@ -6726,6 +6731,13 @@ function NAV_mesesCampania() {
   return out;
 }
 
+/* Devuelve los días de semana que la campaña usa, filtrado a Vie/Sáb/Dom */
+function NAV_diasDisponibles() {
+  if (!NAV_D.camp || !NAV_D.camp.dias_semana) return NAV_DIAS_SEM;
+  var cfg = String(NAV_D.camp.dias_semana).split(',').map(function(x){ return parseInt(x,10); });
+  return NAV_DIAS_SEM.filter(function(d){ return cfg.indexOf(d.dw) >= 0; });
+}
+
 function NAV_calcDisp(m) {
   if (!NAV_D.camp) return [];
   var anio = parseInt(m.split('-')[0],10), mes = parseInt(m.split('-')[1],10);
@@ -6735,6 +6747,8 @@ function NAV_calcDisp(m) {
     var f = anio + '-' + ('0'+mes).slice(-2) + '-' + ('0'+d).slice(-2);
     if (f < hoy) continue;
     if (!NAV_esDiaTrabajo(f)) continue;
+    var dw = new Date(f + 'T12:00:00').getDay();
+    if (NAV_dispDias.length && NAV_dispDias.indexOf(dw) < 0) continue;
     var ses = NAV_ocupacion(f), tomadas = {};
     ses.forEach(function(x){ tomadas[String(x.hora)] = 1; });
     var libres = horas.filter(function(h){ return !tomadas[h]; });
@@ -6746,62 +6760,102 @@ function NAV_calcDisp(m) {
 }
 
 function NAV_disponibilidad() {
-  var cont = document.getElementById('nav-dis-meses');
   if (!NAV_D.camp) { NAV_error('nav-dis-meses', 'Primero hay que cargar la campaña'); return; }
   NAV_dispMeses = NAV_mesesCampania();
   if (!NAV_dispMeses.length) { NAV_error('nav-dis-meses', 'La campaña no tiene fechas'); return; }
-  if (!NAV_dispSel.length) {
-    /* por defecto: el mes en curso si cae dentro, si no el primero */
-    var hoyM = NAV_hoyISO().substring(0,7);
-    NAV_dispSel = [ NAV_dispMeses.indexOf(hoyM) >= 0 ? hoyM : NAV_dispMeses[0] ];
-  }
-  NAV_pintarChips();
+  /* reset al abrir: nada seleccionado */
+  NAV_dispSel = [];
+  NAV_dispDias = [];
+  NAV_pintarChipsMeses();
+  NAV_pintarChipsDias();
   NAV_dibujarDisp();
 }
 
-function NAV_pintarChips() {
-  var todos = NAV_dispSel.length === NAV_dispMeses.length;
+/* ── chips de MESES ── */
+function NAV_pintarChipsMeses() {
+  var todos = NAV_dispSel.length === NAV_dispMeses.length && NAV_dispMeses.length > 0;
   var h = '<button class="nav-all' + (todos ? ' nav-on' : '') +
-    '" onclick="NAV_dispTodos()">' + (todos ? '✓ Todos' : 'Todos') + '</button>';
+    '" onclick="NAV_dispTodosMeses()">' + (todos ? '✓ Todos' : 'Todos') + '</button>';
   h += NAV_dispMeses.map(function(m){
     var mm = parseInt(m.split('-')[1],10);
     var on = NAV_dispSel.indexOf(m) >= 0;
     var etiqueta = NAV_MESES[mm-1];
     if (NAV_dispMeses.length > 6) etiqueta = etiqueta.substring(0,3) + " '" + m.substring(2,4);
-    return '<button class="' + (on ? 'nav-on' : '') + '" onclick="NAV_dispToggle(\'' + m + '\')">' +
+    return '<button class="' + (on ? 'nav-on' : '') + '" onclick="NAV_dispToggleMes(\'' + m + '\')">' +
       (on ? '✓ ' : '') + etiqueta + '</button>';
   }).join('');
   document.getElementById('nav-dis-meses').innerHTML = h;
 }
 
-function NAV_dispToggle(m) {
+function NAV_dispToggleMes(m) {
   var i = NAV_dispSel.indexOf(m);
-  if (i >= 0) {
-    if (NAV_dispSel.length === 1) { NAV_toast('Deja al menos un mes seleccionado'); return; }
-    NAV_dispSel.splice(i,1);
-  } else {
-    NAV_dispSel.push(m);
-  }
+  if (i >= 0) NAV_dispSel.splice(i,1);
+  else NAV_dispSel.push(m);
   NAV_dispSel.sort();
-  NAV_pintarChips();
+  NAV_pintarChipsMeses();
   NAV_dibujarDisp();
 }
 
-function NAV_dispTodos() {
-  NAV_dispSel = (NAV_dispSel.length === NAV_dispMeses.length)
-    ? [NAV_dispMeses[0]]
+function NAV_dispTodosMeses() {
+  NAV_dispSel = (NAV_dispSel.length === NAV_dispMeses.length && NAV_dispMeses.length > 0)
+    ? []
     : NAV_dispMeses.slice();
-  NAV_pintarChips();
+  NAV_pintarChipsMeses();
   NAV_dibujarDisp();
 }
 
+/* ── chips de DÍAS ── */
+function NAV_pintarChipsDias() {
+  var opciones = NAV_diasDisponibles();
+  var todos = NAV_dispDias.length === opciones.length && opciones.length > 0;
+  var h = '<button class="nav-all' + (todos ? ' nav-on' : '') +
+    '" onclick="NAV_dispTodosDias()">' + (todos ? '✓ Todos' : 'Todos') + '</button>';
+  h += opciones.map(function(d){
+    var on = NAV_dispDias.indexOf(d.dw) >= 0;
+    return '<button class="' + (on ? 'nav-on' : '') + '" onclick="NAV_dispToggleDia(' + d.dw + ')">' +
+      (on ? '✓ ' : '') + d.label + '</button>';
+  }).join('');
+  document.getElementById('nav-dis-dias').innerHTML = h;
+}
+
+function NAV_dispToggleDia(dw) {
+  var i = NAV_dispDias.indexOf(dw);
+  if (i >= 0) NAV_dispDias.splice(i,1);
+  else NAV_dispDias.push(dw);
+  NAV_pintarChipsDias();
+  NAV_dibujarDisp();
+}
+
+function NAV_dispTodosDias() {
+  var opciones = NAV_diasDisponibles();
+  NAV_dispDias = (NAV_dispDias.length === opciones.length && opciones.length > 0)
+    ? []
+    : opciones.map(function(d){ return d.dw; });
+  NAV_pintarChipsDias();
+  NAV_dibujarDisp();
+}
+
+/* ── canvas ── */
 function NAV_dibujarDisp() {
   var cv = document.getElementById('nav-cv'), x = cv.getContext('2d');
+
+  /* Sin selección: limpiar canvas y mostrar placeholder */
+  if (!NAV_dispSel.length || !NAV_dispDias.length) {
+    cv.width = 720; cv.height = 200;
+    x.fillStyle = '#f5f0ea'; x.fillRect(0,0,720,200);
+    x.textAlign = 'center'; x.fillStyle = '#a89880';
+    x.font = '300 15px Jost, sans-serif';
+    var msg = !NAV_dispSel.length && !NAV_dispDias.length
+      ? 'Elige al menos un mes y un día'
+      : !NAV_dispSel.length ? 'Elige al menos un mes' : 'Elige al menos un día';
+    x.fillText(msg, 360, 108);
+    return;
+  }
+
   var CW = 232, CH = 126, PAD = 22, cols = 3;
   var HEAD = 150, TITMES = 62, GAPMES = 14, PIE = 70;
   var W = PAD*2 + CW*cols;
 
-  /* 1. armar bloques y medir alto real antes de dibujar */
   var bloques = NAV_dispSel.slice().sort().map(function(m){
     var libres = NAV_calcDisp(m);
     return { mes: m, libres: libres, rows: Math.max(1, Math.ceil(libres.length/cols)) };
@@ -6813,7 +6867,7 @@ function NAV_dibujarDisp() {
   cv.width = W; cv.height = H;
   x.fillStyle = '#f5f0ea'; x.fillRect(0,0,W,H);
 
-  /* 2. encabezado */
+  /* encabezado */
   x.fillStyle = '#e8ddd0'; x.fillRect(0,0,W,HEAD-24);
   x.textAlign = 'center'; x.fillStyle = '#1a1410';
   x.font = '500 40px "Cormorant Garamond", Georgia, serif';
@@ -6826,7 +6880,7 @@ function NAV_dibujarDisp() {
   bloques.forEach(function(b){ b.libres.forEach(function(r){ totalLug += r.horas.length; }); });
   x.fillText(totalLug + (totalLug === 1 ? ' lugar libre' : ' lugares libres'), W/2, 108);
 
-  /* 3. un bloque por mes */
+  /* bloques por mes */
   var y = HEAD;
   bloques.forEach(function(b){
     var mm = parseInt(b.mes.split('-')[1],10);
@@ -6836,10 +6890,9 @@ function NAV_dibujarDisp() {
     x.strokeStyle = '#d4c4b0'; x.lineWidth = 1;
     x.beginPath(); x.moveTo(W/2-46, y+46); x.lineTo(W/2+46, y+46); x.stroke();
     var top = y + TITMES;
-
     if (!b.libres.length) {
       x.font = '300 17px Jost, sans-serif'; x.fillStyle = '#7a6a58';
-      x.fillText('Sin lugares disponibles este mes', W/2, top + 40);
+      x.fillText('Sin lugares disponibles', W/2, top + 40);
     }
     b.libres.forEach(function(r,i){
       var cx = PAD + (i%cols)*CW, cy = top + Math.floor(i/cols)*CH;
@@ -6861,7 +6914,7 @@ function NAV_dibujarDisp() {
     y = top + b.rows*CH + GAPMES;
   });
 
-  /* 4. pie */
+  /* pie */
   x.textAlign = 'center'; x.fillStyle = '#7a6a58'; x.font = '300 14px Jost, sans-serif';
   if (NAV_D.camp && NAV_D.camp.anticipo_monto)
     x.fillText('Se aparta con anticipo de ' + NAV_money(NAV_D.camp.anticipo_monto), W/2, H-42);
@@ -6873,6 +6926,10 @@ function NAV_dibujarDisp() {
 }
 
 function NAV_descargarImagen() {
+  if (!NAV_dispSel.length || !NAV_dispDias.length) {
+    NAV_toast('Elige al menos un mes y un día primero');
+    return;
+  }
   var cv = document.getElementById('nav-cv');
   var sufijo = NAV_dispSel.length === 1
     ? NAV_dispSel[0]
