@@ -7198,6 +7198,13 @@ function NAV_verSesion(folio) {
  
   var extrasH = '';
   var cobrExtras = 0, valRegalo = 0;
+  /* Cortesía automática: 1 foto por temporada previa */
+  var prevN = NAV_n(s.temporadas_previas);
+  if (prevN > 0) {
+    extrasH += '<div class="nav-ex"><span class="nav-tx" style="color:#27ae60">Fotos de cortesía' +
+      ' ×'+prevN+'<small>Cortesía · '+prevN+' temporada'+(prevN===1?'':'s')+' previa'+(prevN===1?'':'s')+'</small></span>' +
+      '<span class="nav-pr" style="color:#27ae60">Sin costo</span></div>';
+  }
   (s.extras||[]).forEach(function(e){
     var reg = String(e.es_regalo)==='SI';
     if (reg) valRegalo += NAV_n(e.valor_lista); else cobrExtras += NAV_n(e.monto_cobrado);
@@ -7238,7 +7245,7 @@ function NAV_verSesion(folio) {
  
     '<div class="nav-lab">Sesión</div><div class="nav-card">' +
     '<div class="nav-row"><span class="nav-lb">Fecha</span><span class="nav-vl">'+NAV_fechaLarga(s.fecha_sesion)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Hora</span><span class="nav-vl">'+NAV_esc(s.hora)+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Hora</span><span class="nav-vl">'+NAV_esc(extraerHora(s.hora)||s.hora)+'</span></div>' +
     '<div class="nav-row"><span class="nav-lb">Paquete</span><span class="nav-vl">'+NAV_esc(NAV_paqNombre(s.id_paquete))+'</span></div>' +
     (NAV_n(s.reel_lugar)>0 ? '<div class="nav-row"><span class="nav-lb">Reel de sesión</span><span class="nav-vl nav-g">Incluido</span></div>' : '') +
     '</div>' +
@@ -7438,7 +7445,9 @@ function NAV_enviarWA() {
  
 /* ---------------- recibo ---------------- */
  
+var NAV_reciboActual = '';
 function NAV_recibo(folio) {
+  NAV_reciboActual = folio;
   var s = NAV_buscarSesion(folio);
   if (!s) return;
   var c = NAV_D.camp;
@@ -7446,6 +7455,12 @@ function NAV_recibo(folio) {
   NAV_D.paquetes.forEach(function(p){ if (p.id_paquete===s.id_paquete) pobj=p; });
   var saldo = NAV_saldo(s);
   var extrasFilas = '', cortesias = '';
+  /* Cortesía automática: 1 foto por temporada previa */
+  var _prevN = NAV_n(s.temporadas_previas);
+  if (_prevN > 0)
+    cortesias += '<tr class="nav-ind"><td style="color:#27ae60">+ Fotos de cortesía' +
+      ' ('+_prevN+' temporada'+(_prevN===1?'':'s')+' previa'+(_prevN===1?'':'s')+')</td>' +
+      '<td class="nav-r" style="color:#27ae60">'+_prevN+' foto'+(_prevN===1?'':'s')+' sin costo</td></tr>';
   (s.extras||[]).forEach(function(e){
     if (String(e.es_regalo)==='SI')
       cortesias += '<tr class="nav-ind"><td style="color:#27ae60">+ '+NAV_esc(e.concepto)+
@@ -7472,7 +7487,7 @@ function NAV_recibo(folio) {
  
     '<div class="nav-section"><div class="nav-stt">Servicio Contratado</div><table>' +
     '<tr><td>Servicio</td><td class="nav-r"><strong>'+NAV_esc(c.nombre)+' · '+NAV_esc(NAV_paqNombre(s.id_paquete))+'</strong></td></tr>' +
-    '<tr><td>Fecha</td><td class="nav-r">'+NAV_fechaLarga(s.fecha_sesion)+' · '+NAV_esc(s.hora)+'</td></tr>' +
+    '<tr><td>Fecha</td><td class="nav-r">'+NAV_fechaLarga(s.fecha_sesion)+' · '+NAV_esc(extraerHora(s.hora)||s.hora)+'</td></tr>' +
     (pobj?'<tr class="nav-mut"><td>Duración</td><td class="nav-r">'+NAV_n(pobj.duracion_min)+' minutos</td></tr>':'') +
     (pobj?'<tr class="nav-mut"><td>Fotos editadas incluidas</td><td class="nav-r">'+NAV_n(pobj.fotos)+'</td></tr>':'') +
     '<tr class="nav-mut"><td>Personas</td><td class="nav-r">'+NAV_n(s.personas)+'</td></tr>' +
@@ -7509,7 +7524,53 @@ function NAV_recibo(folio) {
   NAV_abrirCapa('nav-rec');
 }
  
-function NAV_imprimirRecibo() { window.print(); }
+function NAV_imprimirRecibo() {
+  var s = NAV_buscarSesion(NAV_reciboActual);
+  if (!s) { window.print(); return; }
+  var c = NAV_D.camp;
+  var pobj = null;
+  NAV_D.paquetes.forEach(function(p){ if (p.id_paquete===s.id_paquete) pobj=p; });
+  var saldo = NAV_saldo(s);
+  var _prevN = NAV_n(s.temporadas_previas);
+
+  var extrasArr = (s.extras||[]).map(function(e){
+    return { descripcion: NAV_esc(e.concepto) + (String(e.es_regalo)==='SI' ? ' (cortesía)' : ''),
+             monto: String(e.es_regalo)==='SI' ? 0 : NAV_n(e.monto_cobrado) };
+  });
+  if (_prevN > 0)
+    extrasArr.unshift({ descripcion: 'Fotos de cortesía ×'+_prevN+
+      ' ('+_prevN+' temporada'+(_prevN===1?'':'s')+' previa'+(_prevN===1?'':'s')+')', monto: 0 });
+  if (NAV_n(s.reel_lugar)>0)
+    extrasArr.push({ descripcion: 'Reel de sesión (cortesía)', monto: 0 });
+
+  var evPDF = {
+    folio: s.folio,
+    cliente: s.cliente,
+    email: s.telefono,
+    paquete: NAV_esc(c.nombre) + ' · ' + NAV_esc(NAV_paqNombre(s.id_paquete)),
+    fecha_evento: s.fecha_sesion,
+    hora: extraerHora(s.hora) || s.hora,
+    precio_base: NAV_n(s.precio_paquete),
+    extras: extrasArr,
+    descuento_tipo: s.descuento_preventa ? 'monto' : '',
+    descuento_valor: NAV_n(s.descuento_preventa),
+    total: NAV_n(s.total),
+    pagado: NAV_n(s.anticipo) + NAV_n(s.saldo_pagado),
+    categoria: 'Sesiones'
+  };
+  var textosPDF = {
+    politica_cancelacion: 'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia. Es necesario confirmar asistencia el día previo para conservar el lugar. Si el cliente no se presenta, se pierde el apartado y no hay reagenda. Los cambios de fecha están sujetos a disponibilidad dentro de la temporada.',
+    disclaimer_entrega: 'La entrega de la galería editada es a más tardar el '+NAV_fechaLarga(c.fecha_entrega_max)+'.',
+    disclaimer_fotos: 'Las fotos se entregan en formato digital de alta resolución.',
+    disclaimer_archivos: 'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.',
+    disclaimer_derechos: 'Vanessa Velasco conserva los derechos de autor de las imágenes.',
+    disclaimer_uso: 'El precio corresponde al mes de la sesión y queda fijo desde el apartado.',
+    pie_pagina: 'Gracias por confiar en Vanessa Velasco Fotografía Familiar'
+  };
+  var html = buildContratoHTML(evPDF, textosPDF);
+  var nombre = (s.cliente + ' Navidad ' + NAV_fechaCorta(s.fecha_sesion)).replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g,'').trim() + '.pdf';
+  descargarPDF(html, nombre);
+}
  
 /* ---------------- arranque diferido ---------------- */
  
