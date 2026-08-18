@@ -793,6 +793,77 @@
   #nav-ov .nav-tbody{max-height:520px}
 }
 </style>
+<style>
+/* ===== Navidad 2026 · correcciones de layout v4.9 ===== */
+ 
+/* Los hijos de un grid no se encogen por defecto: por eso los inputs de fecha
+   de iOS empujaban al vecino y se salían de la pantalla. */
+#nav-ov .nav-f2 > *, #nav-ov .nav-f3 > *,
+#nav-ses .nav-f2 > *, #nav-ses .nav-f3 > *,
+#nav-alta .nav-f2 > *, #nav-alta .nav-f3 > * { min-width: 0; }
+ 
+/* Todo input dentro del módulo respeta su contenedor */
+#nav-ov input, #nav-ov select, #nav-ov textarea,
+#nav-ses input, #nav-ses select, #nav-ses textarea,
+#nav-alta input, #nav-alta select, #nav-alta textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+ 
+/* iOS le da ancho propio a date/time y no lo suelta */
+#nav-ov input[type="date"], #nav-ov input[type="time"], #nav-ov input[type="datetime-local"],
+#nav-ses input[type="date"], #nav-ses input[type="time"],
+#nav-alta input[type="date"], #nav-alta input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  display: block;
+  font-family: 'Jost', sans-serif;
+}
+ 
+/* Las etiquetas largas se parten en dos renglones en vez de estirar la caja */
+#nav-ov .nav-f span, #nav-ses .nav-f span, #nav-alta .nav-f span {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  line-height: 1.3;
+}
+ 
+/* Red de seguridad: nada del módulo desborda horizontalmente */
+#nav-ov .nav-wrap, #nav-ses .nav-wrap, #nav-alta .nav-wrap, #nav-wa .nav-wrap {
+  overflow-x: hidden;
+}
+#nav-ov .nav-card, #nav-ses .nav-card, #nav-alta .nav-card { overflow: hidden; }
+ 
+/* En pantallas muy angostas los pares se apilan */
+@media (max-width: 360px) {
+  #nav-ov .nav-f2, #nav-ses .nav-f2, #nav-alta .nav-f2,
+  #nav-ov .nav-f3, #nav-ses .nav-f3, #nav-alta .nav-f3 {
+    grid-template-columns: 1fr;
+  }
+}
+ 
+/* ---- bloqueo de horas ---- */
+#nav-ov .nav-slot.nav-blqh { background: repeating-linear-gradient(135deg,
+  var(--beige-light), var(--beige-light) 6px, var(--beige-mid) 6px, var(--beige-mid) 12px); }
+#nav-ov .nav-slot.nav-blqh .nav-bd { color: var(--text-muted); font-size: 13px; }
+#nav-ov .nav-lock { background: none; border: 0; color: var(--text-muted);
+  font-size: 15px; cursor: pointer; flex: none; padding: 0 6px; line-height: 1; }
+#nav-ov .nav-lock.nav-on { color: var(--error); }
+ 
+/* ---- ajustes editables ---- */
+#nav-ov .nav-save { position: sticky; bottom: 10px; z-index: 3; }
+#nav-ov .nav-dirty { border-color: var(--warning) !important; }
+#nav-ov .nav-pmes { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 8px;
+  align-items: center; margin-bottom: 9px; }
+#nav-ov .nav-pmes label { font-size: 11px; color: var(--text-muted); }
+#nav-ov .nav-pmes input { font-size: 13px !important; padding: 9px 10px !important; }
+#nav-ov .nav-vars { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+#nav-ov .nav-vars code { font-family: 'Jost', sans-serif; font-size: 9.5px;
+  background: var(--beige-mid); color: var(--brown-dark); padding: 3px 7px;
+  border-radius: 999px; }
+</style>
 </head>
 <body>
 
@@ -7579,6 +7650,402 @@ function NAV_pintarDia() {
   };
 })();
 </script>
-  
+
+  <script>
+/* ============ Navidad 2026 · parche B ============ */
+ 
+/* ---------------- bloqueo de horas ---------------- */
+ 
+/** Horas bloqueadas de un día, como arreglo. */
+function NAV_horasBloqueadas(fecha) {
+  for (var i = 0; i < NAV_D.dias.length; i++) {
+    if (NAV_D.dias[i].fecha === fecha && NAV_D.dias[i].horas_bloqueadas)
+      return String(NAV_D.dias[i].horas_bloqueadas).split(',')
+        .map(function(h){ return h.trim(); }).filter(Boolean);
+  }
+  return [];
+}
+ 
+/** Bloquea o libera una hora suelta. */
+function NAV_toggleHora(fecha, hora) {
+  var actuales = NAV_horasBloqueadas(fecha);
+  var i = actuales.indexOf(hora);
+  var bloqueando = i < 0;
+  if (bloqueando) actuales.push(hora); else actuales.splice(i, 1);
+ 
+  NAV_post('NAV_bloquearHoras', { fecha: fecha, horas: actuales.join(',') })
+    .then(function(r){
+      if (r && r.ok) {
+        NAV_toast(bloqueando ? 'Hora bloqueada' : 'Hora liberada');
+        NAV_recargar().then(function(){ NAV_pintarDia(); });
+      } else NAV_toast('No se pudo: ' + ((r && r.error) || ''));
+    }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+ 
+/** REEMPLAZA a la anterior. Agrega el candado en cada lugar libre. */
+function NAV_pintarDia() {
+  if (!NAV_diaActual) NAV_diaActual = NAV_D.camp.fecha_inicio;
+  document.getElementById('nav-dia-ttl').textContent = NAV_fechaLarga(NAV_diaActual);
+ 
+  var ses = NAV_ocupacion(NAV_diaActual);
+  var cupo = NAV_cupoDe(NAV_diaActual);
+  var blq = NAV_horasBloqueadas(NAV_diaActual);
+  var pers = 0; ses.forEach(function(s){ pers += NAV_n(s.personas); });
+ 
+  document.getElementById('nav-dia-res').innerHTML =
+    '<div class="nav-row"><span class="nav-lb">Ocupación</span>' +
+    '<span class="nav-vl">'+ses.length+' de '+cupo+'</span></div>' +
+    '<div class="nav-bar"><i style="width:'+(cupo?Math.round(ses.length/cupo*100):0)+'%"></i></div>' +
+    '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Personas en el set</span>' +
+    '<span class="nav-vl">'+pers+'</span></div>' +
+    (blq.length ? '<div class="nav-row"><span class="nav-lb">Horas bloqueadas</span>' +
+      '<span class="nav-vl nav-w">'+blq.join(' · ')+'</span></div>' : '');
+ 
+  var horas = NAV_horasDia(), h = '', slot = NAV_n(NAV_D.camp.slot_min) || 60;
+  var lleno = ses.length >= cupo;
+ 
+  for (var i = 0; i < horas.length; i++) {
+    var hora = horas[i], s = null;
+    for (var j = 0; j < ses.length; j++) if (String(ses[j].hora) === hora) s = ses[j];
+    var esBlq = blq.indexOf(hora) >= 0;
+ 
+    if (s) {
+      var pag = NAV_saldo(s) <= 0;
+      h += '<div class="nav-slot"><div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd" style="cursor:pointer" onclick="NAV_verSesion(\''+s.folio+'\')">' +
+        '<div class="nav-nm">'+NAV_esc(s.cliente)+'</div>' +
+        '<div class="nav-me">'+NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+
+        NAV_n(s.personas)+' personas</div></div>' +
+        '<span class="nav-s '+(pag?'nav-pg':'nav-an')+'">'+(pag?'Pagado':'Anticipo')+'</span></div>';
+    } else if (esBlq) {
+      h += '<div class="nav-slot nav-blqh"><div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd">Bloqueado</div>' +
+        '<button class="nav-lock nav-on" title="Liberar" ' +
+        'onclick="NAV_toggleHora(\''+NAV_diaActual+'\',\''+hora+'\')">🔒</button></div>';
+    } else if (lleno) {
+      h += '<div class="nav-slot nav-fr" style="opacity:.45"><div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd">Cupo del día alcanzado</div></div>';
+    } else {
+      h += '<div class="nav-slot nav-fr"><div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd" onclick="NAV_agendar(\''+NAV_diaActual+'\',\''+hora+'\')">' +
+        '<span class="nav-pl">+</span> Agendar sesión</div>' +
+        '<button class="nav-lock" title="Bloquear esta hora" ' +
+        'onclick="NAV_toggleHora(\''+NAV_diaActual+'\',\''+hora+'\')">🔓</button></div>';
+    }
+ 
+    var sig = horas[i+1];
+    if (sig && NAV_min(sig) - NAV_min(hora) > slot) {
+      h += '<div class="nav-brk"><div class="nav-t">'+NAV_hhmm(NAV_min(hora)+slot)+'</div>' +
+        '<div>Comida · '+NAV_hhmm(NAV_min(hora)+slot)+' – '+sig+'</div></div>';
+    } else if (sig) {
+      h += '<div class="nav-gp">reacomodo</div>';
+    }
+  }
+  document.getElementById('nav-dia-slots').innerHTML = h;
+}
+ 
+/** El formulario de alta ya no ofrece horas bloqueadas. */
+function NAV_altaFecha(horaPre) {
+  var fecha = document.getElementById('nav-a-fecha').value;
+  var aviso = document.getElementById('nav-a-avisofecha');
+  var selH = document.getElementById('nav-a-hora');
+  if (!fecha) { selH.innerHTML = ''; return; }
+ 
+  aviso.innerHTML = NAV_esDiaTrabajo(fecha) ? '' :
+    '<div class="nav-note">◷ Ese día no es de trabajo en esta temporada. ' +
+    'Puedes agendarlo igual como excepción.</div>';
+ 
+  var horas = NAV_horasDia();
+  var tomadas = NAV_ocupacion(fecha).map(function(s){ return String(s.hora); });
+  var blq = NAV_horasBloqueadas(fecha);
+  var cupo = NAV_cupoDe(fecha);
+  var libres = horas.filter(function(h){
+    return tomadas.indexOf(h) < 0 && blq.indexOf(h) < 0;
+  });
+ 
+  document.getElementById('nav-alta-cupo').textContent = tomadas.length + '/' + cupo;
+ 
+  if (!libres.length) {
+    selH.innerHTML = '<option value="">Sin lugares libres</option>';
+    aviso.innerHTML += '<div class="nav-note">◷ No hay horas disponibles este día.</div>';
+  } else {
+    selH.innerHTML = libres.map(function(h){
+      return '<option value="'+h+'"'+(h===horaPre?' selected':'')+'>'+h+'</option>';
+    }).join('');
+  }
+  if (blq.length) {
+    aviso.innerHTML += '<div class="nav-note">◷ Horas bloqueadas: ' + blq.join(' · ') + '</div>';
+  }
+  if (tomadas.length >= cupo) {
+    aviso.innerHTML += '<div class="nav-note">◷ Ya se alcanzó el cupo de '+cupo+' del día.</div>';
+  }
+  NAV_altaPrecio();
+}
+ 
+/* ---------------- ajustes editables ---------------- */
+ 
+function NAV_campo(id, etiqueta, valor, tipo) {
+  return '<label class="nav-f"><span>'+etiqueta+'</span>' +
+    '<input id="nav-s-'+id+'" type="'+(tipo||'text')+'" value="'+
+    NAV_esc(valor === null || valor === undefined ? '' : valor)+'"></label>';
+}
+function NAV_area(id, etiqueta, valor, vars) {
+  return '<label class="nav-f"><span>'+etiqueta+'</span>' +
+    '<textarea id="nav-s-'+id+'">'+NAV_esc(valor||'')+'</textarea></label>' +
+    (vars ? '<div class="nav-vars">' + vars.map(function(v){
+      return '<code>{'+v+'}</code>'; }).join('') + '</div>' : '');
+}
+function NAV_val(id) {
+  var el = document.getElementById('nav-s-'+id);
+  return el ? el.value : '';
+}
+ 
+/** REEMPLAZA a la anterior. Todo editable. */
+function NAV_ajustes() {
+  var c = NAV_D.camp;
+  if (!c) return;
+ 
+  var precios = '';
+  NAV_D.paquetes.forEach(function(p){
+    var filas = '';
+    NAV_D.precios.filter(function(x){
+      return x.tipo === 'paquete' && x.referencia === p.id_paquete;
+    }).sort(function(a,b){ return NAV_n(a.mes) - NAV_n(b.mes); }).forEach(function(x){
+      filas += '<div class="nav-pmes">' +
+        '<label>'+NAV_MESES[NAV_n(x.mes)-1].substring(0,3)+'</label>' +
+        '<input id="nav-pr-'+x.id_precio+'" inputmode="decimal" value="'+NAV_n(x.precio)+'">' +
+        '<span class="nav-lb" style="text-align:right">preventa '+
+        NAV_money(NAV_n(x.precio) - NAV_n(c.preventa_descuento))+'</span></div>';
+    });
+    precios += '<div class="nav-lab">'+NAV_esc(p.nombre)+'</div><div class="nav-card">' +
+      '<div class="nav-f2">' +
+      NAV_campo('paq-'+p.id_paquete+'-nombre', 'Nombre', p.nombre) +
+      NAV_campo('paq-'+p.id_paquete+'-duracion', 'Duración (min)', NAV_n(p.duracion_min)) +
+      '</div><div class="nav-f2">' +
+      NAV_campo('paq-'+p.id_paquete+'-fotos', 'Fotos', NAV_n(p.fotos)) +
+      NAV_campo('paq-'+p.id_paquete+'-personas', 'Personas', p.personas_desc) +
+      '</div><div class="nav-sep"></div>' +
+      '<div class="nav-lb" style="margin-bottom:9px">Precio normal por mes</div>' + filas +
+      '</div>';
+  });
+ 
+  var extras = '';
+  NAV_D.precios.filter(function(x){ return x.tipo === 'extra'; }).forEach(function(x){
+    extras += '<div class="nav-pmes" style="grid-template-columns:1fr 110px">' +
+      '<label style="font-size:12.5px;color:var(--text-main)">'+NAV_esc(x.referencia)+'</label>' +
+      '<input id="nav-pr-'+x.id_precio+'" inputmode="decimal" value="'+NAV_n(x.precio)+'"></div>';
+  });
+ 
+  document.getElementById('nav-ajustes').innerHTML =
+    '<div class="nav-lab">Temporada</div><div class="nav-card">' +
+    NAV_campo('nombre', 'Nombre visible', c.nombre) +
+    '<div class="nav-f2">' +
+    NAV_campo('fecha_inicio', 'Inicio', c.fecha_inicio, 'date') +
+    NAV_campo('fecha_fin', 'Fin de sesiones', c.fecha_fin, 'date') + '</div>' +
+    '<div class="nav-f2">' +
+    NAV_campo('fecha_entrega_max', 'Entrega máxima', c.fecha_entrega_max, 'date') +
+    NAV_campo('meta_sesiones', 'Meta', NAV_n(c.meta_sesiones)) + '</div>' +
+    '<label class="nav-f" style="margin-bottom:0"><span>Estado</span>' +
+    '<select id="nav-s-estado">' +
+    ['Borrador','Preventa','Activa','Cerrada'].map(function(e){
+      return '<option'+(String(c.estado)===e?' selected':'')+'>'+e+'</option>'; }).join('') +
+    '</select></label>' +
+    '<div class="nav-note">◷ Cambiar las fechas recalcula la capacidad de la temporada.</div>' +
+    '</div>' +
+ 
+    '<div class="nav-lab">Horario</div><div class="nav-card">' +
+    '<div class="nav-f2">' +
+    NAV_campo('hora_am_inicio', 'Mañana inicio', c.hora_am_inicio, 'time') +
+    NAV_campo('hora_am_fin', 'Mañana fin', c.hora_am_fin, 'time') + '</div>' +
+    '<div class="nav-f2">' +
+    NAV_campo('hora_pm_inicio', 'Tarde inicio', c.hora_pm_inicio, 'time') +
+    NAV_campo('hora_pm_fin', 'Tarde fin', c.hora_pm_fin, 'time') + '</div>' +
+    '<div class="nav-f2">' +
+    NAV_campo('slot_min', 'Minutos por lugar', NAV_n(c.slot_min)) +
+    NAV_campo('cupo_dia', 'Lugares por día', NAV_n(c.cupo_dia)) + '</div>' +
+    '<label class="nav-f" style="margin-bottom:0"><span>Días de trabajo</span>' +
+    '<input id="nav-s-dias_semana" value="'+NAV_esc(c.dias_semana)+'"></label>' +
+    '<div class="nav-note">◷ Números separados por comas · 0 domingo, 5 viernes, 6 sábado.</div>' +
+    '</div>' +
+ 
+    '<div class="nav-lab">Preventa y cobros</div><div class="nav-card">' +
+    '<div class="nav-f2">' +
+    NAV_campo('preventa_inicio', 'Abre', String(c.preventa_inicio||'').replace(' ','T'), 'datetime-local') +
+    NAV_campo('preventa_fin', 'Cierra', String(c.preventa_fin||'').replace(' ','T'), 'datetime-local') +
+    '</div><div class="nav-f2">' +
+    NAV_campo('preventa_descuento', 'Descuento', NAV_n(c.preventa_descuento)) +
+    NAV_campo('anticipo_monto', 'Anticipo', NAV_n(c.anticipo_monto)) + '</div>' +
+    '<div class="nav-f2">' +
+    NAV_campo('costo_persona_extra', 'Persona extra', NAV_n(c.costo_persona_extra)) +
+    NAV_campo('promo_reel_limite', 'Reels (primeras N)', NAV_n(c.promo_reel_limite)) +
+    '</div></div>' +
+ 
+    '<div class="nav-lab">Comisión de tarjeta</div><div class="nav-card">' +
+    '<div class="nav-f3">' +
+    NAV_campo('mp_pct', 'Porcentaje', NAV_n(c.mp_pct)) +
+    NAV_campo('mp_fija', 'Cuota fija', NAV_n(c.mp_fija)) +
+    NAV_campo('mp_iva', 'IVA %', NAV_n(c.mp_iva)) + '</div>' +
+    '<div class="nav-row"><span class="nav-lb">Cobro de $1,000</span>' +
+    '<span class="nav-vl nav-w">'+NAV_money(NAV_comision(1000))+'</span></div></div>' +
+ 
+    precios +
+ 
+    '<div class="nav-lab">Extras</div><div class="nav-card">' + extras + '</div>' +
+ 
+    '<div class="nav-lab">Enlaces</div><div class="nav-card">' +
+    NAV_campo('brochure_url', 'Liga del brochure en Drive', c.brochure_url) +
+    NAV_campo('encuesta_url', 'Liga del formulario de encuesta', c.encuesta_url) +
+    '<label class="nav-f" style="margin-bottom:0"><span>Plataforma de galerías</span>' +
+    '<input id="nav-s-galeria_plataforma" value="'+NAV_esc(c.galeria_plataforma)+'"></label>' +
+    '<p class="nav-hint">El brochure debe estar en «cualquier persona con el vínculo», ' +
+    'solo lectura, y no moverse durante la temporada.</p></div>' +
+ 
+    '<div class="nav-lab">Mensajes de WhatsApp</div>' +
+    '<div class="nav-card">' +
+    NAV_area('msg_apartado', '1 · Al apartar', c.msg_apartado,
+      ['nombre','fecha','hora','paquete','fotos','personas','anticipo','saldo']) +
+    '</div><div class="nav-card">' +
+    NAV_area('msg_brochure', '2 · Brochure · 15 días antes', c.msg_brochure,
+      ['nombre','fecha','hora','brochure']) +
+    '</div><div class="nav-card">' +
+    NAV_area('msg_confirma', '3 · Confirmación · un día antes', c.msg_confirma,
+      ['nombre','fecha','hora','personas']) +
+    '</div><div class="nav-card">' +
+    NAV_area('msg_presel', '4 · Preselección', c.msg_presel,
+      ['nombre','galeria','fotos','regalo']) +
+    '</div><div class="nav-card">' +
+    NAV_area('msg_entrega', '5 · Entrega de galería', c.msg_entrega,
+      ['nombre','galeria','fotos_total']) +
+    '</div><div class="nav-card">' +
+    NAV_area('msg_encuesta', '6 · Encuesta', c.msg_encuesta,
+      ['nombre','encuesta','folio']) +
+    '<p class="nav-hint">Lo que va entre llaves se llena solo con los datos de cada ' +
+    'sesión. La app nunca envía por su cuenta: prepara el texto y tú decides.</p></div>' +
+ 
+    '<button class="nav-btn nav-save" id="nav-s-btn" onclick="NAV_guardarAjustes()">' +
+    'Guardar cambios</button>' +
+    '<div id="nav-s-error"></div>';
+}
+ 
+/** Guarda campaña, paquetes y precios. */
+function NAV_guardarAjustes() {
+  var btn = document.getElementById('nav-s-btn');
+  var err = document.getElementById('nav-s-error');
+  err.innerHTML = '';
+  btn.disabled = true; btn.textContent = 'Guardando…';
+ 
+  var datos = {};
+  ['nombre','fecha_inicio','fecha_fin','fecha_entrega_max','meta_sesiones','estado',
+   'hora_am_inicio','hora_am_fin','hora_pm_inicio','hora_pm_fin','slot_min','cupo_dia',
+   'dias_semana','preventa_descuento','anticipo_monto','costo_persona_extra',
+   'promo_reel_limite','mp_pct','mp_fija','mp_iva','brochure_url','encuesta_url',
+   'galeria_plataforma','msg_apartado','msg_brochure','msg_confirma','msg_presel',
+   'msg_entrega','msg_encuesta'].forEach(function(k){ datos[k] = NAV_val(k); });
+  datos.preventa_inicio = String(NAV_val('preventa_inicio')).replace('T',' ');
+  datos.preventa_fin = String(NAV_val('preventa_fin')).replace('T',' ');
+ 
+  var tareas = [NAV_post('NAV_guardarCampania', datos)];
+ 
+  NAV_D.paquetes.forEach(function(p){
+    var base = 'paq-' + p.id_paquete + '-';
+    tareas.push(NAV_post('NAV_guardarPaquete', {
+      id_paquete: p.id_paquete,
+      nombre: NAV_val(base+'nombre'),
+      duracion_min: NAV_n(NAV_val(base+'duracion')),
+      fotos: NAV_n(NAV_val(base+'fotos')),
+      personas_desc: NAV_val(base+'personas')
+    }));
+  });
+ 
+  NAV_D.precios.forEach(function(x){
+    var el = document.getElementById('nav-pr-' + x.id_precio);
+    if (!el) return;
+    var nuevo = NAV_n(el.value);
+    if (nuevo === NAV_n(x.precio)) return;
+    tareas.push(NAV_post('NAV_guardarPrecio', { id_precio: x.id_precio, precio: nuevo }));
+  });
+ 
+  Promise.all(tareas).then(function(res){
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
+    var malas = res.filter(function(r){ return !r || !r.ok; });
+    if (malas.length) {
+      err.innerHTML = '<div class="nav-err">'+malas.length+' cambios no se guardaron. ' +
+        NAV_esc((malas[0] && malas[0].error) || '') + '</div>';
+      return;
+    }
+    NAV_toast('Ajustes guardados');
+    NAV_recargar().then(function(){ NAV_ajustes(); });
+  }).catch(function(e){
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
+    err.innerHTML = '<div class="nav-err">Sin conexión: '+NAV_esc(e.message)+'</div>';
+  });
+}
+ 
+/* ---------------- mensajes desde el Sheet ---------------- */
+ 
+/** REEMPLAZA a la anterior. Ahora las plantillas vienen de Ajustes. */
+function NAV_msg(folio, tipo) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  var c = NAV_D.camp;
+ 
+  var nombre = String(s.cliente).split(' ')[0];
+  if (String(s.cliente).toLowerCase().indexOf('familia') === 0) nombre = s.cliente;
+ 
+  var pobj = null;
+  NAV_D.paquetes.forEach(function(p){ if (p.id_paquete === s.id_paquete) pobj = p; });
+  var fotos = pobj ? NAV_n(pobj.fotos) : 0;
+  var regaloN = 0;
+  (s.extras||[]).forEach(function(e){
+    if (String(e.es_regalo) === 'SI') regaloN += NAV_n(e.cantidad);
+  });
+ 
+  var vals = {
+    nombre: nombre,
+    fecha: NAV_fechaLarga(s.fecha_sesion),
+    hora: s.hora,
+    paquete: NAV_paqNombre(s.id_paquete),
+    fotos: fotos,
+    fotos_total: fotos + regaloN,
+    personas: NAV_n(s.personas),
+    anticipo: NAV_money(s.anticipo),
+    saldo: NAV_money(NAV_saldo(s)),
+    total: NAV_money(s.total),
+    folio: s.folio,
+    brochure: c.brochure_url || '[falta la liga del brochure en Ajustes]',
+    galeria: s.galeria_url || '[falta la liga de la galería en la sesión]',
+    encuesta: c.encuesta_url ? (c.encuesta_url + '?folio=' + s.folio)
+      : '[falta la liga de la encuesta en Ajustes]',
+    regalo: regaloN ? ('\n\nTienes ' + regaloN + ' fotos de regalo por tus temporadas ' +
+      'anteriores 💛 así que puedes elegir ' + (fotos + regaloN) + ' en total.') : ''
+  };
+ 
+  var campos = { apartado:'msg_apartado', brochure:'msg_brochure', confirma:'msg_confirma',
+    presel:'msg_presel', entrega:'msg_entrega', encuesta:'msg_encuesta' };
+  var titulos = { apartado:'1 · Al apartar', brochure:'2 · Brochure',
+    confirma:'3 · Confirmación', presel:'4 · Preselección',
+    entrega:'5 · Entrega de galería', encuesta:'6 · Encuesta' };
+ 
+  var plantilla = c[campos[tipo] || 'msg_apartado'] || '';
+  if (!plantilla) {
+    NAV_toast('Falta el texto en Ajustes → Mensajes');
+    return;
+  }
+  var texto = plantilla.replace(/\{(\w+)\}/g, function(m, k){
+    return vals[k] !== undefined ? String(vals[k]) : m;
+  });
+ 
+  NAV_waTel = s.telefono;
+  NAV_waTexto = texto;
+  document.getElementById('nav-wa-ttl').textContent = titulos[tipo] || 'Mensaje';
+  document.getElementById('nav-wa-av').textContent = String(s.cliente).charAt(0);
+  document.getElementById('nav-wa-who').innerHTML = NAV_esc(s.cliente) +
+    '<small>' + NAV_esc(s.telefono) + '</small>';
+  document.getElementById('nav-wa-bub').innerHTML =
+    NAV_esc(texto).replace(/(https?:\/\/[^\s]+)/g, '<span class="nav-lk">$1</span>') +
+    '<span class="nav-mt">Listo para enviar</span>';
+  NAV_abrirCapa('nav-wa');
+}
+</script>
 </body>
 </html>
