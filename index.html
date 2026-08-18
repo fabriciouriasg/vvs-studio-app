@@ -661,6 +661,16 @@
   border-bottom:1px solid var(--beige-mid)}
  
 /* ---------- disponibilidad ---------- */
+#nav-ov .nav-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px}
+#nav-ov .nav-chips button{font-family:'Jost',sans-serif;font-size:11.5px;font-weight:500;
+  letter-spacing:.04em;padding:8px 13px;border-radius:999px;cursor:pointer;
+  background:var(--white);color:var(--text-muted);border:1px solid var(--beige-dark);
+  transition:background .15s,color .15s,border-color .15s}
+#nav-ov .nav-chips button.nav-on{background:var(--black);color:var(--beige-mid);
+  border-color:var(--black)}
+#nav-ov .nav-chips button.nav-all{background:none;border-style:dashed}
+#nav-ov .nav-chips button.nav-all.nav-on{background:var(--brown-dark);color:#fff;
+  border-color:var(--brown-dark);border-style:solid}
 #nav-ov .nav-prev{background:var(--white);border:1.5px solid var(--beige-dark);
   border-radius:var(--radius);padding:9px;box-shadow:var(--shadow)}
 #nav-ov .nav-prev canvas{width:100%;height:auto;display:block;
@@ -6057,11 +6067,12 @@ function saveSettings() {
       <div class="nav-pane" id="nav-c-dis">
         <div class="nav-card">
           <div class="nav-row"><div class="nav-h3">Disponibilidad</div></div>
-          <p class="nav-hint">Solo aparecen los días con lugares libres.</p>
+          <p class="nav-hint">Solo aparecen los días con lugares libres, de hoy en adelante. Elige uno o varios meses.</p>
         </div>
         <div class="nav-lab">Vista previa</div>
         <div class="nav-prev"><canvas id="nav-cv" width="760" height="600"></canvas></div>
-        <div class="nav-seg" id="nav-dis-meses" style="margin-top:11px"></div>
+        <div class="nav-lab" style="margin-top:14px">Meses a incluir</div>
+        <div class="nav-chips" id="nav-dis-meses"></div>
         <button class="nav-btn" onclick="NAV_descargarImagen()">Descargar imagen</button>
         <p class="nav-hint">La imagen lleva la fecha de generación al pie, para que se note
           cuándo caducó.</p>
@@ -6695,84 +6706,199 @@ function NAV_pintarDia() {
  
 /* ---------------- disponibilidad ---------------- */
  
-function NAV_disponibilidad() {
-  NAV_get('NAV_getDisponibilidad').then(function(r){
-    if (!r || !r.ok) { NAV_error('nav-dis-meses','No se pudo cargar la disponibilidad'); return; }
-    NAV_dispDatos = r.dias || [];
-    var meses = [];
-    NAV_dispDatos.forEach(function(d){
-      var m = d.fecha.substring(0,7);
-      if (meses.indexOf(m) < 0) meses.push(m);
-    });
-    NAV_dispMeses = meses;
-    document.getElementById('nav-dis-meses').innerHTML = meses.map(function(m,i){
-      var mm = parseInt(m.split('-')[1],10);
-      return '<button class="'+(i===0?'nav-on':'')+'" onclick="NAV_dispMes(this,\''+m+'\')">' +
-        NAV_MESES[mm-1] + '</button>';
-    }).join('');
-    if (meses.length) NAV_dibujarDisp(meses[0]);
-  }).catch(function(e){ NAV_error('nav-dis-meses', e.message); });
-}
-var NAV_dispDatos = [], NAV_dispMeses = [], NAV_dispActual = '';
- 
-function NAV_dispMes(btn, m) {
-  var bs = btn.parentNode.querySelectorAll('button');
-  for (var i=0;i<bs.length;i++) bs[i].classList.remove('nav-on');
-  btn.classList.add('nav-on');
-  NAV_dibujarDisp(m);
-}
-function NAV_dibujarDisp(m) {
-  NAV_dispActual = m;
-  var libres = NAV_dispDatos.filter(function(d){ return d.fecha.substring(0,7) === m; });
-  var cv = document.getElementById('nav-cv'), x = cv.getContext('2d');
-  var CW=232, CH=126, PAD=22, top=196, cols=3;
-  var rows = Math.max(1, Math.ceil(libres.length/cols));
-  var W = PAD*2+CW*cols, H = top+rows*CH+70;
-  cv.width = W; cv.height = H;
-  x.fillStyle='#f5f0ea'; x.fillRect(0,0,W,H);
-  x.fillStyle='#e8ddd0'; x.fillRect(0,0,W,126);
-  x.textAlign='center'; x.fillStyle='#1a1410';
-  x.font='500 40px "Cormorant Garamond", Georgia, serif';
-  x.fillText('Vanessa Velasco Studio', W/2, 54);
-  x.font='500 15px Jost, sans-serif'; x.fillStyle='#8b7355';
-  x.fillText('SESIONES NAVIDEÑAS  ·  LUGARES DISPONIBLES', W/2, 82);
-  x.font='500 27px "Cormorant Garamond", Georgia, serif'; x.fillStyle='#1a1410';
-  var mm = parseInt(m.split('-')[1],10);
-  x.fillText(NAV_MESES[mm-1] + ' ' + m.split('-')[0], W/2, 113);
-  if (!libres.length) {
-    x.font='300 17px Jost, sans-serif'; x.fillStyle='#7a6a58';
-    x.fillText('Sin lugares disponibles este mes', W/2, top+40);
+var NAV_dispMeses = [], NAV_dispSel = [];
+
+/* Calcula la disponibilidad localmente, con los datos que ya tiene la app.
+   Ya no depende de NAV_getDisponibilidad, que era lo que tronaba con
+   "Load failed" cuando la petición al script no respondía. */
+function NAV_mesesCampania() {
+  var c = NAV_D.camp;
+  if (!c || !c.fecha_inicio || !c.fecha_fin) return [];
+  var ini = c.fecha_inicio.substring(0,7), fin = c.fecha_fin.substring(0,7);
+  var a = parseInt(ini.split('-')[0],10), m = parseInt(ini.split('-')[1],10);
+  var out = [], guard = 0;
+  while (guard++ < 60) {
+    var k = a + '-' + ('0'+m).slice(-2);
+    out.push(k);
+    if (k >= fin) break;
+    m++; if (m > 12) { m = 1; a++; }
   }
-  libres.forEach(function(r,i){
-    var cx = PAD+(i%cols)*CW, cy = top+Math.floor(i/cols)*CH;
-    x.fillStyle='#fdfaf7'; x.strokeStyle='#d4c4b0'; x.lineWidth=2;
-    x.beginPath();
-    if (x.roundRect) x.roundRect(cx+5, cy, CW-10, CH-12, 10);
-    else x.rect(cx+5, cy, CW-10, CH-12);
-    x.fill(); x.stroke();
-    var d = new Date(r.fecha+'T12:00:00');
-    x.textAlign='left'; x.fillStyle='#1a1410';
-    x.font='500 24px "Cormorant Garamond", Georgia, serif';
-    x.fillText(NAV_DIAS[d.getDay()]+' '+d.getDate(), cx+20, cy+32);
-    x.font='400 14px Jost, sans-serif'; x.fillStyle='#5c4a32';
-    x.fillText(r.horas.slice(0,4).join('   '), cx+20, cy+62);
-    if (r.horas.length>4) x.fillText(r.horas.slice(4).join('   '), cx+20, cy+85);
-    x.font='300 11px Jost, sans-serif'; x.fillStyle='#a89880';
-    x.fillText(r.horas.length + (r.horas.length===1?' lugar':' lugares'), cx+20, cy+CH-24);
+  return out;
+}
+
+function NAV_calcDisp(m) {
+  if (!NAV_D.camp) return [];
+  var anio = parseInt(m.split('-')[0],10), mes = parseInt(m.split('-')[1],10);
+  var dim = new Date(anio, mes, 0).getDate();
+  var horas = NAV_horasDia(), hoy = NAV_hoyISO(), out = [];
+  for (var d = 1; d <= dim; d++) {
+    var f = anio + '-' + ('0'+mes).slice(-2) + '-' + ('0'+d).slice(-2);
+    if (f < hoy) continue;
+    if (!NAV_esDiaTrabajo(f)) continue;
+    var ses = NAV_ocupacion(f), tomadas = {};
+    ses.forEach(function(x){ tomadas[String(x.hora)] = 1; });
+    var libres = horas.filter(function(h){ return !tomadas[h]; });
+    var restante = Math.max(0, NAV_cupoDe(f) - ses.length);
+    libres = libres.slice(0, restante);
+    if (libres.length) out.push({ fecha: f, horas: libres });
+  }
+  return out;
+}
+
+function NAV_disponibilidad() {
+  var cont = document.getElementById('nav-dis-meses');
+  if (!NAV_D.camp) { NAV_error('nav-dis-meses', 'Primero hay que cargar la campaña'); return; }
+  NAV_dispMeses = NAV_mesesCampania();
+  if (!NAV_dispMeses.length) { NAV_error('nav-dis-meses', 'La campaña no tiene fechas'); return; }
+  if (!NAV_dispSel.length) {
+    /* por defecto: el mes en curso si cae dentro, si no el primero */
+    var hoyM = NAV_hoyISO().substring(0,7);
+    NAV_dispSel = [ NAV_dispMeses.indexOf(hoyM) >= 0 ? hoyM : NAV_dispMeses[0] ];
+  }
+  NAV_pintarChips();
+  NAV_dibujarDisp();
+}
+
+function NAV_pintarChips() {
+  var todos = NAV_dispSel.length === NAV_dispMeses.length;
+  var h = '<button class="nav-all' + (todos ? ' nav-on' : '') +
+    '" onclick="NAV_dispTodos()">' + (todos ? '✓ Todos' : 'Todos') + '</button>';
+  h += NAV_dispMeses.map(function(m){
+    var mm = parseInt(m.split('-')[1],10);
+    var on = NAV_dispSel.indexOf(m) >= 0;
+    var etiqueta = NAV_MESES[mm-1];
+    if (NAV_dispMeses.length > 6) etiqueta = etiqueta.substring(0,3) + " '" + m.substring(2,4);
+    return '<button class="' + (on ? 'nav-on' : '') + '" onclick="NAV_dispToggle(\'' + m + '\')">' +
+      (on ? '✓ ' : '') + etiqueta + '</button>';
+  }).join('');
+  document.getElementById('nav-dis-meses').innerHTML = h;
+}
+
+function NAV_dispToggle(m) {
+  var i = NAV_dispSel.indexOf(m);
+  if (i >= 0) {
+    if (NAV_dispSel.length === 1) { NAV_toast('Deja al menos un mes seleccionado'); return; }
+    NAV_dispSel.splice(i,1);
+  } else {
+    NAV_dispSel.push(m);
+  }
+  NAV_dispSel.sort();
+  NAV_pintarChips();
+  NAV_dibujarDisp();
+}
+
+function NAV_dispTodos() {
+  NAV_dispSel = (NAV_dispSel.length === NAV_dispMeses.length)
+    ? [NAV_dispMeses[0]]
+    : NAV_dispMeses.slice();
+  NAV_pintarChips();
+  NAV_dibujarDisp();
+}
+
+function NAV_dibujarDisp() {
+  var cv = document.getElementById('nav-cv'), x = cv.getContext('2d');
+  var CW = 232, CH = 126, PAD = 22, cols = 3;
+  var HEAD = 150, TITMES = 62, GAPMES = 14, PIE = 70;
+  var W = PAD*2 + CW*cols;
+
+  /* 1. armar bloques y medir alto real antes de dibujar */
+  var bloques = NAV_dispSel.slice().sort().map(function(m){
+    var libres = NAV_calcDisp(m);
+    return { mes: m, libres: libres, rows: Math.max(1, Math.ceil(libres.length/cols)) };
   });
-  x.textAlign='center'; x.fillStyle='#7a6a58'; x.font='300 14px Jost, sans-serif';
-  x.fillText('Se aparta con anticipo de ' + NAV_money(NAV_D.camp.anticipo_monto), W/2, H-42);
-  x.font='300 12px Jost, sans-serif'; x.fillStyle='#a89880';
+  var H = HEAD;
+  bloques.forEach(function(b){ H += TITMES + b.rows*CH + GAPMES; });
+  H += PIE;
+
+  cv.width = W; cv.height = H;
+  x.fillStyle = '#f5f0ea'; x.fillRect(0,0,W,H);
+
+  /* 2. encabezado */
+  x.fillStyle = '#e8ddd0'; x.fillRect(0,0,W,HEAD-24);
+  x.textAlign = 'center'; x.fillStyle = '#1a1410';
+  x.font = '500 40px "Cormorant Garamond", Georgia, serif';
+  x.fillText('Vanessa Velasco Studio', W/2, 54);
+  x.font = '500 15px Jost, sans-serif'; x.fillStyle = '#8b7355';
+  var titulo = (NAV_D.camp && NAV_D.camp.nombre ? String(NAV_D.camp.nombre).toUpperCase() : 'SESIONES');
+  x.fillText(titulo + '  ·  LUGARES DISPONIBLES', W/2, 84);
+  x.font = '300 13px Jost, sans-serif'; x.fillStyle = '#a89880';
+  var totalLug = 0;
+  bloques.forEach(function(b){ b.libres.forEach(function(r){ totalLug += r.horas.length; }); });
+  x.fillText(totalLug + (totalLug === 1 ? ' lugar libre' : ' lugares libres'), W/2, 108);
+
+  /* 3. un bloque por mes */
+  var y = HEAD;
+  bloques.forEach(function(b){
+    var mm = parseInt(b.mes.split('-')[1],10);
+    x.textAlign = 'center'; x.fillStyle = '#1a1410';
+    x.font = '500 30px "Cormorant Garamond", Georgia, serif';
+    x.fillText(NAV_MESES[mm-1] + ' ' + b.mes.split('-')[0], W/2, y + 34);
+    x.strokeStyle = '#d4c4b0'; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(W/2-46, y+46); x.lineTo(W/2+46, y+46); x.stroke();
+    var top = y + TITMES;
+
+    if (!b.libres.length) {
+      x.font = '300 17px Jost, sans-serif'; x.fillStyle = '#7a6a58';
+      x.fillText('Sin lugares disponibles este mes', W/2, top + 40);
+    }
+    b.libres.forEach(function(r,i){
+      var cx = PAD + (i%cols)*CW, cy = top + Math.floor(i/cols)*CH;
+      x.fillStyle = '#fdfaf7'; x.strokeStyle = '#d4c4b0'; x.lineWidth = 2;
+      x.beginPath();
+      if (x.roundRect) x.roundRect(cx+5, cy, CW-10, CH-12, 10);
+      else x.rect(cx+5, cy, CW-10, CH-12);
+      x.fill(); x.stroke();
+      var d = new Date(r.fecha + 'T12:00:00');
+      x.textAlign = 'left'; x.fillStyle = '#1a1410';
+      x.font = '500 24px "Cormorant Garamond", Georgia, serif';
+      x.fillText(NAV_DIAS[d.getDay()] + ' ' + d.getDate(), cx+20, cy+32);
+      x.font = '400 14px Jost, sans-serif'; x.fillStyle = '#5c4a32';
+      x.fillText(r.horas.slice(0,4).join('   '), cx+20, cy+62);
+      if (r.horas.length > 4) x.fillText(r.horas.slice(4,8).join('   '), cx+20, cy+85);
+      x.font = '300 11px Jost, sans-serif'; x.fillStyle = '#a89880';
+      x.fillText(r.horas.length + (r.horas.length === 1 ? ' lugar' : ' lugares'), cx+20, cy+CH-24);
+    });
+    y = top + b.rows*CH + GAPMES;
+  });
+
+  /* 4. pie */
+  x.textAlign = 'center'; x.fillStyle = '#7a6a58'; x.font = '300 14px Jost, sans-serif';
+  if (NAV_D.camp && NAV_D.camp.anticipo_monto)
+    x.fillText('Se aparta con anticipo de ' + NAV_money(NAV_D.camp.anticipo_monto), W/2, H-42);
+  x.font = '300 12px Jost, sans-serif'; x.fillStyle = '#a89880';
   var hoy = new Date();
   x.fillText('Disponibilidad al ' + hoy.getDate() + ' ' +
     NAV_MESES[hoy.getMonth()].toLowerCase() + ' ' + hoy.getFullYear() +
     ' — sujeta a cambios', W/2, H-20);
 }
+
 function NAV_descargarImagen() {
-  var a = document.createElement('a');
-  a.download = 'disponibilidad-' + (NAV_dispActual||'navidad') + '.png';
-  a.href = document.getElementById('nav-cv').toDataURL('image/png');
-  a.click();
+  var cv = document.getElementById('nav-cv');
+  var sufijo = NAV_dispSel.length === 1
+    ? NAV_dispSel[0]
+    : NAV_dispSel[0] + '_a_' + NAV_dispSel[NAV_dispSel.length-1];
+  var nombre = 'disponibilidad-' + (sufijo || 'campania') + '.png';
+  if (cv.toBlob) {
+    cv.toBlob(function(blob){
+      if (!blob) { NAV_toast('No se pudo generar la imagen'); return; }
+      var file = null;
+      try { file = new File([blob], nombre, { type:'image/png' }); } catch(e) {}
+      if (file && navigator.canShare && navigator.canShare({ files:[file] })) {
+        navigator.share({ files:[file], title:'Disponibilidad' }).catch(function(){});
+        return;
+      }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = nombre;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    }, 'image/png');
+  } else {
+    var a2 = document.createElement('a');
+    a2.download = nombre;
+    a2.href = cv.toDataURL('image/png');
+    a2.click();
+  }
 }
  
 /* ---------------- dinero ---------------- */
