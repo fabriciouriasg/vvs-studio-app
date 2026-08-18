@@ -6111,7 +6111,95 @@ function saveSettings() {
   </div></div>
   <div class="nav-wrap"><div id="nav-rec-body"></div></div>
 </div>
+ <div id="nav-alta">
+  <div class="nav-lh"><div class="nav-lh-in">
+    <button class="nav-bk" onclick="NAV_cerrarCapa('nav-alta')">‹ Cancelar</button>
+    <div class="nav-ttl">Nueva sesión</div>
+    <div class="nav-st" id="nav-alta-cupo"></div>
+  </div></div>
+  <div class="nav-wrap">
  
+    <div class="nav-lab">Cuándo</div>
+    <div class="nav-card">
+      <div class="nav-f2">
+        <label class="nav-f"><span>Fecha</span>
+          <input type="date" id="nav-a-fecha" onchange="NAV_altaFecha()"></label>
+        <label class="nav-f"><span>Hora</span>
+          <select id="nav-a-hora"></select></label>
+      </div>
+      <div id="nav-a-avisofecha"></div>
+    </div>
+ 
+    <div class="nav-lab">Cliente</div>
+    <div class="nav-card">
+      <label class="nav-f"><span>Nombre</span>
+        <input id="nav-a-nombre" placeholder="Familia Hernández Ruiz"></label>
+      <div class="nav-f2">
+        <label class="nav-f"><span>Teléfono</span>
+          <input id="nav-a-tel" inputmode="tel" placeholder="33 1234 5678"></label>
+        <label class="nav-f"><span>Personas</span>
+          <input id="nav-a-personas" inputmode="numeric" value="4"></label>
+      </div>
+      <label class="nav-f" style="margin-bottom:0"><span>Cómo nos encontró</span>
+        <select id="nav-a-origen">
+          <option value="">Sin especificar</option>
+          <option>Instagram</option>
+          <option>Referida</option>
+          <option>Cliente anterior</option>
+          <option>Otro</option>
+        </select></label>
+    </div>
+ 
+    <div class="nav-lab">Paquete</div>
+    <div class="nav-card">
+      <label class="nav-f"><span>Paquete</span>
+        <select id="nav-a-paquete" onchange="NAV_altaPrecio()"></select></label>
+      <div class="nav-f2">
+        <label class="nav-f"><span>Personas extra a cobrar</span>
+          <select id="nav-a-extra" onchange="NAV_altaPrecio()">
+            <option value="0">0 · sin cargo</option>
+            <option value="1">1</option><option value="2">2</option>
+            <option value="3">3</option><option value="4">4</option>
+            <option value="5">5</option>
+          </select></label>
+        <label class="nav-f"><span>Temporadas previas</span>
+          <select id="nav-a-previas">
+            <option value="">Sin especificar</option>
+            <option>0</option><option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>6</option><option>7</option>
+            <option>8</option><option>9</option>
+          </select></label>
+      </div>
+      <div class="nav-note">◷ Las temporadas previas definen las fotos de regalo. Se puede
+        llenar después.</div>
+    </div>
+ 
+    <div class="nav-lab">Precio</div>
+    <div class="nav-card" id="nav-a-precio"></div>
+ 
+    <div class="nav-lab">Anticipo</div>
+    <div class="nav-card">
+      <div class="nav-f2">
+        <label class="nav-f"><span>Monto recibido</span>
+          <input id="nav-a-anticipo" inputmode="decimal" placeholder="0.00"></label>
+        <label class="nav-f"><span>Forma de pago</span>
+          <select id="nav-a-forma">
+            <option>Efectivo</option>
+            <option>Transferencia</option>
+            <option>Tarjeta · Mercado Pago</option>
+          </select></label>
+      </div>
+      <label class="nav-f" style="margin-bottom:0"><span>O pago comprometido para</span>
+        <input type="date" id="nav-a-compromiso"></label>
+      <p class="nav-hint">Deja el monto vacío si el lugar se aparta sin pago. El lugar queda
+        firme igual; la fecha de compromiso solo sirve para recordar a quién cobrarle.</p>
+    </div>
+ 
+    <button class="nav-btn" id="nav-a-btn" onclick="NAV_altaGuardar()">Apartar sesión</button>
+    <button class="nav-btn nav-gh" onclick="NAV_cerrarCapa('nav-alta')">Cancelar</button>
+    <div id="nav-a-error"></div>
+  </div>
+</div>
 <!-- ===================== FIN DEL BLOQUE C ===================== -->
 <script>
 /* ============ Navidad 2026 · módulo de temporadas · v4.8 ============ */
@@ -7179,6 +7267,318 @@ if (document.readyState === 'loading') {
   setTimeout(NAV_init, 800);
 }
 </script>
+ <script>
+/* ============ Navidad 2026 · alta de sesiones ============ */
  
+/* La capa de alta usa los mismos estilos que la de sesión */
+(function(){
+  var st = document.createElement('style');
+  st.textContent =
+    '#nav-alta{display:none;position:fixed;inset:0;z-index:10015;' +
+    'background:var(--beige-light);overflow-y:auto;-webkit-overflow-scrolling:touch}' +
+    '#nav-alta.nav-open{display:block}' +
+    '#nav-alta .nav-lh{background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);' +
+    'padding:12px 16px;position:sticky;top:0;z-index:5}' +
+    '#nav-alta .nav-lh-in{max-width:480px;margin:0 auto;display:flex;align-items:center;gap:12px}' +
+    '#nav-alta .nav-bk{background:none;border:none;font-family:\'Jost\',sans-serif;font-size:11px;' +
+    'font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);' +
+    'cursor:pointer;flex:none;padding:6px 0}' +
+    '#nav-alta .nav-ttl{font-family:\'Cormorant Garamond\',serif;font-size:19px;font-weight:500;' +
+    'flex:1;text-align:center;color:var(--text-main)}' +
+    '#nav-alta .nav-st{font-size:9px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;' +
+    'color:var(--brown-soft);flex:none;width:70px;text-align:right}' +
+    '#nav-alta .nav-wrap{max-width:480px;margin:0 auto;padding:18px 16px 70px}' +
+    '#nav-alta .nav-lab{font-size:10px;font-weight:500;letter-spacing:.16em;' +
+    'text-transform:uppercase;color:var(--text-muted);margin:24px 0 10px}' +
+    '#nav-alta .nav-lab:first-child{margin-top:0}' +
+    '#nav-alta .nav-card{background:var(--white);border:1.5px solid var(--beige-dark);' +
+    'border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}' +
+    '#nav-alta .nav-row{display:flex;justify-content:space-between;align-items:center;gap:12px}' +
+    '#nav-alta .nav-row+.nav-row{margin-top:12px}' +
+    '#nav-alta .nav-lb{font-size:12px;color:var(--text-muted)}' +
+    '#nav-alta .nav-vl{font-size:13.5px;font-weight:500;font-variant-numeric:tabular-nums;' +
+    'color:var(--text-main)}' +
+    '#nav-alta .nav-vl.nav-g{color:var(--success)}' +
+    '#nav-alta .nav-sep{height:1px;background:var(--beige-dark);opacity:.5;margin:14px -16px}' +
+    '#nav-alta .nav-hint{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:9px;' +
+    'font-weight:300}' +
+    '#nav-alta .nav-note{font-size:10px;color:var(--warning);margin-top:5px}' +
+    '#nav-alta .nav-f{display:block;margin-bottom:13px}' +
+    '#nav-alta .nav-f span{display:block;font-size:10px;font-weight:500;letter-spacing:.14em;' +
+    'text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}' +
+    '#nav-alta .nav-f input,#nav-alta .nav-f select{width:100%;font-family:\'Jost\',sans-serif;' +
+    'font-size:14px;color:var(--text-main);background:var(--white);' +
+    'border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:12px 13px}' +
+    '#nav-alta .nav-f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}' +
+    '#nav-alta .nav-btn{width:100%;background:var(--black);color:var(--white);border:none;' +
+    'border-radius:var(--radius);padding:15px;font-family:\'Jost\',sans-serif;font-size:12.5px;' +
+    'font-weight:500;letter-spacing:.12em;text-transform:uppercase;margin-top:8px;' +
+    'box-shadow:var(--shadow-md);cursor:pointer}' +
+    '#nav-alta .nav-btn:disabled{opacity:.5}' +
+    '#nav-alta .nav-btn.nav-gh{background:var(--white);color:var(--black-soft);' +
+    'border:1.5px solid var(--beige-dark);box-shadow:var(--shadow)}' +
+    '#nav-alta .nav-err{padding:14px;border-radius:var(--radius);background:#f5e4e4;' +
+    'border:1px solid #dfc0c0;color:#8b4a4a;font-size:12.5px;line-height:1.45;margin-top:10px}' +
+    '#nav-alta .nav-ok2{padding:12px 14px;border-radius:var(--radius);background:#e3ebe3;' +
+    'border:1px solid #c6d6c6;color:#3f5a3f;font-size:12px;line-height:1.45;margin-top:9px}';
+  document.head.appendChild(st);
+})();
+ 
+/** Abre el formulario. Si viene fecha y hora, las precarga. */
+function NAV_agendar(fecha, hora) {
+  if (!NAV_D.camp) { NAV_toast('Espera a que cargue la temporada'); return; }
+ 
+  var f = document.getElementById('nav-a-fecha');
+  f.value = fecha || NAV_D.camp.fecha_inicio;
+  f.min = NAV_D.camp.fecha_inicio;
+  f.max = NAV_D.camp.fecha_fin;
+ 
+  document.getElementById('nav-a-nombre').value = '';
+  document.getElementById('nav-a-tel').value = '';
+  document.getElementById('nav-a-personas').value = '4';
+  document.getElementById('nav-a-origen').value = '';
+  document.getElementById('nav-a-extra').value = '0';
+  document.getElementById('nav-a-previas').value = '';
+  document.getElementById('nav-a-anticipo').value = '';
+  document.getElementById('nav-a-compromiso').value = '';
+  document.getElementById('nav-a-error').innerHTML = '';
+ 
+  var sel = document.getElementById('nav-a-paquete');
+  sel.innerHTML = NAV_D.paquetes.map(function(p){
+    return '<option value="'+p.id_paquete+'">'+NAV_esc(p.nombre)+' · '+
+      NAV_n(p.duracion_min)+' min · '+NAV_n(p.fotos)+' fotos</option>';
+  }).join('');
+ 
+  NAV_altaFecha(hora);
+  NAV_abrirCapa('nav-alta');
+}
+ 
+/** Recarga las horas libres del día elegido. */
+function NAV_altaFecha(horaPre) {
+  var fecha = document.getElementById('nav-a-fecha').value;
+  var aviso = document.getElementById('nav-a-avisofecha');
+  var selH = document.getElementById('nav-a-hora');
+  if (!fecha) { selH.innerHTML = ''; return; }
+ 
+  if (!NAV_esDiaTrabajo(fecha)) {
+    aviso.innerHTML = '<div class="nav-note">◷ Ese día no es de trabajo en esta temporada. ' +
+      'Puedes agendarlo igual como excepción.</div>';
+  } else {
+    aviso.innerHTML = '';
+  }
+ 
+  var horas = NAV_horasDia();
+  var tomadas = NAV_ocupacion(fecha).map(function(s){ return String(s.hora); });
+  var cupo = NAV_cupoDe(fecha);
+  var libres = horas.filter(function(h){ return tomadas.indexOf(h) < 0; });
+ 
+  document.getElementById('nav-alta-cupo').textContent =
+    tomadas.length + '/' + cupo;
+ 
+  if (!libres.length) {
+    selH.innerHTML = '<option value="">Sin lugares libres</option>';
+    aviso.innerHTML += '<div class="nav-note">◷ Este día ya está lleno.</div>';
+  } else {
+    selH.innerHTML = libres.map(function(h){
+      return '<option value="'+h+'"'+(h===horaPre?' selected':'')+'>'+h+'</option>';
+    }).join('');
+  }
+  if (tomadas.length >= cupo) {
+    aviso.innerHTML += '<div class="nav-note">◷ Ya se alcanzó el cupo de ' + cupo +
+      ' del día.</div>';
+  }
+  NAV_altaPrecio();
+}
+ 
+/** Busca el precio del paquete para el mes de la fecha elegida. */
+function NAV_altaPrecioBase(idPaquete, fecha) {
+  if (!fecha) return 0;
+  var mes = parseInt(String(fecha).substring(5,7), 10);
+  var out = 0;
+  NAV_D.precios.forEach(function(p){
+    if (p.tipo === 'paquete' && p.referencia === idPaquete && NAV_n(p.mes) === mes)
+      out = NAV_n(p.precio);
+  });
+  return out;
+}
+ 
+/** ¿Estamos dentro de la ventana de preventa ahora mismo? */
+function NAV_enPreventa() {
+  var c = NAV_D.camp;
+  if (!c || !c.preventa_inicio || !c.preventa_fin) return false;
+  var ini = new Date(String(c.preventa_inicio).replace(' ', 'T'));
+  var fin = new Date(String(c.preventa_fin).replace(' ', 'T'));
+  if (isNaN(ini) || isNaN(fin)) return false;
+  var ahora = new Date();
+  return ahora >= ini && ahora <= fin;
+}
+ 
+/** Recalcula y muestra el desglose del precio. */
+function NAV_altaPrecio() {
+  var cont = document.getElementById('nav-a-precio');
+  if (!cont) return;
+  var fecha = document.getElementById('nav-a-fecha').value;
+  var idPaq = document.getElementById('nav-a-paquete').value;
+  var extra = NAV_n(document.getElementById('nav-a-extra').value);
+  var c = NAV_D.camp;
+ 
+  var base = NAV_altaPrecioBase(idPaq, fecha);
+  if (!base) {
+    cont.innerHTML = '<div class="nav-note">◷ No hay precio configurado para ese paquete en ' +
+      'el mes de la sesión. Revisa la hoja Campania_Precios.</div>';
+    return;
+  }
+  var pre = NAV_enPreventa();
+  var desc = pre ? NAV_n(c.preventa_descuento) : 0;
+  var mExtra = extra * NAV_n(c.costo_persona_extra);
+  var total = base - desc + mExtra;
+  var mes = NAV_MESES[parseInt(String(fecha).substring(5,7),10)-1];
+ 
+  cont.innerHTML =
+    '<div class="nav-row"><span class="nav-lb">Paquete · '+mes+'</span>' +
+    '<span class="nav-vl">'+NAV_money(base)+'</span></div>' +
+    (pre ? '<div class="nav-row"><span class="nav-lb">Preventa</span>' +
+      '<span class="nav-vl nav-g">−'+NAV_money(desc)+'</span></div>' : '') +
+    (mExtra ? '<div class="nav-row"><span class="nav-lb">Personas extra · '+extra+'</span>' +
+      '<span class="nav-vl">'+NAV_money(mExtra)+'</span></div>' : '') +
+    '<div class="nav-sep"></div>' +
+    '<div class="nav-row"><span class="nav-lb">Total</span>' +
+    '<span class="nav-vl" style="font-size:17px">'+NAV_money(total)+'</span></div>' +
+    (pre ? '<div class="nav-ok2">Preventa activa · el descuento se aplica solo.</div>'
+         : '<p class="nav-hint">Fuera de la ventana de preventa. El precio queda congelado ' +
+           'al apartar, aunque después se reagende.</p>');
+}
+ 
+/** Guarda la sesión y, si hay monto, registra el anticipo. */
+function NAV_altaGuardar() {
+  var nombre = document.getElementById('nav-a-nombre').value.trim();
+  var tel = document.getElementById('nav-a-tel').value.trim();
+  var fecha = document.getElementById('nav-a-fecha').value;
+  var hora = document.getElementById('nav-a-hora').value;
+  var err = document.getElementById('nav-a-error');
+  err.innerHTML = '';
+ 
+  if (!nombre) { err.innerHTML = '<div class="nav-err">Falta el nombre del cliente</div>'; return; }
+  if (!fecha || !hora) { err.innerHTML = '<div class="nav-err">Falta fecha u hora</div>'; return; }
+ 
+  var datos = {
+    cliente: nombre,
+    telefono: tel,
+    personas: NAV_n(document.getElementById('nav-a-personas').value),
+    personas_extra_cobrar: NAV_n(document.getElementById('nav-a-extra').value),
+    temporadas_previas: document.getElementById('nav-a-previas').value,
+    id_paquete: document.getElementById('nav-a-paquete').value,
+    fecha_sesion: fecha,
+    hora: hora,
+    origen: document.getElementById('nav-a-origen').value,
+    pago_comprometido: document.getElementById('nav-a-compromiso').value
+  };
+ 
+  var anticipo = parseFloat(document.getElementById('nav-a-anticipo').value) || 0;
+  var forma = document.getElementById('nav-a-forma').value;
+ 
+  var btn = document.getElementById('nav-a-btn');
+  btn.disabled = true; btn.textContent = 'Apartando…';
+ 
+  NAV_post('NAV_guardarSesion', datos).then(function(r){
+    if (!r || !r.ok) {
+      btn.disabled = false; btn.textContent = 'Apartar sesión';
+      err.innerHTML = '<div class="nav-err">No se pudo apartar: ' +
+        NAV_esc((r && r.error) || 'error desconocido') + '</div>';
+      return null;
+    }
+    if (anticipo > 0) {
+      btn.textContent = 'Registrando pago…';
+      return NAV_post('NAV_registrarPago', {
+        folio: r.folio, tipo: 'anticipo', monto: anticipo,
+        forma: forma, fecha_pago: NAV_hoyISO()
+      }).then(function(p){ return { folio: r.folio, pago: p }; });
+    }
+    return { folio: r.folio, pago: null };
+  }).then(function(res){
+    btn.disabled = false; btn.textContent = 'Apartar sesión';
+    if (!res) return;
+    var msg = 'Sesión apartada';
+    if (res.pago && res.pago.ok && res.pago.comision)
+      msg += ' · comisión ' + NAV_money(res.pago.comision);
+    NAV_toast(msg);
+    NAV_cerrarCapa('nav-alta');
+    NAV_recargar().then(function(){
+      NAV_verSesion(res.folio);
+    });
+  }).catch(function(e){
+    btn.disabled = false; btn.textContent = 'Apartar sesión';
+    err.innerHTML = '<div class="nav-err">Sin conexión: ' + NAV_esc(e.message) + '</div>';
+  });
+}
+ 
+/* ---------- conectar los lugares libres del calendario ---------- */
+ 
+/** Reemplaza a la versión anterior: ahora los lugares libres son tappables. */
+function NAV_pintarDia() {
+  if (!NAV_diaActual) NAV_diaActual = NAV_D.camp.fecha_inicio;
+  document.getElementById('nav-dia-ttl').textContent = NAV_fechaLarga(NAV_diaActual);
+  var ses = NAV_ocupacion(NAV_diaActual), cupo = NAV_cupoDe(NAV_diaActual);
+  var pers = 0; ses.forEach(function(s){ pers += NAV_n(s.personas); });
+  document.getElementById('nav-dia-res').innerHTML =
+    '<div class="nav-row"><span class="nav-lb">Ocupación</span>' +
+    '<span class="nav-vl">'+ses.length+' de '+cupo+'</span></div>' +
+    '<div class="nav-bar"><i style="width:'+(cupo?Math.round(ses.length/cupo*100):0)+'%"></i></div>' +
+    '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Personas en el set</span>' +
+    '<span class="nav-vl">'+pers+'</span></div>';
+ 
+  var horas = NAV_horasDia(), h = '', slot = NAV_n(NAV_D.camp.slot_min)||60;
+  var lleno = ses.length >= cupo;
+  for (var i=0;i<horas.length;i++) {
+    var hora = horas[i];
+    var s = null;
+    for (var j=0;j<ses.length;j++) if (String(ses[j].hora)===hora) s = ses[j];
+    if (s) {
+      var pag = NAV_saldo(s) <= 0;
+      h += '<div class="nav-slot" onclick="NAV_verSesion(\''+s.folio+'\')" style="cursor:pointer">' +
+        '<div class="nav-t">'+hora+'</div><div class="nav-bd">' +
+        '<div class="nav-nm">'+NAV_esc(s.cliente)+'</div>' +
+        '<div class="nav-me">'+NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+NAV_n(s.personas)+' personas</div>' +
+        '</div><span class="nav-s '+(pag?'nav-pg':'nav-an')+'">'+(pag?'Pagado':'Anticipo')+'</span></div>';
+    } else if (lleno) {
+      h += '<div class="nav-slot nav-fr" style="opacity:.45"><div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd">Cupo del día alcanzado</div></div>';
+    } else {
+      h += '<div class="nav-slot nav-fr" onclick="NAV_agendar(\''+NAV_diaActual+'\',\''+hora+'\')">' +
+        '<div class="nav-t">'+hora+'</div>' +
+        '<div class="nav-bd"><span class="nav-pl">+</span> Agendar sesión</div></div>';
+    }
+    var sig = horas[i+1];
+    if (sig && NAV_min(sig) - NAV_min(hora) > slot) {
+      h += '<div class="nav-brk"><div class="nav-t">'+NAV_hhmm(NAV_min(hora)+slot)+'</div>' +
+        '<div>Comida · '+NAV_hhmm(NAV_min(hora)+slot)+' – '+sig+'</div></div>';
+    } else if (sig) {
+      h += '<div class="nav-gp">reacomodo</div>';
+    }
+  }
+  document.getElementById('nav-dia-slots').innerHTML = h;
+}
+ 
+/* ---------- botón de agendar en el tablero ---------- */
+ 
+(function(){
+  var orig = NAV_tablero;
+  NAV_tablero = function(){
+    orig.apply(this, arguments);
+    var cont = document.getElementById('nav-p-tab');
+    if (!cont || document.getElementById('nav-btn-agendar')) return;
+    var b = document.createElement('button');
+    b.id = 'nav-btn-agendar';
+    b.className = 'nav-btn';
+    b.textContent = 'Agendar sesión';
+    b.style.marginBottom = '12px';
+    b.onclick = function(){ NAV_agendar(); };
+    var dl = cont.querySelector('.nav-dl');
+    if (dl && dl.nextSibling) cont.insertBefore(b, dl.nextSibling);
+    else cont.insertBefore(b, cont.firstChild);
+  };
+})();
+</script>
+  
 </body>
 </html>
