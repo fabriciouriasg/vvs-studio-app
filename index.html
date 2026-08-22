@@ -6188,7 +6188,7 @@ function saveSettings() {
     <button class="nav-bk" onclick="NAV_cerrarCapa('nav-rec')">‹ Volver</button>
     <div class="nav-ttl">Recibo</div>
     <div class="nav-st">
-      <button class="nav-bk" style="color:var(--brown-soft)" onclick="NAV_imprimirRecibo()">PDF</button>
+      <button class="nav-bk" style="background:#f0c040;color:#1a1410;font-weight:600;border-radius:6px;padding:4px 12px;letter-spacing:.06em" onclick="NAV_imprimirReciboDirecto()">PDF</button>
     </div>
   </div></div>
   <div class="nav-wrap"><div id="nav-rec-body"></div></div>
@@ -7544,7 +7544,7 @@ function NAV_imprimirRecibo() {
     extrasArr.push({ descripcion: 'Reel de sesión (cortesía)', monto: 0 });
 
   var evPDF = {
-    folio: s.folio,
+    folio: '',
     cliente: s.cliente,
     email: s.telefono,
     paquete: NAV_esc(c.nombre) + ' · ' + NAV_esc(NAV_paqNombre(s.id_paquete)),
@@ -7567,11 +7567,25 @@ function NAV_imprimirRecibo() {
     disclaimer_uso: 'El precio corresponde al mes de la sesión y queda fijo desde el apartado.',
     pie_pagina: 'Gracias por confiar en Vanessa Velasco Fotografía Familiar'
   };
-  var html = buildContratoHTML(evPDF, textosPDF);
+  var html = buildContratoHTML(evPDF, textosPDF)
+    .replace('.policy{font-size:12px;line-height:1.7;color:#5c4a32;text-align:justify}',
+             '.policy{font-size:11px;line-height:1.2;color:#5c4a32;text-align:justify}')
+    .replace('p{margin:0 0 7px 0;padding-left:13px;text-indent:-13px}',
+             'p{margin:0 0 2px 0;padding-left:13px;text-indent:-13px}');
   var nombre = (s.cliente + ' Navidad ' + NAV_fechaCorta(s.fecha_sesion)).replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g,'').trim() + '.pdf';
   descargarPDF(html, nombre);
 }
  
+
+/* ---------------- PDF directo desde capa nav-rec ---------------- */
+function NAV_imprimirReciboDirecto() {
+  NAV_imprimirRecibo();
+  setTimeout(function() {
+    var m = document.getElementById('pdf-preview-modal');
+    if (m) m.style.zIndex = '20000';
+  }, 120);
+}
+
 /* ---------------- arranque diferido ---------------- */
  
 if (document.readyState === 'loading') {
