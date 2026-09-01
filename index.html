@@ -1851,7 +1851,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.15';
+var APP_VERSION = 'v4.16';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7764,6 +7764,19 @@ function NAV_enviarWA() {
 /* ---------------- recibo ---------------- */
  
 var NAV_reciboActual = '';
+/** Convierte texto multilínea en párrafos con viñeta para el recibo.
+ *  Si el campo está vacío usa el fallback hardcodeado. */
+function NAV_reciboParrafos(texto, fallback) {
+  var src = (texto && String(texto).trim()) ? String(texto).trim() : (fallback || '');
+  return src.split('\n').map(function(l) {
+    var t = l.trim();
+    if (!t) return '';
+    // Si ya tiene viñeta no la duplicamos
+    var linea = (t.charAt(0) === '•' || t.charAt(0) === '-') ? t : '• ' + t;
+    return '<p>' + NAV_esc(linea) + '</p>';
+  }).join('');
+}
+
 function NAV_recibo(folio) {
   NAV_reciboActual = folio;
   var s = NAV_buscarSesion(folio);
@@ -7825,17 +7838,14 @@ function NAV_recibo(folio) {
     '</div>' +
  
     '<div class="nav-section"><div class="nav-stt">Políticas de Cancelación</div><div class="nav-policy">' +
-    '<p>• El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia.</p>' +
-    '<p>• Es necesario confirmar asistencia el día previo para conservar el lugar.</p>' +
-    '<p>• Si el cliente no se presenta, se pierde el apartado y no hay reagenda.</p>' +
-    '<p>• Los cambios de fecha están sujetos a disponibilidad dentro de la temporada.</p></div></div>' +
- 
+    NAV_reciboParrafos(c.politicas_cancelacion,
+      'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia.\nEs necesario confirmar asistencia el día previo para conservar el lugar.\nSi el cliente no se presenta, se pierde el apartado y no hay reagenda.\nLos cambios de fecha están sujetos a disponibilidad dentro de la temporada.') +
+    '</div></div>' +
+
     '<div class="nav-section"><div class="nav-stt">Términos del Servicio</div><div class="nav-policy">' +
-    '<p>• Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.</p>' +
-    '<p>• El precio corresponde al mes de la sesión y queda fijo desde el apartado.</p>' +
-    '<p>• La entrega de la galería editada es a más tardar el '+NAV_fechaLarga(c.fecha_entrega_max)+'.</p>' +
-    '<p>• Las fotos se entregan en formato digital de alta resolución.</p>' +
-    '<p>• Vanessa Velasco conserva los derechos de autor de las imágenes.</p></div></div>' +
+    NAV_reciboParrafos(c.terminos_servicio,
+      'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.\nEl precio corresponde al mes de la sesión y queda fijo desde el apartado.\nLa entrega de la galería editada es a más tardar el '+NAV_fechaLarga(c.fecha_entrega_max)+'.\nLas fotos se entregan en formato digital de alta resolución.\nVanessa Velasco conserva los derechos de autor de las imágenes.') +
+    '</div></div>' +
  
     '<div class="nav-footer">Gracias por confiar en Vanessa Velasco Fotografía Familiar</div>' +
     '<div class="nav-ig">@vanessavelascofoto · instagram.com/vanessavelascofoto</div></div>';
@@ -7876,13 +7886,19 @@ function NAV_imprimirRecibo() {
     pagado: NAV_n(s.anticipo) + NAV_n(s.saldo_pagado),
     categoria: 'Sesiones'
   };
+  /* Políticas — usa campo de Sheet o fallback hardcodeado */
+  var _polFallback = 'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia. Es necesario confirmar asistencia el día previo para conservar el lugar. Si el cliente no se presenta, se pierde el apartado y no hay reagenda. Los cambios de fecha están sujetos a disponibilidad dentro de la temporada.';
+  var _polTexto = (c.politicas_cancelacion && String(c.politicas_cancelacion).trim()) ? String(c.politicas_cancelacion).trim().replace(/\n/g, ' ') : _polFallback;
+  /* Términos — usa campo de Sheet o fallback hardcodeado */
+  var _terFallback = 'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión. El precio corresponde al mes de la sesión y queda fijo desde el apartado. La entrega de la galería editada es a más tardar el '+NAV_fechaLarga(c.fecha_entrega_max)+'. Las fotos se entregan en formato digital de alta resolución. Vanessa Velasco conserva los derechos de autor de las imágenes.';
+  var _terTexto = (c.terminos_servicio && String(c.terminos_servicio).trim()) ? String(c.terminos_servicio).trim().replace(/\n/g, ' ') : _terFallback;
   var textosPDF = {
-    politica_cancelacion: 'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia. Es necesario confirmar asistencia el día previo para conservar el lugar. Si el cliente no se presenta, se pierde el apartado y no hay reagenda. Los cambios de fecha están sujetos a disponibilidad dentro de la temporada.',
-    disclaimer_entrega: 'La entrega de la galería editada es a más tardar el '+NAV_fechaLarga(c.fecha_entrega_max)+'.',
-    disclaimer_fotos: 'Las fotos se entregan en formato digital de alta resolución.',
-    disclaimer_archivos: 'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.',
-    disclaimer_derechos: 'Vanessa Velasco conserva los derechos de autor de las imágenes.',
-    disclaimer_uso: 'El precio corresponde al mes de la sesión y queda fijo desde el apartado.',
+    politica_cancelacion: _polTexto,
+    disclaimer_entrega: '',
+    disclaimer_fotos: '',
+    disclaimer_archivos: '',
+    disclaimer_derechos: '',
+    disclaimer_uso: _terTexto,
     pie_pagina: 'Gracias por confiar en Vanessa Velasco Fotografía Familiar'
   };
   var html = buildContratoHTML(evPDF, textosPDF)
@@ -8572,7 +8588,19 @@ function NAV_ajustes() {
       ['nombre','encuesta','folio']) +
     '<p class="nav-hint">Lo que va entre llaves se llena solo con los datos de cada ' +
     'sesión. La app nunca envía por su cuenta: prepara el texto y tú decides.</p></div>' +
- 
+
+    '<div class="nav-lab">Recibo · Políticas de Cancelación</div>' +
+    '<div class="nav-card">' +
+    NAV_area('politicas_cancelacion', 'Un punto por línea', c.politicas_cancelacion ||
+      'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia.\nEs necesario confirmar asistencia el día previo para conservar el lugar.\nSi el cliente no se presenta, se pierde el apartado y no hay reagenda.\nLos cambios de fecha están sujetos a disponibilidad dentro de la temporada.') +
+    '<p class="nav-hint">Cada línea se convierte en un punto con viñeta en el recibo y el PDF.</p></div>' +
+
+    '<div class="nav-lab">Recibo · Términos del Servicio</div>' +
+    '<div class="nav-card">' +
+    NAV_area('terminos_servicio', 'Un punto por línea', c.terminos_servicio ||
+      'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.\nEl precio corresponde al mes de la sesión y queda fijo desde el apartado.\nLas fotos se entregan en formato digital de alta resolución.\nVanessa Velasco conserva los derechos de autor de las imágenes.') +
+    '<p class="nav-hint">Cada línea se convierte en un punto con viñeta en el recibo y el PDF.</p></div>' +
+
     '<button class="nav-btn nav-save" id="nav-s-btn" onclick="NAV_guardarAjustes()">' +
     'Guardar cambios</button>' +
     '<div id="nav-s-error"></div>';
@@ -8591,7 +8619,8 @@ function NAV_guardarAjustes() {
    'dias_semana','preventa_descuento','anticipo_monto','costo_persona_extra',
    'promo_reel_limite','mp_pct','mp_fija','mp_iva','brochure_url','encuesta_url',
    'galeria_plataforma','msg_apartado','msg_brochure','msg_confirma','msg_presel',
-   'msg_entrega','msg_encuesta'].forEach(function(k){ datos[k] = NAV_val(k); });
+   'msg_entrega','msg_encuesta',
+   'politicas_cancelacion','terminos_servicio'].forEach(function(k){ datos[k] = NAV_val(k); });
   datos.preventa_inicio = String(NAV_val('preventa_inicio')).replace('T',' ');
   datos.preventa_fin = String(NAV_val('preventa_fin')).replace('T',' ');
  
