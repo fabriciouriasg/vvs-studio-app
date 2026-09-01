@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.19';
+var APP_VERSION = 'v4.20';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7836,7 +7836,9 @@ function NAV_recibo(folio) {
  
     '<div class="nav-section"><div class="nav-stt">Datos del Cliente</div><table>' +
     '<tr><td>Cliente</td><td class="nav-r"><strong>'+NAV_esc(s.cliente)+'</strong></td></tr>' +
-    '<tr class="nav-mut"><td>Teléfono</td><td class="nav-r">'+NAV_esc(s.telefono)+'</td></tr></table></div>' +
+    '<tr class="nav-mut"><td>Teléfono</td><td class="nav-r">'+NAV_esc(s.telefono)+'</td></tr>' +
+    (s.email ? '<tr class="nav-mut"><td>Email</td><td class="nav-r">'+NAV_esc(s.email)+'</td></tr>' : '') +
+    '</table></div>' +
  
     '<div class="nav-section"><div class="nav-stt">Servicio Contratado</div><table>' +
     '<tr><td>Servicio</td><td class="nav-r"><strong>'+NAV_esc(c.nombre)+' · '+NAV_esc(NAV_paqNombre(s.id_paquete))+'</strong></td></tr>' +
