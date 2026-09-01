@@ -1736,7 +1736,7 @@ function msgEncuesta(ev) {
 
 function waLink(telefono, mensaje) {
   var tel = normalizarTel(telefono || '');
-  if (tel.length === 10) tel = '52' + tel;
+  if (tel.length === 10) tel = '521' + tel;
   return 'https://wa.me/' + tel + '?text=' + encodeURIComponent(mensaje);
 }
 function plantilla(tpl, ev) {
@@ -1847,7 +1847,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.11';
+var APP_VERSION = 'v4.12';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -1992,9 +1992,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function normalizarTel(raw) {
   var digits = String(raw || '').replace(/\D/g, '');
-  // Quitar 52 inicial si viene con 12 dígitos (ej: 524871011569)
+  // Quitar 521 inicial si viene con 13 dígitos (ej: 5213312345678)
+  if (digits.length === 13 && digits.startsWith('521')) digits = digits.substring(3);
+  // Quitar 52 inicial si viene con 12 dígitos (ej: 523312345678)
   if (digits.length === 12 && digits.startsWith('52')) digits = digits.substring(2);
-  // Quitar 1 inicial si viene con 11 dígitos (ej: 14871011569)
+  // Quitar 1 inicial si viene con 11 dígitos (ej: 13312345678)
   if (digits.length === 11 && digits.startsWith('1')) digits = digits.substring(1);
   return digits;
 }
@@ -5215,7 +5217,7 @@ function enviarWhatsApp() {
   if (!eventoDetalleActual) return;
   var ev = eventoDetalleActual;
   var tel = normalizarTel(ev.telefono);
-  if (tel.length === 10) tel = '52' + tel;
+  if (tel.length === 10) tel = '521' + tel;
   var saldo = ev.total - ev.pagado;
   var lines = [
     'Hola ' + ev.cliente + ', te comparto el resumen de tu servicio:',
@@ -7616,7 +7618,7 @@ function NAV_enviarWA() {
     if (url) { window.open(url, '_blank'); return; }
   }
   var tel = String(NAV_waTel).replace(/\D/g,'');
-  if (tel.length === 10) tel = '52' + tel;
+  if (tel.length === 10) tel = '521' + tel;
   window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(NAV_waTexto), '_blank');
 }
  
@@ -7857,7 +7859,7 @@ function NAV_abrirEditar() {
   document.getElementById('nav-e-extra').value = NAV_n(s.personas_extra_cobrar) || 0;
   var tp = String(s.temporadas_previas===undefined||s.temporadas_previas===''?'':s.temporadas_previas);
   document.getElementById('nav-e-previas').value = tp;
-  var fecha = NAV_fecha(s.fecha_sesion);
+  var fecha = (function(d){ if (!d) return ''; var s=String(d); return s.indexOf('T')!==-1 ? s.substring(0,10) : s.substring(0,10); })(s.fecha_sesion);
   document.getElementById('nav-e-fecha').value = fecha;
   NAV_editarFecha(extraerHora(s.hora) || String(s.hora));
   NAV_editarPrecio();
