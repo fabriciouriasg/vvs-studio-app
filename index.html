@@ -433,20 +433,20 @@
 #nav-rec{z-index:10030}
  
 /* ---------- encabezado de capa ---------- */
-#nav-ov .nav-lh,#nav-ses .nav-lh,#nav-wa .nav-lh,#nav-rec .nav-lh{
+#nav-ov .nav-lh,#nav-ses .nav-lh,#nav-wa .nav-lh,#nav-rec .nav-lh,#nav-edit .nav-lh{
   background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);padding:12px 16px;
   position:sticky;top:0;z-index:5}
-#nav-ov .nav-lh-in,#nav-ses .nav-lh-in,#nav-wa .nav-lh-in,#nav-rec .nav-lh-in{
+#nav-ov .nav-lh-in,#nav-ses .nav-lh-in,#nav-wa .nav-lh-in,#nav-rec .nav-lh-in,#nav-edit .nav-lh-in{
   max-width:480px;margin:0 auto;display:flex;align-items:center;gap:12px}
-#nav-ov .nav-bk,#nav-ses .nav-bk,#nav-wa .nav-bk,#nav-rec .nav-bk{
+#nav-ov .nav-bk,#nav-ses .nav-bk,#nav-wa .nav-bk,#nav-rec .nav-bk,#nav-edit .nav-bk{
   background:none;border:none;font-family:'Jost',sans-serif;font-size:11px;font-weight:500;
   letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);cursor:pointer;
   flex:none;padding:6px 0}
-#nav-ov .nav-ttl,#nav-ses .nav-ttl,#nav-wa .nav-ttl,#nav-rec .nav-ttl{
+#nav-ov .nav-ttl,#nav-ses .nav-ttl,#nav-wa .nav-ttl,#nav-rec .nav-ttl,#nav-edit .nav-ttl{
   font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:500;flex:1;
   text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   color:var(--text-main)}
-#nav-ov .nav-st,#nav-ses .nav-st,#nav-wa .nav-st,#nav-rec .nav-st{
+#nav-ov .nav-st,#nav-ses .nav-st,#nav-wa .nav-st,#nav-rec .nav-st,#nav-edit .nav-st{
   font-size:9px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
   color:var(--brown-soft);flex:none;width:58px;text-align:right}
  
@@ -461,45 +461,45 @@
 #nav-ov .nav-tabs button.nav-on{color:var(--text-main);border-bottom-color:var(--text-main)}
  
 /* ---------- contenedor y bloques base ---------- */
-#nav-ov .nav-wrap,#nav-ses .nav-wrap,#nav-wa .nav-wrap,#nav-rec .nav-wrap{
+#nav-ov .nav-wrap,#nav-ses .nav-wrap,#nav-wa .nav-wrap,#nav-rec .nav-wrap,#nav-edit .nav-wrap{
   max-width:480px;margin:0 auto;padding:18px 16px 70px}
-#nav-ov .nav-lab,#nav-ses .nav-lab,#nav-wa .nav-lab,#nav-rec .nav-lab{
+#nav-ov .nav-lab,#nav-ses .nav-lab,#nav-wa .nav-lab,#nav-rec .nav-lab,#nav-edit .nav-lab{
   font-size:10px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
   color:var(--text-muted);margin:24px 0 10px}
-#nav-ov .nav-lab:first-child,#nav-ses .nav-lab:first-child,#nav-wa .nav-lab:first-child{
+#nav-ov .nav-lab:first-child,#nav-ses .nav-lab:first-child,#nav-wa .nav-lab:first-child,#nav-edit .nav-lab:first-child{
   margin-top:0}
-#nav-ov .nav-card,#nav-ses .nav-card,#nav-wa .nav-card,#nav-rec .nav-card{
+#nav-ov .nav-card,#nav-ses .nav-card,#nav-wa .nav-card,#nav-rec .nav-card,#nav-edit .nav-card{
   background:var(--white);border:1.5px solid var(--beige-dark);border-radius:var(--radius);
   padding:16px;box-shadow:var(--shadow)}
-#nav-ov .nav-card+.nav-card,#nav-ses .nav-card+.nav-card{margin-top:10px}
-#nav-ov .nav-h3,#nav-ses .nav-h3{font-family:'Cormorant Garamond',serif;font-size:19px;
+#nav-ov .nav-card+.nav-card,#nav-ses .nav-card+.nav-card,#nav-edit .nav-card+.nav-card{margin-top:10px}
+#nav-ov .nav-h3,#nav-ses .nav-h3,#nav-edit .nav-h3{font-family:'Cormorant Garamond',serif;font-size:19px;
   font-weight:500;color:var(--black-soft)}
-#nav-ov .nav-row,#nav-ses .nav-row{display:flex;justify-content:space-between;
+#nav-ov .nav-row,#nav-ses .nav-row,#nav-edit .nav-row{display:flex;justify-content:space-between;
   align-items:center;gap:12px}
-#nav-ov .nav-row+.nav-row,#nav-ses .nav-row+.nav-row{margin-top:12px}
-#nav-ov .nav-lb,#nav-ses .nav-lb{font-size:12px;color:var(--text-muted)}
-#nav-ov .nav-vl,#nav-ses .nav-vl{font-size:13.5px;font-weight:500;
+#nav-ov .nav-row+.nav-row,#nav-ses .nav-row+.nav-row,#nav-edit .nav-row+.nav-row{margin-top:12px}
+#nav-ov .nav-lb,#nav-ses .nav-lb,#nav-edit .nav-lb{font-size:12px;color:var(--text-muted)}
+#nav-ov .nav-vl,#nav-ses .nav-vl,#nav-edit .nav-vl{font-size:13.5px;font-weight:500;
   font-variant-numeric:tabular-nums;color:var(--text-main)}
-#nav-ov .nav-vl.nav-m,#nav-ses .nav-vl.nav-m{color:var(--brown-dark)}
-#nav-ov .nav-vl.nav-g,#nav-ses .nav-vl.nav-g{color:var(--success)}
-#nav-ov .nav-vl.nav-w,#nav-ses .nav-vl.nav-w{color:var(--warning)}
-#nav-ov .nav-hint,#nav-ses .nav-hint,#nav-wa .nav-hint,#nav-rec .nav-hint{
+#nav-ov .nav-vl.nav-m,#nav-ses .nav-vl.nav-m,#nav-edit .nav-vl.nav-m{color:var(--brown-dark)}
+#nav-ov .nav-vl.nav-g,#nav-ses .nav-vl.nav-g,#nav-edit .nav-vl.nav-g{color:var(--success)}
+#nav-ov .nav-vl.nav-w,#nav-ses .nav-vl.nav-w,#nav-edit .nav-vl.nav-w{color:var(--warning)}
+#nav-ov .nav-hint,#nav-ses .nav-hint,#nav-wa .nav-hint,#nav-rec .nav-hint,#nav-edit .nav-hint{
   font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:9px;font-weight:300}
-#nav-ov .nav-sep,#nav-ses .nav-sep{height:1px;background:var(--beige-dark);opacity:.5;
+#nav-ov .nav-sep,#nav-ses .nav-sep,#nav-edit .nav-sep{height:1px;background:var(--beige-dark);opacity:.5;
   margin:14px -16px}
-#nav-ov .nav-bar,#nav-ses .nav-bar{height:5px;background:var(--beige-mid);
+#nav-ov .nav-bar,#nav-ses .nav-bar,#nav-edit .nav-bar{height:5px;background:var(--beige-mid);
   border-radius:999px;overflow:hidden;margin:9px 0 0}
-#nav-ov .nav-bar i,#nav-ses .nav-bar i{display:block;height:100%;
+#nav-ov .nav-bar i,#nav-ses .nav-bar i,#nav-edit .nav-bar i{display:block;height:100%;
   background:var(--brown-soft);border-radius:999px}
  
 /* ---------- botones ---------- */
-#nav-ov .nav-btn,#nav-ses .nav-btn,#nav-wa .nav-btn,#nav-rec .nav-btn{
+#nav-ov .nav-btn,#nav-ses .nav-btn,#nav-wa .nav-btn,#nav-rec .nav-btn,#nav-edit .nav-btn{
   width:100%;background:var(--black);color:var(--white);border:none;
   border-radius:var(--radius);padding:15px;font-family:'Jost',sans-serif;font-size:12.5px;
   font-weight:500;letter-spacing:.12em;text-transform:uppercase;margin-top:8px;
   box-shadow:var(--shadow-md);cursor:pointer}
-#nav-ov .nav-btn:disabled,#nav-ses .nav-btn:disabled{opacity:.5;cursor:default}
-#nav-ov .nav-btn.nav-gh,#nav-ses .nav-btn.nav-gh,#nav-wa .nav-btn.nav-gh{
+#nav-ov .nav-btn:disabled,#nav-ses .nav-btn:disabled,#nav-edit .nav-btn:disabled{opacity:.5;cursor:default}
+#nav-ov .nav-btn.nav-gh,#nav-ses .nav-btn.nav-gh,#nav-wa .nav-btn.nav-gh,#nav-edit .nav-btn.nav-gh{
   background:var(--white);color:var(--black-soft);border:1.5px solid var(--beige-dark);
   box-shadow:var(--shadow)}
 #nav-ses .nav-btn.nav-dg{background:var(--white);color:var(--error);
@@ -507,19 +507,20 @@
 #nav-ses .nav-btn.nav-wapp,#nav-wa .nav-btn.nav-wapp{background:#25623f;color:#fff}
  
 /* ---------- campos ---------- */
-#nav-ov .nav-f,#nav-ses .nav-f{display:block;margin-bottom:13px}
-#nav-ov .nav-f span,#nav-ses .nav-f span{display:block;font-size:10px;font-weight:500;
+#nav-ov .nav-f,#nav-ses .nav-f,#nav-edit .nav-f{display:block;margin-bottom:13px}
+#nav-ov .nav-f span,#nav-ses .nav-f span,#nav-edit .nav-f span{display:block;font-size:10px;font-weight:500;
   letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
 #nav-ov .nav-f input,#nav-ov .nav-f select,#nav-ov .nav-f textarea,
-#nav-ses .nav-f input,#nav-ses .nav-f select,#nav-ses .nav-f textarea{
+#nav-ses .nav-f input,#nav-ses .nav-f select,#nav-ses .nav-f textarea,
+#nav-edit .nav-f input,#nav-edit .nav-f select,#nav-edit .nav-f textarea{
   width:100%;font-family:'Jost',sans-serif;font-size:14px;color:var(--text-main);
   background:var(--white);border:1.5px solid var(--beige-dark);
   border-radius:var(--radius-sm);padding:12px 13px}
-#nav-ov .nav-f textarea,#nav-ses .nav-f textarea{min-height:104px;resize:vertical;
+#nav-ov .nav-f textarea,#nav-ses .nav-f textarea,#nav-edit .nav-f textarea{min-height:104px;resize:vertical;
   line-height:1.55;font-size:13px}
-#nav-ov .nav-f2,#nav-ses .nav-f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-#nav-ov .nav-f3,#nav-ses .nav-f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-#nav-ov .nav-note,#nav-ses .nav-note{font-size:10px;color:var(--warning);margin-top:5px}
+#nav-ov .nav-f2,#nav-ses .nav-f2,#nav-edit .nav-f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#nav-ov .nav-f3,#nav-ses .nav-f3,#nav-edit .nav-f3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+#nav-ov .nav-note,#nav-ses .nav-note,#nav-edit .nav-note{font-size:10px;color:var(--warning);margin-top:5px}
  
 /* ---------- paneles y segmentos ---------- */
 #nav-ov .nav-pane,#nav-ses .nav-pane{display:none}
@@ -818,11 +819,13 @@
    de iOS empujaban al vecino y se salían de la pantalla. */
 #nav-ov .nav-f2 > *, #nav-ov .nav-f3 > *,
 #nav-ses .nav-f2 > *, #nav-ses .nav-f3 > *,
+#nav-edit .nav-f2 > *, #nav-edit .nav-f3 > *,
 #nav-alta .nav-f2 > *, #nav-alta .nav-f3 > * { min-width: 0; }
  
 /* Todo input dentro del módulo respeta su contenedor */
 #nav-ov input, #nav-ov select, #nav-ov textarea,
 #nav-ses input, #nav-ses select, #nav-ses textarea,
+#nav-edit input, #nav-edit select, #nav-edit textarea,
 #nav-alta input, #nav-alta select, #nav-alta textarea {
   box-sizing: border-box;
   max-width: 100%;
@@ -832,6 +835,7 @@
 /* iOS le da ancho propio a date/time y no lo suelta */
 #nav-ov input[type="date"], #nav-ov input[type="time"], #nav-ov input[type="datetime-local"],
 #nav-ses input[type="date"], #nav-ses input[type="time"],
+#nav-edit input[type="date"], #nav-edit input[type="time"],
 #nav-alta input[type="date"], #nav-alta input[type="time"] {
   -webkit-appearance: none;
   appearance: none;
@@ -841,7 +845,7 @@
 }
  
 /* Las etiquetas largas se parten en dos renglones en vez de estirar la caja */
-#nav-ov .nav-f span, #nav-ses .nav-f span, #nav-alta .nav-f span {
+#nav-ov .nav-f span, #nav-ses .nav-f span, #nav-edit .nav-f span, #nav-alta .nav-f span {
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
@@ -849,15 +853,15 @@
 }
  
 /* Red de seguridad: nada del módulo desborda horizontalmente */
-#nav-ov .nav-wrap, #nav-ses .nav-wrap, #nav-alta .nav-wrap, #nav-wa .nav-wrap {
+#nav-ov .nav-wrap, #nav-ses .nav-wrap, #nav-edit .nav-wrap, #nav-alta .nav-wrap, #nav-wa .nav-wrap {
   overflow-x: hidden;
 }
-#nav-ov .nav-card, #nav-ses .nav-card, #nav-alta .nav-card { overflow: hidden; }
+#nav-ov .nav-card, #nav-ses .nav-card, #nav-edit .nav-card, #nav-alta .nav-card { overflow: hidden; }
  
 /* En pantallas muy angostas los pares se apilan */
 @media (max-width: 360px) {
-  #nav-ov .nav-f2, #nav-ses .nav-f2, #nav-alta .nav-f2,
-  #nav-ov .nav-f3, #nav-ses .nav-f3, #nav-alta .nav-f3 {
+  #nav-ov .nav-f2, #nav-ses .nav-f2, #nav-edit .nav-f2, #nav-alta .nav-f2,
+  #nav-ov .nav-f3, #nav-ses .nav-f3, #nav-edit .nav-f3, #nav-alta .nav-f3 {
     grid-template-columns: 1fr;
   }
 }
@@ -1847,7 +1851,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.12';
+var APP_VERSION = 'v4.13';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6184,7 +6188,7 @@ function saveSettings() {
     <div class="nav-ttl">Editar sesión</div>
     <div class="nav-st"></div>
   </div></div>
-  <div class="nav-wrap" style="padding-top:70px">
+  <div class="nav-wrap" style="padding-top:76px">
     <div class="nav-lab">Cliente</div>
     <div class="nav-card">
       <label class="nav-f"><span>Nombre</span>
@@ -6238,12 +6242,55 @@ function saveSettings() {
     <div class="nav-lab">Notas</div>
     <div class="nav-card">
       <label class="nav-f" style="margin-bottom:0"><span>Notas internas</span>
-        <textarea id="nav-e-notas" rows="3" style="width:100%;border:1px solid var(--beige-dark);border-radius:8px;padding:8px;font-size:14px;font-family:inherit;resize:none"></textarea></label>
+        <textarea id="nav-e-notas"></textarea></label>
     </div>
     <div class="nav-lab">Nuevo total estimado</div>
     <div class="nav-card" id="nav-e-resumen"></div>
     <div id="nav-e-error"></div>
     <button class="nav-btn" id="nav-e-btn" onclick="NAV_editarGuardar()">Guardar cambios</button>
+  </div>
+</div>
+
+<!-- ============ BOTTOM SHEET · REGISTRAR PAGO NAVIDAD ============ -->
+<div id="nav-pago-overlay" style="display:none;position:fixed;inset:0;background:rgba(26,20,16,.5);z-index:10600;align-items:flex-end;justify-content:center">
+  <div style="background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:28px 20px 44px">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--black);margin-bottom:4px" id="nav-pago-titulo">Registrar anticipo</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px" id="nav-pago-sub">Monto sugerido: $1,000</div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Monto</div>
+      <div style="display:flex;align-items:center;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:11px 14px;gap:4px">
+        <span style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--text-muted)">$</span>
+        <input id="nav-pago-monto" type="number" inputmode="decimal" placeholder="0" step="1" min="0" oninput="if(_navPagoForma) NAV_pagoSelForma(_navPagoForma)"
+          style="border:none;background:transparent;font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--black);outline:none;width:100%;font-variant-numeric:tabular-nums">
+      </div>
+    </div>
+    <div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">Forma de pago</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px">
+      <button onclick="NAV_pagoSelForma('Efectivo')" id="nav-pf-efectivo"
+        style="padding:14px 8px;border-radius:var(--radius);border:1.5px solid var(--beige-dark);background:var(--white);font-family:'Jost',sans-serif;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s;text-align:center">
+        💵<br>Efectivo
+      </button>
+      <button onclick="NAV_pagoSelForma('Transferencia')" id="nav-pf-transferencia"
+        style="padding:14px 8px;border-radius:var(--radius);border:1.5px solid var(--beige-dark);background:var(--white);font-family:'Jost',sans-serif;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s;text-align:center">
+        🏦<br>Transferencia
+      </button>
+      <button onclick="NAV_pagoSelForma('Tarjeta · Mercado Pago')" id="nav-pf-tarjeta"
+        style="padding:14px 8px;border-radius:var(--radius);border:1.5px solid var(--beige-dark);background:var(--white);font-family:'Jost',sans-serif;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .15s;text-align:center">
+        💳<br>Tarjeta
+      </button>
+    </div>
+    <div id="nav-pago-comision-aviso" style="display:none;background:#fff8e1;border:1px solid #f0c040;border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:#5c4a00;margin-bottom:14px">
+      ⚠️ <strong>Incluye comisión.</strong> Se registrará un gasto de <span id="nav-pago-comision-val"></span> por procesamiento de tarjeta.
+    </div>
+    <div id="nav-pago-error" style="color:var(--error);font-size:12px;margin-bottom:8px;min-height:16px"></div>
+    <button id="nav-pago-btn" onclick="NAV_pagoConfirmar()"
+      style="width:100%;background:var(--black);color:var(--white);border:none;border-radius:var(--radius);padding:16px;font-family:'Jost',sans-serif;font-size:13px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">
+      Registrar pago
+    </button>
+    <button onclick="NAV_pagoCerrar()"
+      style="width:100%;background:none;border:none;padding:12px;font-family:'Jost',sans-serif;font-size:12px;color:var(--text-muted);cursor:pointer;margin-top:4px">
+      Cancelar
+    </button>
   </div>
 </div>
 
@@ -7474,27 +7521,82 @@ function NAV_marcarEnvio(folio, campo, estaba) {
     }).catch(function(){ NAV_toast('Sin conexión'); });
 }
  
+/* ── Bottom sheet de pago ── */
+var _navPagoTipo = '', _navPagoForma = '';
+
 function NAV_cobrar() {
   var s = NAV_sesionActual;
   if (!s) return;
-  var saldo = NAV_saldo(s);
-  var tipo = NAV_n(s.anticipo) === 0 ? 'anticipo' : 'saldo';
-  var sug = tipo==='anticipo' ? NAV_n(NAV_D.camp.anticipo_monto) : saldo;
-  var monto = prompt('Monto a registrar (' + tipo + '):', sug);
-  if (monto === null) return;
-  monto = parseFloat(monto) || 0;
-  if (monto <= 0) { NAV_toast('Monto inválido'); return; }
-  var formas = ['Efectivo','Transferencia','Tarjeta · Mercado Pago'];
-  var idx = prompt('Forma de pago:\n1 Efectivo\n2 Transferencia\n3 Tarjeta', '1');
-  if (idx === null) return;
-  var forma = formas[(parseInt(idx,10)||1)-1] || 'Efectivo';
-  NAV_post('NAV_registrarPago', { folio:s.folio, tipo:tipo, monto:monto, forma:forma,
-    fecha_pago: NAV_hoyISO() }).then(function(r){
+  _navPagoTipo = NAV_n(s.anticipo) === 0 ? 'anticipo' : 'saldo';
+  _navPagoForma = '';
+  var sug = _navPagoTipo === 'anticipo' ? NAV_n(NAV_D.camp.anticipo_monto) : NAV_saldo(s);
+  document.getElementById('nav-pago-titulo').textContent =
+    _navPagoTipo === 'anticipo' ? 'Registrar anticipo' : 'Registrar liquidación';
+  document.getElementById('nav-pago-sub').textContent = 'Monto sugerido: ' + NAV_money(sug);
+  document.getElementById('nav-pago-monto').value = sug || '';
+  document.getElementById('nav-pago-error').textContent = '';
+  document.getElementById('nav-pago-comision-aviso').style.display = 'none';
+  /* reset botones */
+  ['efectivo','transferencia','tarjeta'].forEach(function(k){
+    var btn = document.getElementById('nav-pf-' + k);
+    if (btn) { btn.style.background = 'var(--white)'; btn.style.color = 'var(--text-muted)'; btn.style.borderColor = 'var(--beige-dark)'; }
+  });
+  /* preseleccionar Transferencia como default seguro */
+  NAV_pagoSelForma('Transferencia');
+  var overlay = document.getElementById('nav-pago-overlay');
+  overlay.style.display = 'flex';
+}
+
+function NAV_pagoSelForma(forma) {
+  _navPagoForma = forma;
+  var mapa = { 'Efectivo':'efectivo', 'Transferencia':'transferencia', 'Tarjeta · Mercado Pago':'tarjeta' };
+  ['efectivo','transferencia','tarjeta'].forEach(function(k){
+    var btn = document.getElementById('nav-pf-' + k);
+    if (!btn) return;
+    var activo = mapa[forma] === k;
+    btn.style.background = activo ? 'var(--black)' : 'var(--white)';
+    btn.style.color = activo ? 'var(--white)' : 'var(--text-muted)';
+    btn.style.borderColor = activo ? 'var(--black)' : 'var(--beige-dark)';
+  });
+  /* mostrar aviso de comisión solo si es tarjeta */
+  var aviso = document.getElementById('nav-pago-comision-aviso');
+  var esTarjeta = forma.toLowerCase().indexOf('tarjeta') >= 0;
+  if (esTarjeta && NAV_D.camp) {
+    var montoInput = parseFloat(document.getElementById('nav-pago-monto').value) || 0;
+    var pct = NAV_n(NAV_D.camp.mp_pct), fija = NAV_n(NAV_D.camp.mp_fija), iva = 1 + NAV_n(NAV_D.camp.mp_iva)/100;
+    var com = montoInput > 0 ? Math.round((montoInput*pct/100 + fija)*iva*100)/100 : 0;
+    document.getElementById('nav-pago-comision-val').textContent = NAV_money(com);
+    aviso.style.display = 'block';
+  } else {
+    aviso.style.display = 'none';
+  }
+}
+
+function NAV_pagoCerrar() {
+  document.getElementById('nav-pago-overlay').style.display = 'none';
+}
+
+function NAV_pagoConfirmar() {
+  var monto = parseFloat(document.getElementById('nav-pago-monto').value) || 0;
+  var err = document.getElementById('nav-pago-error');
+  if (monto <= 0) { err.textContent = 'Ingresa un monto válido'; return; }
+  if (!_navPagoForma) { err.textContent = 'Selecciona la forma de pago'; return; }
+  err.textContent = '';
+  var btn = document.getElementById('nav-pago-btn');
+  btn.disabled = true; btn.textContent = 'Registrando…';
+  var s = NAV_sesionActual;
+  NAV_post('NAV_registrarPago', { folio:s.folio, tipo:_navPagoTipo, monto:monto,
+    forma:_navPagoForma, fecha_pago:NAV_hoyISO() }).then(function(r){
+    btn.disabled = false; btn.textContent = 'Registrar pago';
     if (r && r.ok) {
+      NAV_pagoCerrar();
       NAV_toast('Pago registrado' + (r.comision ? ' · comisión ' + NAV_money(r.comision) : ''));
       NAV_recargar().then(function(){ NAV_verSesion(s.folio); });
-    } else NAV_toast('No se pudo: ' + ((r&&r.error)||''));
-  }).catch(function(){ NAV_toast('Sin conexión'); });
+    } else { err.textContent = 'No se pudo: ' + ((r&&r.error)||'error'); }
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = 'Registrar pago';
+    err.textContent = 'Sin conexión';
+  });
 }
  
 function NAV_agregarExtra() {
