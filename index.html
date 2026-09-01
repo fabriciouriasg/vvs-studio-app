@@ -6587,7 +6587,7 @@ function NAV_tablero() {
     '<div class="nav-lb">'+deManana.length+' sesiones · '+sinConf.length+' sin confirmar</div></div></div>' +
     (deManana.length ? '<div class="nav-sep"></div>' + deManana.map(function(s){
       return '<div class="nav-row" style="margin-top:9px"><div><div class="nav-vl">'+
-        NAV_esc(s.cliente)+'</div><div class="nav-lb">'+NAV_esc(s.hora)+
+        NAV_esc(s.cliente)+'</div><div class="nav-lb">'+NAV_esc(extraerHora(s.hora)||s.hora)+
         (s.confirmo_asistencia?' · confirmó':'')+'</div></div>'+
         '<button class="nav-bk" style="color:#25623f" onclick="NAV_msg(\''+s.folio+
         '\',\'confirma\')">WhatsApp</button></div>';
@@ -7512,7 +7512,7 @@ function NAV_msg(folio, tipo) {
   var T = {
     apartado: ['Al apartar',
       '¡Hola '+nombre+'! 🎄 Tu sesión navideña quedó apartada.\n\n' +
-      '📅 '+NAV_fechaLarga(s.fecha_sesion)+', '+s.hora+'\n' +
+      '📅 '+NAV_fechaLarga(s.fecha_sesion)+', '+(extraerHora(s.hora)||s.hora)+'\n' +
       '📸 '+paq+' · '+fotos+' fotos\n' +
       '👥 '+NAV_n(s.personas)+' personas\n\n' +
       'Anticipo recibido: '+NAV_money(s.anticipo)+'\n' +
@@ -7520,7 +7520,7 @@ function NAV_msg(folio, tipo) {
       '¡Nos vemos pronto!'],
     brochure: ['Brochure e instrucciones',
       'Hola '+nombre+' 🎄 Falta poco para tu sesión del '+NAV_fechaLarga(s.fecha_sesion)+
-      ' a las '+s.hora+'.\n\n' +
+      ' a las '+(extraerHora(s.hora)||s.hora)+'.\n\n' +
       'Aquí está toda la información del set y sugerencias de vestuario:\n' +
       (c.brochure_url || '[falta configurar la liga del brochure]') + '\n\n' +
       'Un par de recordatorios:\n• Llega 10 minutos antes\n' +
@@ -7528,7 +7528,7 @@ function NAV_msg(folio, tipo) {
       'Cualquier duda, aquí estoy 💛'],
     confirma: ['Confirmación',
       'Hola '+nombre+' 🎄 Te recordamos tu sesión mañana '+NAV_fechaLarga(s.fecha_sesion)+
-      ' a las '+s.hora+', para '+NAV_n(s.personas)+' personas.\n\n' +
+      ' a las '+(extraerHora(s.hora)||s.hora)+', para '+NAV_n(s.personas)+' personas.\n\n' +
       '¿Nos confirmas tu asistencia por favor? Es necesario confirmar para conservar tu lugar.\n\n' +
       'Recuerda que si no puedes asistir el anticipo no es reembolsable, ' +
       'así que avísanos con tiempo si necesitas cambiar algo.'],
@@ -8107,7 +8107,7 @@ function NAV_altaFecha(horaPre) {
     'Puedes agendarlo igual como excepción.</div>';
  
   var horas = NAV_horasDia();
-  var tomadas = NAV_ocupacion(fecha).map(function(s){ return String(s.hora); });
+  var tomadas = NAV_ocupacion(fecha).map(function(s){ return extraerHora(s.hora)||String(s.hora); });
   var blq = NAV_horasBloqueadas(fecha);
   var cupo = NAV_cupoDe(fecha);
   var libres = horas.filter(function(h){
