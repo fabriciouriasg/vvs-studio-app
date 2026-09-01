@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.18';
+var APP_VERSION = 'v4.19';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7485,6 +7485,7 @@ function NAV_verSesion(folio) {
  
     '<div class="nav-lab">Cliente</div><div class="nav-card">' +
     '<div class="nav-row"><span class="nav-lb">Teléfono</span><span class="nav-vl">'+NAV_esc(s.telefono)+'</span></div>' +
+    (s.email ? '<div class="nav-row"><span class="nav-lb">Email</span><span class="nav-vl">'+NAV_esc(s.email)+'</span></div>' : '') +
     '<div class="nav-row"><span class="nav-lb">Personas</span><span class="nav-vl">'+NAV_n(s.personas)+'</span></div>' +
     '<div class="nav-row"><span class="nav-lb">Temporadas previas</span><span class="nav-vl">'+
       (s.temporadas_previas===''?'—':NAV_n(s.temporadas_previas))+'</span></div>' +
