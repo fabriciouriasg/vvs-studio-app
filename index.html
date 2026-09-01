@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.26';
+var APP_VERSION = 'v4.28';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8861,15 +8861,15 @@ function NAV_msg(folio, tipo) {
 .knv-btn-hide.active{background:var(--bg-accent,#e6f1fb);color:var(--text-accent,#185fa5);border-color:var(--border-accent,#85b7eb)}
 .knv-close{margin-left:auto;padding:5px 14px;border-radius:var(--radius);border:1px solid var(--beige-dark);background:var(--white);font-size:12px;cursor:pointer;color:var(--text-main)}
 .knv-board{display:flex;flex:1;overflow-x:auto;overflow-y:hidden}
-.knv-col{display:flex;flex-direction:column;min-width:210px;width:210px;border-right:1px solid var(--beige-dark);flex-shrink:0;transition:width .2s,min-width .2s,opacity .2s;overflow:hidden}
-.knv-col.knv-hidden{width:0;min-width:0;border-right:none}
+.knv-col{display:flex;flex-direction:column;min-width:160px;width:auto;flex:1;border-right:1px solid var(--beige-dark);flex-shrink:0;transition:opacity .2s;overflow:hidden}
+.knv-col.knv-hidden{width:0;min-width:0;flex:0;border-right:none;overflow:hidden}
 .knv-col:last-child{border-right:none}
 .knv-col-hdr{padding:9px 12px 8px;border-bottom:1px solid var(--beige-dark);background:var(--beige-light);flex-shrink:0}
 .knv-col-top{display:flex;align-items:center;gap:5px}
 .knv-col-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .knv-col-name{font-size:11px;font-weight:500;color:var(--text-main);flex:1}
 .knv-col-count{font-size:10px;color:var(--text-muted);background:var(--white);border-radius:8px;padding:1px 5px;border:1px solid var(--beige-dark)}
-.knv-col-body{flex:1;overflow-y:auto;padding:7px;display:flex;flex-direction:column;gap:5px}
+.knv-col-body{flex:1;overflow-y:auto;padding:7px;display:grid;grid-template-columns:1fr 1fr;gap:5px;align-content:start}
 .knv-col-body.knv-drag-over{background:rgba(24,95,165,.07)}
 .knv-card{background:var(--white);border:1px solid var(--beige-dark);border-radius:8px;padding:9px 11px;cursor:grab;user-select:none}
 .knv-card:hover{border-color:var(--brown-soft)}
@@ -8889,7 +8889,7 @@ function NAV_msg(folio, tipo) {
 .knv-tag.warn{background:#faeeda;color:#854f0b}
 .knv-tag.ok{background:#eaf3de;color:#3b6d11}
 .knv-tag.info{background:#e6f1fb;color:#185fa5}
-.knv-empty{display:flex;align-items:center;justify-content:center;height:48px;font-size:10px;color:var(--text-muted);border:1px dashed var(--beige-dark);border-radius:8px}
+.knv-empty{grid-column:1/-1;display:flex;align-items:center;justify-content:center;height:48px;font-size:10px;color:var(--text-muted);border:1px dashed var(--beige-dark);border-radius:8px}
 .knv-footer{display:flex;align-items:center;border-top:1px solid var(--beige-dark);background:var(--beige-light);flex-shrink:0;height:34px}
 .knv-fstat{display:flex;align-items:center;gap:5px;padding:0 14px;height:100%;font-size:11px;color:var(--text-muted);border-right:1px solid var(--beige-dark);cursor:pointer;white-space:nowrap}
 .knv-fstat:hover{background:var(--white)}
@@ -9132,7 +9132,7 @@ function KNV_renderBoard() {
       '<div class="knv-col-body" id="knv-body-'+col.id+'">' +
       (visInCol.length===0 && !isEmpty ? '<div class="knv-empty">'+hiddenByFilter+' oculta'+(hiddenByFilter>1?'s':'')+' por filtro</div>' :
        visInCol.length===0 ? '<div class="knv-empty">Sin sesiones</div>' : bodyCards) +
-      (hiddenByFilter>0&&visInCol.length>0?'<div style="font-size:9px;color:#888;text-align:center;padding:3px 0">+'+hiddenByFilter+' oculta'+(hiddenByFilter>1?'s':'')+'</div>':'') +
+      (hiddenByFilter>0&&visInCol.length>0?'<div style="grid-column:1/-1;font-size:9px;color:#888;text-align:center;padding:3px 0">+'+hiddenByFilter+' oculta'+(hiddenByFilter>1?'s':'')+'</div>':'') +
       '</div>';
     board.appendChild(colEl);
   });
