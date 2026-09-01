@@ -6170,10 +6170,81 @@ function saveSettings() {
     <button class="nav-bk" onclick="NAV_cerrarCapa('nav-ses')">‹ Volver</button>
     <div class="nav-ttl" id="nav-ses-ttl">Sesión</div>
     <div class="nav-st" id="nav-ses-folio"></div>
+    <button class="nav-bk" onclick="NAV_abrirEditar()" style="font-size:18px;padding:4px 8px">✏️</button>
   </div></div>
   <div class="nav-wrap" id="nav-ses-body"></div>
 </div>
  
+<!-- ============ CAPA EDITAR SESIÓN ============ -->
+<div id="nav-edit" style="display:none;position:fixed;inset:0;background:var(--beige-light);z-index:10500;overflow-y:auto">
+  <div class="nav-lh"><div class="nav-lh-in">
+    <button class="nav-bk" onclick="NAV_cerrarEditar()">✕ Cancelar</button>
+    <div class="nav-ttl">Editar sesión</div>
+    <div class="nav-st"></div>
+  </div></div>
+  <div class="nav-wrap" style="padding-top:70px">
+    <div class="nav-lab">Cliente</div>
+    <div class="nav-card">
+      <label class="nav-f"><span>Nombre</span>
+        <input id="nav-e-nombre" placeholder="Familia Hernández Ruiz"></label>
+      <div class="nav-f2">
+        <label class="nav-f"><span>Teléfono</span>
+          <input id="nav-e-tel" inputmode="tel" placeholder="33 1234 5678"></label>
+        <label class="nav-f"><span>Personas</span>
+          <input id="nav-e-personas" inputmode="numeric" value="4" onchange="NAV_editarPrecio()"></label>
+      </div>
+      <label class="nav-f"><span>Email</span>
+        <input id="nav-e-email" inputmode="email" placeholder="correo@ejemplo.com"></label>
+      <label class="nav-f" style="margin-bottom:0"><span>Cómo nos encontró</span>
+        <select id="nav-e-origen">
+          <option value="">Sin especificar</option>
+          <option>Instagram</option>
+          <option>Referida</option>
+          <option>Cliente anterior</option>
+          <option>Otro</option>
+        </select></label>
+    </div>
+    <div class="nav-lab">Sesión</div>
+    <div class="nav-card">
+      <div class="nav-f2">
+        <label class="nav-f"><span>Fecha</span>
+          <input type="date" id="nav-e-fecha" onchange="NAV_editarFecha()"></label>
+        <label class="nav-f"><span>Hora</span>
+          <select id="nav-e-hora" onchange="NAV_editarPrecio()"></select></label>
+      </div>
+      <div id="nav-e-aviso-fecha"></div>
+      <div class="nav-f2">
+        <label class="nav-f"><span>Paquete</span>
+          <select id="nav-e-paquete" onchange="NAV_editarPrecio()"></select></label>
+        <label class="nav-f"><span>Personas extra a cobrar</span>
+          <select id="nav-e-extra" onchange="NAV_editarPrecio()">
+            <option value="0">0 · sin cargo</option>
+            <option value="1">1</option><option value="2">2</option>
+            <option value="3">3</option><option value="4">4</option>
+            <option value="5">5</option>
+          </select></label>
+      </div>
+      <label class="nav-f" style="margin-bottom:0"><span>Temporadas previas</span>
+        <select id="nav-e-previas" onchange="NAV_editarPrecio()">
+          <option value="">Sin especificar</option>
+          <option value="0">0 — primera vez</option>
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6+</option>
+        </select></label>
+    </div>
+    <div class="nav-lab">Notas</div>
+    <div class="nav-card">
+      <label class="nav-f" style="margin-bottom:0"><span>Notas internas</span>
+        <textarea id="nav-e-notas" rows="3" style="width:100%;border:1px solid var(--beige-dark);border-radius:8px;padding:8px;font-size:14px;font-family:inherit;resize:none"></textarea></label>
+    </div>
+    <div class="nav-lab">Nuevo total estimado</div>
+    <div class="nav-card" id="nav-e-resumen"></div>
+    <div id="nav-e-error"></div>
+    <button class="nav-btn" id="nav-e-btn" onclick="NAV_editarGuardar()">Guardar cambios</button>
+  </div>
+</div>
+
 <!-- ============ CAPA 3 · WHATSAPP ============ -->
 <div id="nav-wa">
   <div class="nav-lh"><div class="nav-lh-in">
@@ -7782,8 +7853,162 @@ if (document.readyState === 'loading') {
 })();
  
 /** Abre el formulario. Si viene fecha y hora, las precarga. */
+
+/* ═══════════════════════════════════════════════════════════
+   EDITAR SESIÓN
+   ═══════════════════════════════════════════════════════════ */
+
+var NAV_editFolio = null;
+
+function NAV_abrirEditar() {
+  var folioActual = (document.getElementById('nav-ses-folio')||{}).textContent;
+  var s = NAV_D.sesiones.find(function(x){ return x.folio === folioActual; });
+  if (!s) { NAV_toast('No se encontró la sesión'); return; }
+  NAV_editFolio = s.folio;
+  document.getElementById('nav-e-nombre').value   = s.cliente || '';
+  document.getElementById('nav-e-tel').value      = s.telefono || '';
+  document.getElementById('nav-e-email').value    = s.email || '';
+  document.getElementById('nav-e-personas').value = NAV_n(s.personas) || 4;
+  document.getElementById('nav-e-notas').value    = s.notas || '';
+  document.getElementById('nav-e-origen').value   = s.origen || '';
+  document.getElementById('nav-e-aviso-fecha').innerHTML = '';
+  document.getElementById('nav-e-error').innerHTML = '';
+  var selPaq = document.getElementById('nav-e-paquete');
+  selPaq.innerHTML = NAV_D.paquetes.map(function(p){
+    return '<option value="'+p.id_paquete+'"'+(p.id_paquete===s.id_paquete?' selected':'')+'>'+
+      NAV_esc(p.nombre)+' · '+p.duracion_min+' min · '+p.fotos+' fotos</option>';
+  }).join('');
+  document.getElementById('nav-e-extra').value = NAV_n(s.personas_extra_cobrar) || 0;
+  var tp = String(s.temporadas_previas===undefined||s.temporadas_previas===''?'':s.temporadas_previas);
+  document.getElementById('nav-e-previas').value = tp;
+  var fecha = NAV_fecha(s.fecha_sesion);
+  document.getElementById('nav-e-fecha').value = fecha;
+  NAV_editarFecha(extraerHora(s.hora) || String(s.hora));
+  NAV_editarPrecio();
+  var el = document.getElementById('nav-edit');
+  el.style.display = 'block'; el.scrollTop = 0;
+}
+
+function NAV_cerrarEditar() {
+  document.getElementById('nav-edit').style.display = 'none';
+}
+
+function NAV_editarFecha(horaPreselect) {
+  var fecha = document.getElementById('nav-e-fecha').value;
+  var aviso = document.getElementById('nav-e-aviso-fecha');
+  var selH  = document.getElementById('nav-e-hora');
+  aviso.innerHTML = '';
+  if (!fecha) { selH.innerHTML = ''; return; }
+  if (!NAV_esDiaTrabajo(fecha)) {
+    aviso.innerHTML = '<div class="nav-note">◷ Ese día no es de trabajo en esta temporada.</div>';
+  }
+  var horas  = NAV_horasDia();
+  var tomadas = NAV_ocupacion(fecha)
+    .filter(function(s){ return s.folio !== NAV_editFolio; })
+    .map(function(s){ return extraerHora(s.hora) || String(s.hora); });
+  var blq = NAV_horasBloqueadas(fecha);
+  var cupo = NAV_cupoDe(fecha);
+  var ocupadas = NAV_ocupacion(fecha).filter(function(s){ return s.folio !== NAV_editFolio; }).length;
+  if (ocupadas >= cupo) {
+    aviso.innerHTML = '<div class="nav-note nav-err">Este día ya alcanzó el cupo de '+cupo+'. No se puede mover aquí.</div>';
+    selH.innerHTML = '<option value="">Sin lugares disponibles</option>';
+    return;
+  }
+  var libres = horas.filter(function(h){ return tomadas.indexOf(h) < 0 && blq.indexOf(h) < 0; });
+  selH.innerHTML = libres.map(function(h){
+    return '<option value="'+h+'"'+(h===horaPreselect?' selected':'')+'>'+h+'</option>';
+  }).join('');
+  if (!libres.length) aviso.innerHTML += '<div class="nav-note">Sin horas libres en este día.</div>';
+  NAV_editarPrecio();
+}
+
+function NAV_editarPrecio() {
+  var fecha  = document.getElementById('nav-e-fecha').value;
+  var paqId  = document.getElementById('nav-e-paquete').value;
+  var extra  = NAV_n(document.getElementById('nav-e-extra').value);
+  var prevEl = document.getElementById('nav-e-previas');
+  var res    = document.getElementById('nav-e-resumen');
+  if (!fecha || !paqId || !NAV_D.camp) { res.innerHTML = ''; return; }
+  var mes = parseInt(fecha.substring(5,7), 10);
+  var precioBase = 0;
+  NAV_D.precios.forEach(function(pr){
+    if (pr.tipo==='paquete' && pr.referencia===paqId && NAV_n(pr.mes)===mes) precioBase = NAV_n(pr.precio);
+  });
+  var s = NAV_D.sesiones.find(function(x){ return x.folio === NAV_editFolio; });
+  var desc = s ? NAV_n(s.descuento_preventa) : 0;
+  var extraMonto = extra * NAV_n(NAV_D.camp.costo_persona_extra);
+  var total = precioBase - desc + extraMonto;
+  var prevN = prevEl && prevEl.value !== '' ? NAV_n(prevEl.value) : (s ? NAV_n(s.temporadas_previas) : 0);
+  res.innerHTML =
+    '<div class="nav-row"><span class="nav-lb">Paquete ('+NAV_MESES[mes-1]+')</span><span class="nav-vl">'+NAV_money(precioBase)+'</span></div>' +
+    (desc ? '<div class="nav-row"><span class="nav-lb" style="color:#4a7c59">Descuento preventa</span><span class="nav-vl" style="color:#4a7c59">-'+NAV_money(desc)+'</span></div>' : '') +
+    (extraMonto ? '<div class="nav-row"><span class="nav-lb">Personas extra ('+extra+')</span><span class="nav-vl">'+NAV_money(extraMonto)+'</span></div>' : '') +
+    (prevN > 0 ? '<div class="nav-row"><span class="nav-lb" style="color:#4a7c59">Fotos de cortesía ('+prevN+' temp.)</span><span class="nav-vl" style="color:#4a7c59">'+prevN+' sin costo</span></div>' : '') +
+    '<div class="nav-row" style="margin-top:8px;border-top:1px solid var(--beige-mid);padding-top:8px"><span class="nav-lb"><strong>Total estimado</strong></span><span class="nav-vl"><strong>'+NAV_money(total)+'</strong></span></div>';
+}
+
+function NAV_editarGuardar() {
+  var nombre = document.getElementById('nav-e-nombre').value.trim();
+  var tel    = document.getElementById('nav-e-tel').value.trim();
+  var fecha  = document.getElementById('nav-e-fecha').value;
+  var hora   = document.getElementById('nav-e-hora').value;
+  var err    = document.getElementById('nav-e-error');
+  err.innerHTML = '';
+  if (!nombre) { err.innerHTML = '<div class="nav-err">Falta el nombre</div>'; return; }
+  if (!fecha || !hora) { err.innerHTML = '<div class="nav-err">Falta fecha u hora</div>'; return; }
+  var tomadas = NAV_ocupacion(fecha)
+    .filter(function(s){ return s.folio !== NAV_editFolio; })
+    .map(function(s){ return extraerHora(s.hora)||String(s.hora); });
+  if (tomadas.indexOf(hora) >= 0) {
+    err.innerHTML = '<div class="nav-err">Ese horario ya está ocupado. Elige otro.</div>'; return;
+  }
+  var cupo = NAV_cupoDe(fecha);
+  var ocupadas = NAV_ocupacion(fecha).filter(function(s){ return s.folio !== NAV_editFolio; }).length;
+  if (ocupadas >= cupo) {
+    err.innerHTML = '<div class="nav-err">El día '+NAV_fechaLarga(fecha)+' ya alcanzó su cupo de '+cupo+'.</div>'; return;
+  }
+  var paqId = document.getElementById('nav-e-paquete').value;
+  var extra = NAV_n(document.getElementById('nav-e-extra').value);
+  var mes = parseInt(fecha.substring(5,7), 10);
+  var precioBase = 0;
+  NAV_D.precios.forEach(function(pr){
+    if (pr.tipo==='paquete' && pr.referencia===paqId && NAV_n(pr.mes)===mes) precioBase = NAV_n(pr.precio);
+  });
+  var s = NAV_D.sesiones.find(function(x){ return x.folio === NAV_editFolio; });
+  var desc = s ? NAV_n(s.descuento_preventa) : 0;
+  var extraMonto = extra * NAV_n(NAV_D.camp.costo_persona_extra);
+  var datos = {
+    folio: NAV_editFolio,
+    cliente: nombre,
+    telefono: tel,
+    email: document.getElementById('nav-e-email').value.trim(),
+    personas: NAV_n(document.getElementById('nav-e-personas').value),
+    personas_extra_cobrar: extra,
+    temporadas_previas: document.getElementById('nav-e-previas').value,
+    id_paquete: paqId,
+    fecha_sesion: fecha,
+    hora: hora,
+    origen: document.getElementById('nav-e-origen').value,
+    notas: document.getElementById('nav-e-notas').value.trim(),
+    precio_paquete: precioBase,
+    monto_personas_extra: extraMonto,
+    total: precioBase - desc + extraMonto,
+    recalcularTotal: false
+  };
+  var btn = document.getElementById('nav-e-btn');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  NAV_post('NAV_guardarSesion', datos).then(function(r){
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
+    if (!r || !r.ok) { err.innerHTML = '<div class="nav-err">'+(r&&r.error?NAV_esc(r.error):'Error al guardar')+'</div>'; return; }
+    NAV_toast('Sesión actualizada');
+    NAV_cerrarEditar();
+    NAV_recargar().then(function(){ NAV_verSesion(NAV_editFolio); });
+  }).catch(function(e){
+    btn.disabled = false; btn.textContent = 'Guardar cambios';
+    err.innerHTML = '<div class="nav-err">Sin conexión: '+NAV_esc(e.message)+'</div>';
+  });
+}
 function NAV_agendar(fecha, hora) {
-  if (!NAV_D.camp) { NAV_toast('Espera a que cargue la temporada'); return; }
  
   var f = document.getElementById('nav-a-fecha');
   f.value = fecha || NAV_D.camp.fecha_inicio;
