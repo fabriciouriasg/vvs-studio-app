@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.21';
+var APP_VERSION = 'v4.22';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6054,11 +6054,13 @@ function saveSettings() {
  
     <!-- ---------- TABLERO ---------- -->
     <div class="nav-pane nav-on" id="nav-p-tab">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px" id="knv-btn-wrap">
+        <button class="nav-btn" id="knv-toggle-btn" onclick="KNV_toggle()" style="display:none;padding:5px 13px;font-size:11px;border-radius:var(--radius)">🗂 Vista Kanban</button>
+      </div>
       <div class="nav-dl">
         <div class="nav-n" id="nav-dl-n">—</div>
         <div class="nav-tx"><b id="nav-dl-t">Días para la entrega</b>
           <span id="nav-dl-s"></span></div>
-        <button class="nav-btn" id="knv-toggle-btn" onclick="KNV_toggle()" style="display:none;margin-left:auto;padding:6px 14px;font-size:12px">🗂 Vista Kanban</button>
       </div>
       <div class="nav-tb" id="nav-tb"><div class="nav-load">Cargando…</div></div>
       <div class="nav-facts" id="nav-facts"></div>
@@ -8331,6 +8333,11 @@ function NAV_altaGuardar() {
   var orig = NAV_tablero;
   NAV_tablero = function(){
     orig.apply(this, arguments);
+    // Mostrar botón Kanban en desktop
+    setTimeout(function(){
+      var btn = document.getElementById('knv-toggle-btn');
+      if (btn) btn.style.display = window.innerWidth > 900 ? 'inline-block' : 'none';
+    }, 100);
     var cont = document.getElementById('nav-p-tab');
     if (!cont || document.getElementById('nav-btn-agendar')) return;
     var b = document.createElement('button');
@@ -9369,11 +9376,12 @@ function KNV_toggleEmpty() {
 (function(){
   function KNV_checkDesktop() {
     var btn = document.getElementById('knv-toggle-btn');
-    if (btn) btn.style.display = window.innerWidth > 768 ? '' : 'none';
+    if (btn) btn.style.display = window.innerWidth > 900 ? 'inline-block' : 'none';
   }
   window.addEventListener('resize', KNV_checkDesktop);
   document.addEventListener('DOMContentLoaded', KNV_checkDesktop);
-  setTimeout(KNV_checkDesktop, 1000);
+  setTimeout(KNV_checkDesktop, 500);
+  setTimeout(KNV_checkDesktop, 1500);
 })();
 </script>
 </body>
