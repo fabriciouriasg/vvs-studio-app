@@ -1847,7 +1847,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.9';
+var APP_VERSION = 'v4.10';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6858,6 +6858,19 @@ function NAV_horasDia() {
 }
 function NAV_min(h){ var p=String(h).split(':'); return parseInt(p[0],10)*60+parseInt(p[1]||'0',10); }
 function NAV_hhmm(m){ return ('0'+Math.floor(m/60)).slice(-2)+':'+('0'+(m%60)).slice(-2); }
+/** Extrae HH:MM en formato 24h desde cualquier formato que venga del Sheet.
+ *  Se usa para COMPARAR contra horas[] que siempre son "09:00", "10:00", etc.
+ *  Nunca convierte a 12h — eso es tarea de extraerHora()+a12h() solo para mostrar. */
+function NAV_hora24(raw) {
+  if (!raw || raw === 'undefined' || raw === 'null' || raw === '') return '';
+  var s = String(raw).trim();
+  if (s.indexOf('T') !== -1) { s = (s.split('T')[1] || '').substring(0, 5); }
+  if (/^\d{1,2}:\d{2}/.test(s)) {
+    var p = s.split(':');
+    return ('0'+parseInt(p[0],10)).slice(-2) + ':' + p[1].substring(0,2);
+  }
+  return '';
+}
  
 function NAV_pintarDia() {
   if (!NAV_diaActual) NAV_diaActual = NAV_D.camp.fecha_inicio;
@@ -6951,7 +6964,7 @@ function NAV_calcDisp(m) {
     var dw = new Date(f + 'T12:00:00').getDay();
     if (NAV_dispDias.length && NAV_dispDias.indexOf(dw) < 0) continue;
     var ses = NAV_ocupacion(f), tomadas = {};
-    ses.forEach(function(x){ tomadas[String(x.hora)] = 1; });
+    ses.forEach(function(x){ var h24=NAV_hora24(x.hora); if(h24) tomadas[h24]=1; });
     var libres = horas.filter(function(h){ return !tomadas[h]; });
     var restante = Math.max(0, NAV_cupoDe(f) - ses.length);
     libres = libres.slice(0, restante);
@@ -7905,7 +7918,7 @@ function NAV_editarFecha(horaPreselect) {
   var horas  = NAV_horasDia();
   var tomadas = NAV_ocupacion(fecha)
     .filter(function(s){ return s.folio !== NAV_editFolio; })
-    .map(function(s){ return extraerHora(s.hora) || String(s.hora); });
+    .map(function(s){ return NAV_hora24(s.hora); }).filter(Boolean);
   var blq = NAV_horasBloqueadas(fecha);
   var cupo = NAV_cupoDe(fecha);
   var ocupadas = NAV_ocupacion(fecha).filter(function(s){ return s.folio !== NAV_editFolio; }).length;
@@ -7958,7 +7971,7 @@ function NAV_editarGuardar() {
   if (!fecha || !hora) { err.innerHTML = '<div class="nav-err">Falta fecha u hora</div>'; return; }
   var tomadas = NAV_ocupacion(fecha)
     .filter(function(s){ return s.folio !== NAV_editFolio; })
-    .map(function(s){ return extraerHora(s.hora)||String(s.hora); });
+    .map(function(s){ return NAV_hora24(s.hora); }).filter(Boolean);
   if (tomadas.indexOf(hora) >= 0) {
     err.innerHTML = '<div class="nav-err">Ese horario ya está ocupado. Elige otro.</div>'; return;
   }
@@ -8282,7 +8295,7 @@ function NAV_pintarDia() {
  
   for (var i = 0; i < horas.length; i++) {
     var hora = horas[i], s = null;
-    for (var j = 0; j < ses.length; j++) if ((extraerHora(ses[j].hora)||String(ses[j].hora)) === hora) s = ses[j];
+    for (var j = 0; j < ses.length; j++) if (NAV_hora24(ses[j].hora) === hora) s = ses[j];
     var esBlq = blq.indexOf(hora) >= 0;
  
     if (s) {
@@ -8332,7 +8345,7 @@ function NAV_altaFecha(horaPre) {
     'Puedes agendarlo igual como excepción.</div>';
  
   var horas = NAV_horasDia();
-  var tomadas = NAV_ocupacion(fecha).map(function(s){ return extraerHora(s.hora)||String(s.hora); });
+  var tomadas = NAV_ocupacion(fecha).map(function(s){ return NAV_hora24(s.hora); }).filter(Boolean);
   var blq = NAV_horasBloqueadas(fecha);
   var cupo = NAV_cupoDe(fecha);
   var libres = horas.filter(function(h){
