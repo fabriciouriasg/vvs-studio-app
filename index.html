@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.30';
+var APP_VERSION = 'v4.31';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6055,7 +6055,7 @@ function saveSettings() {
     <!-- ---------- TABLERO ---------- -->
     <div class="nav-pane nav-on" id="nav-p-tab">
       <div style="display:flex;justify-content:flex-end;margin-bottom:6px" id="knv-btn-wrap">
-        <button class="nav-btn" id="knv-toggle-btn" onclick="KNV_toggle()" style="display:none;padding:5px 13px;font-size:11px;border-radius:var(--radius);background:#2d5a27;border-color:#2d5a27">🗂 Vista Kanban</button>
+        <button class="nav-btn" id="knv-toggle-btn" onclick="KNV_toggle()" style="display:none;padding:5px 13px;font-size:11px;border-radius:var(--radius);background:#2d5a27!important;border-color:#2d5a27!important;color:#fff!important">🗂 Vista Kanban</button>
       </div>
       <div class="nav-dl">
         <div class="nav-n" id="nav-dl-n">—</div>
@@ -8344,7 +8344,7 @@ function NAV_altaGuardar() {
     b.id = 'nav-btn-agendar';
     b.className = 'nav-btn';
     b.textContent = 'Agendar sesión';
-    b.style.cssText = 'margin-bottom:12px;background:#2d5a27;border-color:#2d5a27';
+    b.style.cssText = 'margin-bottom:12px;background:#2d5a27!important;border-color:#2d5a27!important;color:#fff!important';
     b.onclick = function(){ NAV_agendar(); };
     var dl = cont.querySelector('.nav-dl');
     if (dl && dl.nextSibling) cont.insertBefore(b, dl.nextSibling);
