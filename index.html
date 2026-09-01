@@ -321,6 +321,11 @@
     .mes-full-dia.bloqueado .dia-num{color:#1a1410 !important;font-weight:700}
     .mes-full-dia.bloqueado:active{background:#BE694260 !important}
     .dia-dot.personal{background:#BE6942}
+    .mes-mini-dia.navidad{background:#2d5a27 !important;border-radius:6px}
+    .mes-mini-dia.navidad *{color:#fff !important}
+    .mes-full-dia.navidad{background:#2d5a27 !important;border-radius:6px}
+    .mes-full-dia.navidad *{color:#fff !important}
+    .mes-full-dia.navidad:active{background:#234820 !important}
     .dia-panel-acciones{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
     .dia-panel-btn{flex:1;min-width:120px;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:10px 8px;font-family:'Jost',sans-serif;font-size:11px;font-weight:500;color:var(--text-main);cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .15s}
     .dia-panel-btn:active{background:var(--beige-mid)}
@@ -2386,9 +2391,11 @@ function renderizarGrillaMes() {
     var evsDelDia = eventosMes.filter(function(e) { return String(e.fecha_evento||'').substring(0,10) === fechaStr && e.estado !== 'Cancelado'; });
     var bloqueado = fechasEspeciales.some(function(f) { return f.fecha === fechaStr && f.tipo === 'BLOQUEADO'; });
     var personales = fechasEspeciales.filter(function(f) { return f.fecha === fechaStr && f.tipo === 'PERSONAL'; });
+    var esNavidad = fechasEspeciales.some(function(f) { return f.fecha === fechaStr && f.tipo === 'NAVIDAD'; });
     var diaEl = document.createElement('div');
     var clases = 'mes-full-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
     if (bloqueado) clases += ' bloqueado';
+    if (esNavidad && !bloqueado) clases += ' navidad';
     diaEl.className = clases;
     var numEl = document.createElement('div'); numEl.className = 'dia-num'; numEl.textContent = d;
     diaEl.appendChild(numEl);
@@ -3445,9 +3452,11 @@ function crearMesMini(mc, eventosMes) {
     const evsDelDia = eventosMes.filter(e => e.fecha_evento === fechaStr);
     const bloqueado = fechasEspeciales.some(f => f.fecha === fechaStr && f.tipo === 'BLOQUEADO');
     const personales = fechasEspeciales.filter(f => f.fecha === fechaStr && f.tipo === 'PERSONAL');
+    const esNavidad = fechasEspeciales.some(f => f.fecha === fechaStr && f.tipo === 'NAVIDAD');
     const diaEl = document.createElement('div');
     let clases = 'mes-mini-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
     if (bloqueado) clases += ' bloqueado';
+    if (esNavidad && !bloqueado) clases += ' navidad';
     diaEl.className = clases;
     diaEl.textContent = d;
     if (evsDelDia.length || personales.length) {
@@ -3526,9 +3535,11 @@ function abrirMesDetail(mc) {
     });
     const bloqueado = fechasEspeciales.some(f => f.fecha === fechaStr && f.tipo === 'BLOQUEADO');
     const personales = fechasEspeciales.filter(f => f.fecha === fechaStr && f.tipo === 'PERSONAL');
+    const esNavidad = fechasEspeciales.some(f => f.fecha === fechaStr && f.tipo === 'NAVIDAD');
     const diaEl = document.createElement('div');
     let clases = 'mes-full-dia' + (evsDelDia.length ? ' con-evento' : '') + (fechaStr === HOY ? ' hoy' : '');
     if (bloqueado) clases += ' bloqueado';
+    if (esNavidad && !bloqueado) clases += ' navidad';
     diaEl.className = clases;
     const numEl = document.createElement('div'); numEl.className = 'dia-num'; numEl.textContent = d;
     diaEl.appendChild(numEl);
@@ -6377,11 +6388,27 @@ function NAV_init() {
     document.getElementById('nav-btn-nombre').textContent = NAV_D.camp.nombre;
     document.getElementById('nav-ttl').textContent = NAV_D.camp.nombre;
     document.getElementById('nav-estado').textContent = NAV_D.camp.estado;
+    /* Inyectar días de Navidad en el calendario normal */
+    NAV_inyectarDiasEnCalendario();
     NAV_get('NAV_getSesiones').then(function(s){
       NAV_D.sesiones = (s && s.sesiones) ? s.sesiones : [];
       NAV_subtitulo();
     });
   }).catch(function(){});
+}
+
+/** Inyecta los días activos de Navidad en fechasEspeciales para que
+ *  el calendario normal los muestre en verde. No toca Fechas_Bloqueadas. */
+function NAV_inyectarDiasEnCalendario() {
+  fechasEspeciales = fechasEspeciales.filter(function(f){ return f.tipo !== 'NAVIDAD'; });
+  NAV_D.dias.forEach(function(d){
+    if (String(d.tipo) === 'Cerrado') return;
+    fechasEspeciales.push({ fecha: d.fecha, tipo: 'NAVIDAD', motivo: NAV_D.camp.nombre });
+  });
+  if (typeof renderCalendario === 'function' && typeof todosEventos !== 'undefined') {
+    renderCalendario(todosEventos);
+    if (typeof renderModoDia === 'function') renderModoDia(todosEventos);
+  }
 }
  
 function NAV_subtitulo() {
