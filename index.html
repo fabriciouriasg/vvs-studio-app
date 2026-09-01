@@ -1847,7 +1847,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.8';
+var APP_VERSION = 'v4.9';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8282,7 +8282,7 @@ function NAV_pintarDia() {
  
   for (var i = 0; i < horas.length; i++) {
     var hora = horas[i], s = null;
-    for (var j = 0; j < ses.length; j++) if (String(ses[j].hora) === hora) s = ses[j];
+    for (var j = 0; j < ses.length; j++) if ((extraerHora(ses[j].hora)||String(ses[j].hora)) === hora) s = ses[j];
     var esBlq = blq.indexOf(hora) >= 0;
  
     if (s) {
