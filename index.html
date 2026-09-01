@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.16';
+var APP_VERSION = 'v4.18';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7400,7 +7400,8 @@ function NAV_ajustes() {
     '<p class="nav-hint">La comisión se absorbe y se registra sola como gasto.</p></div>' +
  
     '<div class="nav-lab">Enlaces</div><div class="nav-card">' +
-    '<div class="nav-row"><span class="nav-lb">Brochure</span><span class="nav-vl">'+(c.brochure_url?'configurado':'pendiente')+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">PDF Venta</span><span class="nav-vl">'+(c.brochure_url?'configurado':'pendiente')+'</span></div>' +
+    '<div class="nav-row"><span class="nav-lb">Brochure</span><span class="nav-vl">'+(c.brochure2_url?'configurado':'pendiente')+'</span></div>' +
     '<div class="nav-row"><span class="nav-lb">Encuesta</span><span class="nav-vl">'+(c.encuesta_url?'configurada':'pendiente')+'</span></div>' +
     '<p class="nav-hint">Se editan directo en la hoja Campanias del Sheet.</p></div>';
 }
@@ -8545,8 +8546,18 @@ function NAV_ajustes() {
       '<label style="font-size:12.5px;color:var(--text-main)">'+NAV_esc(x.referencia)+'</label>' +
       '<input id="nav-pr-'+x.id_precio+'" inputmode="decimal" value="'+NAV_n(x.precio)+'"></div>';
   });
+  extrasHTML +=
+    '<div class="nav-sep" style="margin:12px 0"></div>' +
+    '<div class="nav-f2">' +
+    '<label class="nav-f" style="margin-bottom:0"><span>Nombre del extra</span>' +
+    '<input id="nav-nuevo-extra-nombre" placeholder="Ej. Personas"></label>' +
+    '<label class="nav-f" style="margin-bottom:0"><span>Precio</span>' +
+    '<input id="nav-nuevo-extra-precio" inputmode="decimal" placeholder="0"></label>' +
+    '</div>' +
+    '<button class="nav-btn" style="margin-top:10px" onclick="NAV_agregarExtraCatalogo()">+ Agregar extra</button>' +
+    '<div id="nav-nuevo-extra-error"></div>';
 
-  /* ── Mensajes WA — nivel 2 ── */
+
   var msgHTML =
     NAV_acord2('msg_apartado',  '1 · Al apartar',
       NAV_area('msg_apartado', '', c.msg_apartado, ['nombre','fecha','hora','paquete','fotos','personas','anticipo','saldo'])) +
@@ -8619,7 +8630,8 @@ function NAV_ajustes() {
     NAV_acord('extras', '➕ Extras', extrasHTML) +
 
     NAV_acord('enlaces', '🔗 Enlaces',
-      NAV_campo('brochure_url', 'Liga del brochure', c.brochure_url) +
+      NAV_campo('brochure_url', 'Liga del PDF Venta', c.brochure_url) +
+      NAV_campo('brochure2_url', 'Liga del Brochure', c.brochure2_url) +
       NAV_campo('encuesta_url', 'Liga de encuesta', c.encuesta_url) +
       '<label class="nav-f" style="margin-bottom:0"><span>Plataforma de galerías</span>' +
       '<input id="nav-s-galeria_plataforma" value="'+NAV_esc(c.galeria_plataforma)+'"></label>' +
@@ -8643,6 +8655,41 @@ function NAV_ajustes() {
 }
  
 /** Guarda campaña, paquetes y precios. */
+function NAV_agregarExtraCatalogo() {
+  var nombre = (document.getElementById('nav-nuevo-extra-nombre').value || '').trim();
+  var precio = NAV_n(document.getElementById('nav-nuevo-extra-precio').value);
+  var err = document.getElementById('nav-nuevo-extra-error');
+  err.innerHTML = '';
+  if (!nombre) { err.innerHTML = '<div class="nav-err">Falta el nombre del extra</div>'; return; }
+  if (!precio) { err.innerHTML = '<div class="nav-err">Falta el precio</div>'; return; }
+  /* Verificar que no exista ya un extra con el mismo nombre */
+  var existe = NAV_D.precios.some(function(x){ return x.tipo === 'extra' && x.referencia.toLowerCase() === nombre.toLowerCase(); });
+  if (existe) { err.innerHTML = '<div class="nav-err">Ya existe un extra con ese nombre</div>'; return; }
+  var btn = err.previousElementSibling;
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  NAV_post('NAV_guardarPrecio', {
+    id_campania: NAV_D.camp.id_campania,
+    tipo: 'extra',
+    referencia: nombre,
+    mes: '',
+    precio: precio,
+    activo: 'SI'
+  }).then(function(r) {
+    btn.disabled = false; btn.textContent = '+ Agregar extra';
+    if (!r || !r.ok) { err.innerHTML = '<div class="nav-err">'+(r&&r.error ? NAV_esc(r.error) : 'Error al guardar')+'</div>'; return; }
+    /* Actualizar lista local y recargar sección */
+    NAV_D.precios.push({ id_precio: r.id_precio, id_campania: NAV_D.camp.id_campania,
+      tipo: 'extra', referencia: nombre, mes: '', precio: precio, activo: 'SI' });
+    NAV_toast('Extra "'+nombre+'" agregado');
+    NAV_ajustes();
+    /* Reabrir acordeón de extras */
+    setTimeout(function(){ NAV_acordToggle('extras'); }, 50);
+  }).catch(function() {
+    btn.disabled = false; btn.textContent = '+ Agregar extra';
+    err.innerHTML = '<div class="nav-err">Error de conexión</div>';
+  });
+}
+
 function NAV_guardarAjustes() {
   var btn = document.getElementById('nav-s-btn');
   var err = document.getElementById('nav-s-error');
@@ -8653,7 +8700,7 @@ function NAV_guardarAjustes() {
   ['nombre','fecha_inicio','fecha_fin','fecha_entrega_max','meta_sesiones','estado',
    'hora_am_inicio','hora_am_fin','hora_pm_inicio','hora_pm_fin','slot_min','cupo_dia',
    'dias_semana','preventa_descuento','anticipo_monto','costo_persona_extra',
-   'promo_reel_limite','mp_pct','mp_fija','mp_iva','brochure_url','encuesta_url',
+   'promo_reel_limite','mp_pct','mp_fija','mp_iva','brochure_url','brochure2_url','encuesta_url',
    'galeria_plataforma','msg_apartado','msg_brochure','msg_confirma','msg_presel',
    'msg_entrega','msg_encuesta',
    'politicas_cancelacion','terminos_servicio'].forEach(function(k){ datos[k] = NAV_val(k); });
