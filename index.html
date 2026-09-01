@@ -813,7 +813,27 @@
 }
 </style>
 <style>
-/* ===== Navidad 2026 · correcciones de layout v4.9 ===== */
+/* ===== Ajustes · acordeón ===== */
+.nav-acord { border:1px solid var(--beige-dark); border-radius:11px; margin-bottom:8px; overflow:hidden; }
+.nav-acord-hdr { display:flex; justify-content:space-between; align-items:center;
+  padding:13px 16px; cursor:pointer; background:var(--white);
+  font-size:13px; font-weight:500; color:var(--text-main); user-select:none; }
+.nav-acord-hdr:active { background:var(--beige-light); }
+.nav-acord-arr { font-size:16px; color:var(--brown-soft); transition:transform .2s; }
+.nav-acord-body { display:none; padding:12px 14px 14px; background:var(--beige-light);
+  border-top:1px solid var(--beige-dark); }
+.nav-acord.nav-ac-open .nav-acord-arr { transform:rotate(90deg); }
+.nav-acord.nav-ac-open .nav-acord-body { display:block; }
+/* Nivel 2 — mensajes WA */
+.nav-acord2 { border:1px solid var(--beige-mid); border-radius:8px; margin-bottom:6px; overflow:hidden; }
+.nav-acord2-hdr { display:flex; justify-content:space-between; align-items:center;
+  padding:10px 13px; cursor:pointer; background:var(--white);
+  font-size:12px; font-weight:500; color:var(--text-main); user-select:none; }
+.nav-acord2-hdr:active { background:var(--beige-light); }
+.nav-acord2-body { display:none; padding:10px 12px 12px; background:var(--white);
+  border-top:1px solid var(--beige-mid); }
+.nav-acord2.nav-ac2-open .nav-acord-arr { transform:rotate(90deg); }
+.nav-acord2.nav-ac2-open .nav-acord2-body { display:block; }
  
 /* Los hijos de un grid no se encogen por defecto: por eso los inputs de fecha
    de iOS empujaban al vecino y se salían de la pantalla. */
@@ -8467,12 +8487,34 @@ function NAV_val(id) {
   return el ? el.value : '';
 }
  
-/** REEMPLAZA a la anterior. Todo editable. */
+/** Genera un acordeón de nivel 1 para Ajustes */
+function NAV_acord(id, titulo, contenido) {
+  return '<div class="nav-acord" id="nav-ac-'+id+'">' +
+    '<div class="nav-acord-hdr" onclick="NAV_acordToggle(\''+id+'\')"><span>'+titulo+'</span><span class="nav-acord-arr">›</span></div>' +
+    '<div class="nav-acord-body">'+contenido+'</div></div>';
+}
+/** Genera un acordeón de nivel 2 (para mensajes WA) */
+function NAV_acord2(id, titulo, contenido) {
+  return '<div class="nav-acord2" id="nav-ac2-'+id+'">' +
+    '<div class="nav-acord2-hdr" onclick="NAV_acordToggle2(\''+id+'\')"><span>'+titulo+'</span><span class="nav-acord-arr">›</span></div>' +
+    '<div class="nav-acord2-body">'+contenido+'</div></div>';
+}
+function NAV_acordToggle(id) {
+  var el = document.getElementById('nav-ac-'+id);
+  if (el) el.classList.toggle('nav-ac-open');
+}
+function NAV_acordToggle2(id) {
+  var el = document.getElementById('nav-ac2-'+id);
+  if (el) el.classList.toggle('nav-ac2-open');
+}
+
+/** REEMPLAZA a la anterior. Todo editable, todo colapsable. */
 function NAV_ajustes() {
   var c = NAV_D.camp;
   if (!c) return;
- 
-  var precios = '';
+
+  /* ── Paquetes ── */
+  var paquetesHTML = '';
   NAV_D.paquetes.forEach(function(p){
     var filas = '';
     NAV_D.precios.filter(function(x){
@@ -8484,7 +8526,7 @@ function NAV_ajustes() {
         '<span class="nav-lb" style="text-align:right">preventa '+
         NAV_money(NAV_n(x.precio) - NAV_n(c.preventa_descuento))+'</span></div>';
     });
-    precios += '<div class="nav-lab">'+NAV_esc(p.nombre)+'</div><div class="nav-card">' +
+    var cuerpo =
       '<div class="nav-f2">' +
       NAV_campo('paq-'+p.id_paquete+'-nombre', 'Nombre', p.nombre) +
       NAV_campo('paq-'+p.id_paquete+'-duracion', 'Duración (min)', NAV_n(p.duracion_min)) +
@@ -8492,114 +8534,108 @@ function NAV_ajustes() {
       NAV_campo('paq-'+p.id_paquete+'-fotos', 'Fotos', NAV_n(p.fotos)) +
       NAV_campo('paq-'+p.id_paquete+'-personas', 'Personas', p.personas_desc) +
       '</div><div class="nav-sep"></div>' +
-      '<div class="nav-lb" style="margin-bottom:9px">Precio normal por mes</div>' + filas +
-      '</div>';
+      '<div class="nav-lb" style="margin-bottom:9px">Precio normal por mes</div>' + filas;
+    paquetesHTML += NAV_acord('paq-'+p.id_paquete, '📦 '+NAV_esc(p.nombre), cuerpo);
   });
- 
-  var extras = '';
+
+  /* ── Extras ── */
+  var extrasHTML = '';
   NAV_D.precios.filter(function(x){ return x.tipo === 'extra'; }).forEach(function(x){
-    extras += '<div class="nav-pmes" style="grid-template-columns:1fr 110px">' +
+    extrasHTML += '<div class="nav-pmes" style="grid-template-columns:1fr 110px">' +
       '<label style="font-size:12.5px;color:var(--text-main)">'+NAV_esc(x.referencia)+'</label>' +
       '<input id="nav-pr-'+x.id_precio+'" inputmode="decimal" value="'+NAV_n(x.precio)+'"></div>';
   });
- 
+
+  /* ── Mensajes WA — nivel 2 ── */
+  var msgHTML =
+    NAV_acord2('msg_apartado',  '1 · Al apartar',
+      NAV_area('msg_apartado', '', c.msg_apartado, ['nombre','fecha','hora','paquete','fotos','personas','anticipo','saldo'])) +
+    NAV_acord2('msg_brochure',  '2 · Brochure',
+      NAV_area('msg_brochure', '', c.msg_brochure, ['nombre','fecha','hora','brochure'])) +
+    NAV_acord2('msg_confirma',  '3 · Confirmación',
+      NAV_area('msg_confirma', '', c.msg_confirma, ['nombre','fecha','hora','personas'])) +
+    NAV_acord2('msg_presel',    '4 · Preselección',
+      NAV_area('msg_presel',   '', c.msg_presel,   ['nombre','galeria','fotos','regalo'])) +
+    NAV_acord2('msg_entrega',   '5 · Entrega',
+      NAV_area('msg_entrega',  '', c.msg_entrega,  ['nombre','galeria','fotos_total'])) +
+    NAV_acord2('msg_encuesta',  '6 · Encuesta',
+      NAV_area('msg_encuesta', '', c.msg_encuesta, ['nombre','encuesta','folio'])) +
+    '<p class="nav-hint" style="margin-top:10px">Lo que va entre llaves se llena solo con los datos de cada sesión. La app nunca envía por su cuenta.</p>';
+
+  /* ── Render ── */
   document.getElementById('nav-ajustes').innerHTML =
-    '<div class="nav-lab">Temporada</div><div class="nav-card">' +
-    NAV_campo('nombre', 'Nombre visible', c.nombre) +
-    '<div class="nav-f2">' +
-    NAV_campo('fecha_inicio', 'Inicio', c.fecha_inicio, 'date') +
-    NAV_campo('fecha_fin', 'Fin de sesiones', c.fecha_fin, 'date') + '</div>' +
-    '<div class="nav-f2">' +
-    NAV_campo('fecha_entrega_max', 'Entrega máxima', c.fecha_entrega_max, 'date') +
-    NAV_campo('meta_sesiones', 'Meta', NAV_n(c.meta_sesiones)) + '</div>' +
-    '<label class="nav-f" style="margin-bottom:0"><span>Estado</span>' +
-    '<select id="nav-s-estado">' +
-    ['Borrador','Preventa','Activa','Cerrada'].map(function(e){
-      return '<option'+(String(c.estado)===e?' selected':'')+'>'+e+'</option>'; }).join('') +
-    '</select></label>' +
-    '<div class="nav-note">◷ Cambiar las fechas recalcula la capacidad de la temporada.</div>' +
-    '</div>' +
- 
-    '<div class="nav-lab">Horario</div><div class="nav-card">' +
-    '<div class="nav-f2">' +
-    NAV_campo('hora_am_inicio', 'Mañana inicio', c.hora_am_inicio, 'time') +
-    NAV_campo('hora_am_fin', 'Mañana fin', c.hora_am_fin, 'time') + '</div>' +
-    '<div class="nav-f2">' +
-    NAV_campo('hora_pm_inicio', 'Tarde inicio', c.hora_pm_inicio, 'time') +
-    NAV_campo('hora_pm_fin', 'Tarde fin', c.hora_pm_fin, 'time') + '</div>' +
-    '<div class="nav-f2">' +
-    NAV_campo('slot_min', 'Minutos por lugar', NAV_n(c.slot_min)) +
-    NAV_campo('cupo_dia', 'Lugares por día', NAV_n(c.cupo_dia)) + '</div>' +
-    '<label class="nav-f" style="margin-bottom:0"><span>Días de trabajo</span>' +
-    '<input id="nav-s-dias_semana" value="'+NAV_esc(c.dias_semana)+'"></label>' +
-    '<div class="nav-note">◷ Números separados por comas · 0 domingo, 5 viernes, 6 sábado.</div>' +
-    '</div>' +
- 
-    '<div class="nav-lab">Preventa y cobros</div><div class="nav-card">' +
-    '<div class="nav-f2">' +
-    NAV_campo('preventa_inicio', 'Abre', String(c.preventa_inicio||'').replace(' ','T'), 'datetime-local') +
-    NAV_campo('preventa_fin', 'Cierra', String(c.preventa_fin||'').replace(' ','T'), 'datetime-local') +
-    '</div><div class="nav-f2">' +
-    NAV_campo('preventa_descuento', 'Descuento', NAV_n(c.preventa_descuento)) +
-    NAV_campo('anticipo_monto', 'Anticipo', NAV_n(c.anticipo_monto)) + '</div>' +
-    '<div class="nav-f2">' +
-    NAV_campo('costo_persona_extra', 'Persona extra', NAV_n(c.costo_persona_extra)) +
-    NAV_campo('promo_reel_limite', 'Reels (primeras N)', NAV_n(c.promo_reel_limite)) +
-    '</div></div>' +
- 
-    '<div class="nav-lab">Comisión de tarjeta</div><div class="nav-card">' +
-    '<div class="nav-f3">' +
-    NAV_campo('mp_pct', 'Porcentaje', NAV_n(c.mp_pct)) +
-    NAV_campo('mp_fija', 'Cuota fija', NAV_n(c.mp_fija)) +
-    NAV_campo('mp_iva', 'IVA %', NAV_n(c.mp_iva)) + '</div>' +
-    '<div class="nav-row"><span class="nav-lb">Cobro de $1,000</span>' +
-    '<span class="nav-vl nav-w">'+NAV_money(NAV_comision(1000))+'</span></div></div>' +
- 
-    precios +
- 
-    '<div class="nav-lab">Extras</div><div class="nav-card">' + extras + '</div>' +
- 
-    '<div class="nav-lab">Enlaces</div><div class="nav-card">' +
-    NAV_campo('brochure_url', 'Liga del brochure en Drive', c.brochure_url) +
-    NAV_campo('encuesta_url', 'Liga del formulario de encuesta', c.encuesta_url) +
-    '<label class="nav-f" style="margin-bottom:0"><span>Plataforma de galerías</span>' +
-    '<input id="nav-s-galeria_plataforma" value="'+NAV_esc(c.galeria_plataforma)+'"></label>' +
-    '<p class="nav-hint">El brochure debe estar en «cualquier persona con el vínculo», ' +
-    'solo lectura, y no moverse durante la temporada.</p></div>' +
- 
-    '<div class="nav-lab">Mensajes de WhatsApp</div>' +
-    '<div class="nav-card">' +
-    NAV_area('msg_apartado', '1 · Al apartar', c.msg_apartado,
-      ['nombre','fecha','hora','paquete','fotos','personas','anticipo','saldo']) +
-    '</div><div class="nav-card">' +
-    NAV_area('msg_brochure', '2 · Brochure · 15 días antes', c.msg_brochure,
-      ['nombre','fecha','hora','brochure']) +
-    '</div><div class="nav-card">' +
-    NAV_area('msg_confirma', '3 · Confirmación · un día antes', c.msg_confirma,
-      ['nombre','fecha','hora','personas']) +
-    '</div><div class="nav-card">' +
-    NAV_area('msg_presel', '4 · Preselección', c.msg_presel,
-      ['nombre','galeria','fotos','regalo']) +
-    '</div><div class="nav-card">' +
-    NAV_area('msg_entrega', '5 · Entrega de galería', c.msg_entrega,
-      ['nombre','galeria','fotos_total']) +
-    '</div><div class="nav-card">' +
-    NAV_area('msg_encuesta', '6 · Encuesta', c.msg_encuesta,
-      ['nombre','encuesta','folio']) +
-    '<p class="nav-hint">Lo que va entre llaves se llena solo con los datos de cada ' +
-    'sesión. La app nunca envía por su cuenta: prepara el texto y tú decides.</p></div>' +
 
-    '<div class="nav-lab">Recibo · Políticas de Cancelación</div>' +
-    '<div class="nav-card">' +
-    NAV_area('politicas_cancelacion', 'Un punto por línea', c.politicas_cancelacion ||
-      'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia.\nEs necesario confirmar asistencia el día previo para conservar el lugar.\nSi el cliente no se presenta, se pierde el apartado y no hay reagenda.\nLos cambios de fecha están sujetos a disponibilidad dentro de la temporada.') +
-    '<p class="nav-hint">Cada línea se convierte en un punto con viñeta en el recibo y el PDF.</p></div>' +
+    NAV_acord('temporada', '📅 Temporada',
+      NAV_campo('nombre', 'Nombre visible', c.nombre) +
+      '<div class="nav-f2">' +
+      NAV_campo('fecha_inicio', 'Inicio', c.fecha_inicio, 'date') +
+      NAV_campo('fecha_fin', 'Fin de sesiones', c.fecha_fin, 'date') + '</div>' +
+      '<div class="nav-f2">' +
+      NAV_campo('fecha_entrega_max', 'Entrega máxima', c.fecha_entrega_max, 'date') +
+      NAV_campo('meta_sesiones', 'Meta', NAV_n(c.meta_sesiones)) + '</div>' +
+      '<label class="nav-f" style="margin-bottom:0"><span>Estado</span>' +
+      '<select id="nav-s-estado">' +
+      ['Borrador','Preventa','Activa','Cerrada'].map(function(e){
+        return '<option'+(String(c.estado)===e?' selected':'')+'>'+e+'</option>'; }).join('') +
+      '</select></label>' +
+      '<div class="nav-note">◷ Cambiar las fechas recalcula la capacidad de la temporada.</div>') +
 
-    '<div class="nav-lab">Recibo · Términos del Servicio</div>' +
-    '<div class="nav-card">' +
-    NAV_area('terminos_servicio', 'Un punto por línea', c.terminos_servicio ||
-      'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.\nEl precio corresponde al mes de la sesión y queda fijo desde el apartado.\nLas fotos se entregan en formato digital de alta resolución.\nVanessa Velasco conserva los derechos de autor de las imágenes.') +
-    '<p class="nav-hint">Cada línea se convierte en un punto con viñeta en el recibo y el PDF.</p></div>' +
+    NAV_acord('horario', '🕐 Horario',
+      '<div class="nav-f2">' +
+      NAV_campo('hora_am_inicio', 'Mañana inicio', c.hora_am_inicio, 'time') +
+      NAV_campo('hora_am_fin', 'Mañana fin', c.hora_am_fin, 'time') + '</div>' +
+      '<div class="nav-f2">' +
+      NAV_campo('hora_pm_inicio', 'Tarde inicio', c.hora_pm_inicio, 'time') +
+      NAV_campo('hora_pm_fin', 'Tarde fin', c.hora_pm_fin, 'time') + '</div>' +
+      '<div class="nav-f2">' +
+      NAV_campo('slot_min', 'Minutos por lugar', NAV_n(c.slot_min)) +
+      NAV_campo('cupo_dia', 'Lugares por día', NAV_n(c.cupo_dia)) + '</div>' +
+      '<label class="nav-f" style="margin-bottom:0"><span>Días de trabajo</span>' +
+      '<input id="nav-s-dias_semana" value="'+NAV_esc(c.dias_semana)+'"></label>' +
+      '<div class="nav-note">◷ Números separados por comas · 0 domingo, 5 viernes, 6 sábado.</div>') +
+
+    NAV_acord('preventa', '🏷️ Preventa y cobros',
+      '<div class="nav-f2">' +
+      NAV_campo('preventa_inicio', 'Abre', String(c.preventa_inicio||'').replace(' ','T'), 'datetime-local') +
+      NAV_campo('preventa_fin', 'Cierra', String(c.preventa_fin||'').replace(' ','T'), 'datetime-local') +
+      '</div><div class="nav-f2">' +
+      NAV_campo('preventa_descuento', 'Descuento', NAV_n(c.preventa_descuento)) +
+      NAV_campo('anticipo_monto', 'Anticipo', NAV_n(c.anticipo_monto)) + '</div>' +
+      '<div class="nav-f2">' +
+      NAV_campo('costo_persona_extra', 'Persona extra', NAV_n(c.costo_persona_extra)) +
+      NAV_campo('promo_reel_limite', 'Reels (primeras N)', NAV_n(c.promo_reel_limite)) +
+      '</div>') +
+
+    NAV_acord('tarjeta', '💳 Comisión de tarjeta',
+      '<div class="nav-f3">' +
+      NAV_campo('mp_pct', 'Porcentaje', NAV_n(c.mp_pct)) +
+      NAV_campo('mp_fija', 'Cuota fija', NAV_n(c.mp_fija)) +
+      NAV_campo('mp_iva', 'IVA %', NAV_n(c.mp_iva)) + '</div>' +
+      '<div class="nav-row"><span class="nav-lb">Cobro de $1,000</span>' +
+      '<span class="nav-vl nav-w">'+NAV_money(NAV_comision(1000))+'</span></div>') +
+
+    paquetesHTML +
+
+    NAV_acord('extras', '➕ Extras', extrasHTML) +
+
+    NAV_acord('enlaces', '🔗 Enlaces',
+      NAV_campo('brochure_url', 'Liga del brochure', c.brochure_url) +
+      NAV_campo('encuesta_url', 'Liga de encuesta', c.encuesta_url) +
+      '<label class="nav-f" style="margin-bottom:0"><span>Plataforma de galerías</span>' +
+      '<input id="nav-s-galeria_plataforma" value="'+NAV_esc(c.galeria_plataforma)+'"></label>' +
+      '<p class="nav-hint">El brochure debe estar compartido como «cualquier persona con el vínculo».</p>') +
+
+    NAV_acord('mensajes', '💬 Mensajes de WhatsApp', msgHTML) +
+
+    NAV_acord('politicas', '📋 Recibo · Políticas de Cancelación',
+      NAV_area('politicas_cancelacion', 'Un punto por línea', c.politicas_cancelacion ||
+        'El anticipo de '+NAV_money(c.anticipo_monto)+' no es reembolsable bajo ninguna circunstancia.\nEs necesario confirmar asistencia el día previo para conservar el lugar.\nSi el cliente no se presenta, se pierde el apartado y no hay reagenda.\nLos cambios de fecha están sujetos a disponibilidad dentro de la temporada.') +
+      '<p class="nav-hint">Cada línea = un punto con viñeta en el recibo y PDF.</p>') +
+
+    NAV_acord('terminos', '📋 Recibo · Términos del Servicio',
+      NAV_area('terminos_servicio', 'Un punto por línea', c.terminos_servicio ||
+        'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.\nEl precio corresponde al mes de la sesión y queda fijo desde el apartado.\nLas fotos se entregan en formato digital de alta resolución.\nVanessa Velasco conserva los derechos de autor de las imágenes.') +
+      '<p class="nav-hint">Cada línea = un punto con viñeta en el recibo y PDF.</p>') +
 
     '<button class="nav-btn nav-save" id="nav-s-btn" onclick="NAV_guardarAjustes()">' +
     'Guardar cambios</button>' +
