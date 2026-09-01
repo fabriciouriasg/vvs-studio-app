@@ -807,7 +807,7 @@
 /* ---------- pantallas anchas · Mac ---------- */
 @media(min-width:1000px){
   #nav-ov .nav-lh-in,#nav-ov .nav-tabs-in,#nav-ov .nav-wrap{max-width:1080px}
-  #nav-ov .nav-tb{overflow-x:visible;display:grid;grid-template-columns:repeat(5,1fr)}
+  #nav-ov .nav-tb{overflow-x:visible;display:grid;grid-template-columns:repeat(6,1fr)}
   #nav-ov .nav-tcol{width:auto}
   #nav-ov .nav-tbody{max-height:520px}
 }
@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.20';
+var APP_VERSION = 'v4.21';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6058,6 +6058,7 @@ function saveSettings() {
         <div class="nav-n" id="nav-dl-n">—</div>
         <div class="nav-tx"><b id="nav-dl-t">Días para la entrega</b>
           <span id="nav-dl-s"></span></div>
+        <button class="nav-btn" id="knv-toggle-btn" onclick="KNV_toggle()" style="display:none;margin-left:auto;padding:6px 14px;font-size:12px">🗂 Vista Kanban</button>
       </div>
       <div class="nav-tb" id="nav-tb"><div class="nav-load">Cargando…</div></div>
       <div class="nav-facts" id="nav-facts"></div>
@@ -6445,8 +6446,8 @@ function saveSettings() {
  
 var NAV_ID = 'NAV2026';
 var NAV_D = { camp:null, paquetes:[], precios:[], dias:[], sesiones:[], gastos:[] };
-var NAV_FASES = ['Apartada','Realizada','Preselección','Edición','Entregada'];
-var NAV_COLORES = ['#8fa8c4','#a4907c','#c9a86c','#9a8bb5','#7fa07f'];
+var NAV_FASES = ['Apartada','Confirmada','Realizada','Preselección','Edición','Entregada','Completada'];
+var NAV_COLORES = ['#5f9ea0','#7f77dd','#ba7517','#185fa5','#3b6d11','#993556'];
 var NAV_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto',
   'Septiembre','Octubre','Noviembre','Diciembre'];
 var NAV_DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
@@ -6651,12 +6652,12 @@ function NAV_tablero() {
   document.getElementById('nav-dl-t').textContent =
     'Días para el ' + NAV_fechaLarga(NAV_D.camp.fecha_entrega_max);
   var act = NAV_activas();
-  var pend = act.filter(function(s){ return NAV_n(s.fase) < 5; }).length;
+  var pend = act.filter(function(s){ return NAV_n(s.fase) < 6; }).length;
   document.getElementById('nav-dl-s').textContent =
     pend ? 'Faltan ' + pend + ' sesiones por entregar' : 'Todo entregado';
  
   var h = '';
-  for (var f=1; f<=5; f++) {
+  for (var f=1; f<=6; f++) {
     var L = act.filter(function(s){ return NAV_n(s.fase) === f; });
     L.sort(function(a,b){ return (NAV_aging(b)||0) - (NAV_aging(a)||0); });
     var atr = L.filter(function(s){ var a=NAV_aging(s); return a!==null && a>=15; }).length;
@@ -6665,7 +6666,10 @@ function NAV_tablero() {
       var sinInfo = L.filter(function(s){ return !s.brochure_enviado; }).length;
       var sinPago = L.filter(function(s){ return NAV_n(s.anticipo)===0; }).length;
       sub = sinInfo + ' sin brochure' + (sinPago ? ' · ' + sinPago + ' por cobrar' : '');
-    } else if (f===5) {
+    } else if (f===2) {
+      var sinConf = L.filter(function(s){ return !s.confirmo_asistencia; }).length;
+      sub = sinConf ? sinConf + ' sin confirmar' : 'todo confirmado';
+    } else if (f===6) {
       var suma=0, n=0;
       L.forEach(function(s){ var a=NAV_aging(s); if(a!==null){suma+=a;n++;} });
       sub = n ? 'ciclo promedio ' + Math.round(suma/n) + ' días' : 'sin datos';
@@ -6679,13 +6683,13 @@ function NAV_tablero() {
       if (ag !== null) cls = ag>=20 ? 'nav-crit' : (ag>=15 ? 'nav-old' : '');
       var flags = '';
       if (f===1 && !s.brochure_enviado) flags += '<span class="nav-fl nav-esp">sin brochure</span>';
-      if (f===1 && !s.confirmo_asistencia) flags += '<span class="nav-fl nav-tur">sin confirmar</span>';
-      if (f===3) flags += '<span class="nav-fl ' + (s.fecha_presel_recibida?'nav-tur':'nav-esp') +
+      if (f===2 && !s.confirmo_asistencia) flags += '<span class="nav-fl nav-tur">sin confirmar</span>';
+      if (f===4) flags += '<span class="nav-fl ' + (s.fecha_presel_recibida?'nav-tur':'nav-esp') +
         '">' + (s.fecha_presel_recibida?'recibida':'esperando') + '</span>';
       if (NAV_n(s.anticipo)===0) flags += '<span class="nav-fl nav-deb">pago pendiente</span>';
       var derecha = (ag===null)
         ? '<span class="nav-ag">'+NAV_fechaCorta(s.fecha_sesion)+'<small>agendada</small></span>'
-        : (f===5
+        : (f===6
           ? '<span class="nav-ag">'+ag+'d<small>ciclo</small></span>'
           : '<span class="nav-ag '+cls+'">'+ag+'d<small>desde toma</small></span>');
       body += '<div class="nav-tc">' +
@@ -6736,7 +6740,7 @@ function NAV_tablero() {
  
 function NAV_avanzar(folio, fase, ev) {
   if (ev) ev.stopPropagation();
-  if (fase > 5) return;
+  if (fase > 7) return;
   var el = ev ? ev.target : null;
   if (el) { el.classList.add('nav-ok'); el.textContent = '✓'; }
   NAV_post('NAV_avanzarFase', { folio: folio, fase: fase }).then(function(r){
@@ -7326,7 +7330,7 @@ function NAV_buscar() {
   out.innerHTML = '<div class="nav-card" style="padding:0;overflow:hidden">' +
     res.map(function(s){
       var mini = '';
-      for (var i=0;i<5;i++) mini += '<b style="'+(i < NAV_n(s.fase) ?
+      for (var i=0;i<6;i++) mini += '<b style="'+(i < NAV_n(s.fase) ?
         'background:'+NAV_COLORES[i] : '')+'"></b>';
       var canc = String(s.estado)==='Cancelada';
       return '<div class="nav-sr" onclick="NAV_verSesion(\''+s.folio+'\')">' +
@@ -8830,6 +8834,547 @@ function NAV_msg(folio, tipo) {
     '<span class="nav-mt">Listo para enviar</span>';
   NAV_abrirCapa('nav-wa');
 }
+</script>
+
+<!-- ============================================================
+     KanbanNav — Vista Kanban desktop (solo PC)
+     No toca ninguna función NAV_ existente.
+     Lee NAV_D.sesiones y llama NAV_avanzarFase via NAV_post.
+============================================================ -->
+<style>
+#knv-root{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--white);z-index:9000;display:none;flex-direction:column;font-family:inherit}
+#knv-root.knv-visible{display:flex}
+.knv-topbar{display:flex;align-items:center;gap:12px;padding:0 18px;height:50px;border-bottom:1px solid var(--beige-dark);background:var(--beige-light);flex-shrink:0}
+.knv-title{font-size:14px;font-weight:500;color:var(--text-main)}
+.knv-meta{font-size:12px;color:var(--text-muted)}
+.knv-filters{display:flex;gap:5px;margin-left:8px}
+.knv-filter{font-size:11px;padding:3px 9px;border-radius:var(--radius);border:1px solid var(--beige-dark);background:var(--white);color:var(--text-muted);cursor:pointer}
+.knv-filter.active{background:var(--bg-accent,#e6f1fb);color:var(--text-accent,#185fa5);border-color:var(--border-accent,#85b7eb)}
+.knv-btn-hide{font-size:11px;padding:3px 9px;border-radius:var(--radius);border:1px solid var(--beige-dark);background:var(--white);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:4px}
+.knv-btn-hide.active{background:var(--bg-accent,#e6f1fb);color:var(--text-accent,#185fa5);border-color:var(--border-accent,#85b7eb)}
+.knv-close{margin-left:auto;padding:5px 14px;border-radius:var(--radius);border:1px solid var(--beige-dark);background:var(--white);font-size:12px;cursor:pointer;color:var(--text-main)}
+.knv-board{display:flex;flex:1;overflow-x:auto;overflow-y:hidden}
+.knv-col{display:flex;flex-direction:column;min-width:180px;width:180px;border-right:1px solid var(--beige-dark);flex-shrink:0;transition:width .2s,min-width .2s,opacity .2s;overflow:hidden}
+.knv-col.knv-hidden{width:0;min-width:0;border-right:none}
+.knv-col:last-child{border-right:none}
+.knv-col-hdr{padding:8px 10px;border-bottom:1px solid var(--beige-dark);background:var(--beige-light);flex-shrink:0}
+.knv-col-top{display:flex;align-items:center;gap:5px}
+.knv-col-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.knv-col-name{font-size:11px;font-weight:500;color:var(--text-main);flex:1}
+.knv-col-count{font-size:10px;color:var(--text-muted);background:var(--white);border-radius:8px;padding:1px 5px;border:1px solid var(--beige-dark)}
+.knv-col-body{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px}
+.knv-col-body.knv-drag-over{background:rgba(24,95,165,.07)}
+.knv-card{background:var(--white);border:1px solid var(--beige-dark);border-radius:8px;padding:7px 9px;cursor:grab;user-select:none}
+.knv-card:hover{border-color:var(--brown-soft)}
+.knv-card.knv-dragging{opacity:.3;cursor:grabbing}
+.knv-card.knv-expanded{border-color:var(--brown-soft)}
+.knv-card-row{display:flex;align-items:center;gap:5px}
+.knv-card-name{font-size:11px;font-weight:500;color:var(--text-main);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.knv-dots{display:flex;gap:3px}
+.knv-dot{width:5px;height:5px;border-radius:50%}
+.knv-card-detail{margin-top:6px;padding-top:6px;border-top:1px solid var(--beige-dark);display:none}
+.knv-card.knv-expanded .knv-card-detail{display:block}
+.knv-drow{display:flex;justify-content:space-between;margin-bottom:3px}
+.knv-dlbl{font-size:10px;color:var(--text-muted)}
+.knv-dval{font-size:10px;color:var(--text-main);font-weight:500}
+.knv-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px}
+.knv-tag{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:500}
+.knv-tag.warn{background:#faeeda;color:#854f0b}
+.knv-tag.ok{background:#eaf3de;color:#3b6d11}
+.knv-tag.info{background:#e6f1fb;color:#185fa5}
+.knv-empty{display:flex;align-items:center;justify-content:center;height:44px;font-size:10px;color:var(--text-muted);border:1px dashed var(--beige-dark);border-radius:8px}
+.knv-footer{display:flex;align-items:center;border-top:1px solid var(--beige-dark);background:var(--beige-light);flex-shrink:0;height:30px}
+.knv-fstat{display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;font-size:10px;color:var(--text-muted);border-right:1px solid var(--beige-dark);cursor:pointer;white-space:nowrap}
+.knv-fstat:hover{background:var(--white)}
+.knv-fstat.right{margin-left:auto;border-right:none;border-left:1px solid var(--beige-dark)}
+.knv-fn{font-weight:500;color:var(--text-main)}
+/* OVERLAY POPUP */
+.knv-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:100}
+.knv-popup{background:var(--white);border-radius:12px;border:1px solid var(--beige-dark);width:340px;max-height:520px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.knv-ph{padding:12px 14px 10px;border-bottom:1px solid var(--beige-dark);flex-shrink:0}
+.knv-ph-title{font-size:13px;font-weight:500;color:var(--text-main)}
+.knv-ph-sub{font-size:10px;color:var(--text-muted);margin-top:1px}
+.knv-pscroll{flex:1;overflow-y:auto;padding:10px 13px}
+.knv-pbtns{display:flex;gap:6px;padding:8px 13px 12px;border-top:1px solid var(--beige-dark);flex-shrink:0}
+.knv-pbtn{flex:1;padding:7px;border-radius:var(--radius);font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--beige-dark);background:var(--beige-light);color:var(--text-main)}
+.knv-pbtn.primary{background:var(--dark,#1a1410);color:var(--white);border-color:transparent}
+.knv-pbtn.primary:disabled{opacity:.3;cursor:not-allowed}
+.knv-pbtn.primary.ready{background:#3b6d11}
+.knv-slbl{font-size:10px;color:var(--text-muted);margin-bottom:6px}
+.knv-ab{border:1px solid var(--beige-dark);border-radius:8px;margin-bottom:7px;overflow:hidden}
+.knv-ab.done-ab{border-color:#9fc98a}
+.knv-ah{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--beige-light)}
+.knv-ai{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px}
+.knv-ai.block{background:#fcebeb;color:#a32d2d}
+.knv-ai.suggest{background:#faeeda;color:#854f0b}
+.knv-ai.info{background:#e6f1fb;color:#185fa5}
+.knv-ai.done{background:#eaf3de;color:#3b6d11}
+.knv-at{flex:1}
+.knv-at-title{font-size:11px;font-weight:500;color:var(--text-main)}
+.knv-at-desc{font-size:10px;color:var(--text-muted)}
+.knv-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:500}
+.knv-badge.block{background:#fcebeb;color:#a32d2d}
+.knv-badge.suggest{background:#faeeda;color:#854f0b}
+.knv-badge.info{background:#e6f1fb;color:#185fa5}
+.knv-badge.done{background:#eaf3de;color:#3b6d11}
+.knv-abody{padding:9px 10px;border-top:1px solid var(--beige-dark);background:var(--white)}
+.knv-ilbl{font-size:10px;color:var(--text-muted);margin-bottom:4px}
+.knv-irow{display:flex;gap:5px;margin-bottom:6px;align-items:center}
+.knv-input{flex:1;padding:5px 7px;font-size:11px;border-radius:5px;border:1px solid var(--beige-dark);background:var(--beige-light);color:var(--text-main)}
+.knv-select{padding:5px 7px;font-size:11px;border-radius:5px;border:1px solid var(--beige-dark);background:var(--beige-light);color:var(--text-main)}
+.knv-ibtn{padding:5px 11px;font-size:10px;font-weight:500;border-radius:5px;border:1px solid var(--beige-dark);background:var(--white);color:var(--text-main);cursor:pointer;white-space:nowrap}
+.knv-ibtn.ok{background:#3b6d11;color:var(--white);border-color:transparent}
+.knv-ibtn.wa{background:#25d366;color:#fff;border-color:transparent}
+.knv-done-banner{display:flex;align-items:center;gap:5px;padding:5px 8px;background:#eaf3de;border-radius:5px;font-size:10px;color:#3b6d11;font-weight:500}
+.knv-wa-pre{background:var(--beige-light);border-radius:5px;padding:7px;font-size:10px;color:var(--text-muted);line-height:1.5;margin-bottom:7px;border:1px solid var(--beige-dark);white-space:pre-wrap;max-height:65px;overflow-y:auto}
+.knv-err{font-size:10px;color:#a32d2d;margin-top:3px;display:none}
+.knv-no-act{font-size:11px;color:var(--text-muted);padding:6px 0}
+/* ARCHIVED */
+.knv-arch{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--white);z-index:50;display:flex;flex-direction:column}
+.knv-arch-hdr{display:flex;align-items:center;gap:8px;padding:0 16px;height:50px;border-bottom:1px solid var(--beige-dark);background:var(--beige-light);flex-shrink:0}
+.knv-arch-title{font-size:14px;font-weight:500;color:var(--text-main);flex:1}
+.knv-arch-body{flex:1;overflow-y:auto;padding:12px 16px}
+.knv-arch-card{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--beige-dark);border-radius:8px;margin-bottom:6px;background:var(--white)}
+.knv-arch-name{font-size:12px;font-weight:500;color:var(--text-main);flex:1}
+.knv-arch-meta{font-size:10px;color:var(--text-muted)}
+.knv-arch-badge{font-size:9px;padding:2px 7px;border-radius:3px;background:#eaf3de;color:#3b6d11;font-weight:500}
+@media(max-width:768px){#knv-root{display:none!important}#knv-toggle-btn{display:none!important}}
+</style>
+
+<div id="knv-root">
+  <div class="knv-topbar">
+    <span class="knv-title" id="knv-title">Navidad 2026</span>
+    <span class="knv-meta" id="knv-meta"></span>
+    <div class="knv-filters" id="knv-filters">
+      <span class="knv-filter active" data-f="all">Todas</span>
+      <span class="knv-filter" data-f="noconfirm">Sin confirmar</span>
+      <span class="knv-filter" data-f="saldo">Con saldo</span>
+    </div>
+    <span class="knv-btn-hide" id="knv-hide-btn" onclick="KNV_toggleEmpty()">Ocultar vacías</span>
+    <button class="knv-close" onclick="KNV_toggle()">✕ Cerrar Kanban</button>
+  </div>
+  <div class="knv-board" id="knv-board" style="position:relative"></div>
+  <div class="knv-footer" id="knv-footer"></div>
+</div>
+
+<script>
+/* ===== KanbanNav ===== */
+var KNV_COLS = [
+  {id:'apartada',   fase:1, name:'Apartada',     color:'#5f9ea0'},
+  {id:'confirmada', fase:2, name:'Confirmada',    color:'#7f77dd'},
+  {id:'realizada',  fase:3, name:'Realizada',     color:'#ba7517'},
+  {id:'preseleccion',fase:4,name:'Preselección',  color:'#185fa5'},
+  {id:'edicion',    fase:5, name:'Edición',       color:'#3b6d11'},
+  {id:'entregada',  fase:6, name:'Entregada',     color:'#993556'},
+];
+var KNV_FASE_ID = {1:'apartada',2:'confirmada',3:'realizada',4:'preseleccion',5:'edicion',6:'entregada',7:'completada'};
+var KNV_DOT = {warn:'#ef9f27',ok:'#639922',info:'#378add',neu:'#b4b2a9'};
+
+var KNV_state = {
+  visible: false,
+  filter: 'all',
+  hideEmpty: false,
+  expandedId: null,
+  dragCard: null,
+  dragFrom: null,
+  popup: null,
+  showArchived: false,
+  completed: []
+};
+
+function KNV_toggle() {
+  KNV_state.visible = !KNV_state.visible;
+  document.getElementById('knv-root').classList.toggle('knv-visible', KNV_state.visible);
+  if (KNV_state.visible) KNV_render();
+}
+
+function KNV_sesiones() {
+  if (!NAV_D || !NAV_D.sesiones) return [];
+  return NAV_D.sesiones.filter(function(s){ return String(s.estado) !== 'Cancelada'; });
+}
+
+function KNV_faseId(s) {
+  return KNV_FASE_ID[NAV_n(s.fase)] || 'apartada';
+}
+
+function KNV_filtered(ses) {
+  return ses.filter(function(s) {
+    if (KNV_state.filter === 'noconfirm') return !s.confirmo_asistencia;
+    if (KNV_state.filter === 'saldo') return NAV_saldo(s) > 0;
+    return true;
+  });
+}
+
+function KNV_dots(s) {
+  var d = [];
+  if (!s.brochure_enviado && NAV_n(s.fase) <= 2) d.push('warn');
+  if (!s.confirmo_asistencia && NAV_n(s.fase) <= 2) d.push('warn');
+  if (NAV_saldo(s) > 0) d.push('warn');
+  if (d.length === 0) d.push('ok');
+  return d;
+}
+
+function KNV_tags(s) {
+  var t = [];
+  if (!s.brochure_enviado && NAV_n(s.fase) <= 2) t.push({t:'sin brochure',k:'warn'});
+  if (!s.confirmo_asistencia && NAV_n(s.fase) <= 2) t.push({t:'sin confirmar',k:'warn'});
+  if (NAV_saldo(s) > 0) t.push({t:'saldo $'+NAV_n(NAV_saldo(s)).toLocaleString(),k:'warn'});
+  if (s.brochure_enviado && s.confirmo_asistencia && NAV_saldo(s) <= 0) t.push({t:'al día',k:'ok'});
+  return t;
+}
+
+function KNV_getActions(from, to) {
+  var fromIdx = KNV_COLS.findIndex(function(c){return c.id===from;});
+  var toIdx = to === 'completada' ? KNV_COLS.length : KNV_COLS.findIndex(function(c){return c.id===to;});
+  if (toIdx < fromIdx) return [{id:'back_reason',level:'block',type:'reason',icon:'⚠',title:'Motivo de regreso',desc:'Requerido antes de regresar la sesión'}];
+  var map = {
+    'apartada→confirmada':[
+      {id:'send_brochure',level:'block',type:'whatsapp',wid:'brochure',icon:'✉',title:'Enviar brochure',desc:'Mensaje #2 · Info del set y vestuario'},
+      {id:'confirm_asist',level:'block',type:'confirm',icon:'✓',title:'Cliente confirmó asistencia',desc:'El cliente respondió que asistirá'},
+    ],
+    'confirmada→realizada':[],
+    'realizada→preseleccion':[
+      {id:'send_presel',level:'suggest',type:'whatsapp',wid:'presel',icon:'✉',title:'Enviar galería de preselección',desc:'Mensaje #4 · Link para escoger fotos'},
+    ],
+    'preseleccion→edicion':[
+      {id:'recv_presel',level:'block',type:'confirm',icon:'✓',title:'Preselección recibida',desc:'El cliente ya mandó sus fotos favoritas'},
+    ],
+    'edicion→entregada':[
+      {id:'reg_pago',level:'block',type:'pago',icon:'$',title:'Registrar pago',desc:'Liquidación antes de entregar la galería'},
+      {id:'send_galeria',level:'suggest',type:'whatsapp',wid:'galeria',icon:'✉',title:'Enviar galería final',desc:'Mensaje #5 · Link de entrega'},
+    ],
+    'entregada→completada':[
+      {id:'confirm_pago_liq',level:'block',type:'confirm',icon:'✓',title:'Confirmar pago liquidado',desc:'Sin saldo pendiente'},
+      {id:'send_encuesta',level:'suggest',type:'whatsapp',wid:'encuesta',icon:'✉',title:'Enviar encuesta',desc:'Mensaje #6 · Satisfacción del cliente'},
+      {id:'req_resena',level:'info',type:'confirm',icon:'★',title:'Solicitar reseña',desc:'Opcional — pedir testimonio'},
+    ],
+  };
+  return map[from+'→'+to] || [];
+}
+
+function KNV_waText(wid, s) {
+  var c = NAV_D.camp || {};
+  var nombre = NAV_esc(s.cliente||'');
+  var fecha = NAV_fechaCorta(s.fecha_sesion||'');
+  var brochure = c.brochure2_url || c.brochure_url || '[link brochure]';
+  var galeria = s.galeria_url || '[link galería]';
+  var encuesta = c.encuesta_url || '[link encuesta]';
+  var msgs = {
+    brochure: (c.msg_brochure||'Hola {nombre} 🎄\n{brochure}').replace('{nombre}',nombre).replace('{brochure}',brochure).replace('{fecha}',fecha),
+    presel: (c.msg_presel||'Hola {nombre} 🎄 ¡Ya está lista tu galería!\n{galeria}').replace('{nombre}',nombre).replace('{galeria}',galeria),
+    galeria: (c.msg_entrega||'¡Hola {nombre}! 🎄 Tus fotos están listas.\n{galeria}').replace('{nombre}',nombre).replace('{galeria}',galeria),
+    encuesta: (c.msg_encuesta||'Hola {nombre} 🎄\n{encuesta}').replace('{nombre}',nombre).replace('{encuesta}',encuesta),
+  };
+  return msgs[wid] || '';
+}
+
+function KNV_render() {
+  KNV_renderBoard();
+  KNV_renderFooter();
+  document.querySelectorAll('.knv-overlay,.knv-arch').forEach(function(e){e.remove();});
+  if (KNV_state.showArchived) KNV_renderArchived();
+  else if (KNV_state.popup) KNV_renderPopup();
+}
+
+function KNV_renderBoard() {
+  var board = document.getElementById('knv-board');
+  if (!board) return;
+  board.innerHTML = '';
+  var ses = KNV_sesiones();
+  var vis = KNV_filtered(ses);
+  var c = NAV_D.camp || {};
+  document.getElementById('knv-title').textContent = c.nombre || 'Kanban';
+
+  KNV_COLS.forEach(function(col) {
+    var allInCol = ses.filter(function(s){return KNV_faseId(s)===col.id;});
+    var visInCol = vis.filter(function(s){return KNV_faseId(s)===col.id;});
+    var isEmpty = allInCol.length === 0;
+    var colEl = document.createElement('div');
+    colEl.className = 'knv-col' + (KNV_state.hideEmpty && isEmpty ? ' knv-hidden' : '');
+
+    var bodyCards = visInCol.map(function(s) {
+      var isExp = KNV_state.expandedId === s.folio;
+      var dots = KNV_dots(s);
+      var dotHTML = dots.map(function(d){return '<div class="knv-dot" style="background:'+KNV_DOT[d]+'"></div>';}).join('');
+      var tags = KNV_tags(s);
+      var tagHTML = tags.map(function(t){return '<span class="knv-tag '+t.k+'">'+t.t+'</span>';}).join('');
+      var saldo = NAV_saldo(s);
+      return '<div class="knv-card'+(isExp?' knv-expanded':'')+'" draggable="true" data-folio="'+s.folio+'" data-col="'+col.id+'">' +
+        '<div class="knv-card-row"><span class="knv-card-name">'+NAV_esc(s.cliente)+'</span><div class="knv-dots">'+dotHTML+'</div></div>' +
+        '<div class="knv-card-detail">' +
+        '<div class="knv-drow"><span class="knv-dlbl">Paquete</span><span class="knv-dval">'+NAV_esc(NAV_paqNombre(s.id_paquete))+'</span></div>' +
+        '<div class="knv-drow"><span class="knv-dlbl">Sesión</span><span class="knv-dval">'+NAV_fechaCorta(s.fecha_sesion)+'</span></div>' +
+        '<div class="knv-drow"><span class="knv-dlbl">Folio</span><span class="knv-dval">'+s.folio+'</span></div>' +
+        (saldo>0?'<div class="knv-drow"><span class="knv-dlbl">Saldo</span><span class="knv-dval" style="color:#854f0b">$'+NAV_n(saldo).toLocaleString()+'</span></div>':'') +
+        '<div class="knv-tags">'+tagHTML+'</div>' +
+        '</div></div>';
+    }).join('');
+
+    var hiddenByFilter = allInCol.length - visInCol.length;
+    colEl.innerHTML =
+      '<div class="knv-col-hdr"><div class="knv-col-top">' +
+      '<div class="knv-col-dot" style="background:'+col.color+'"></div>' +
+      '<span class="knv-col-name">'+col.name+'</span>' +
+      '<span class="knv-col-count">'+allInCol.length+'</span></div></div>' +
+      '<div class="knv-col-body" id="knv-body-'+col.id+'">' +
+      (visInCol.length===0 && !isEmpty ? '<div class="knv-empty">'+hiddenByFilter+' oculta'+(hiddenByFilter>1?'s':'')+' por filtro</div>' :
+       visInCol.length===0 ? '<div class="knv-empty">Sin sesiones</div>' : bodyCards) +
+      (hiddenByFilter>0&&visInCol.length>0?'<div style="font-size:9px;color:#888;text-align:center;padding:3px 0">+'+hiddenByFilter+' oculta'+(hiddenByFilter>1?'s':'')+'</div>':'') +
+      '</div>';
+    board.appendChild(colEl);
+  });
+  KNV_bindDrag();
+  KNV_bindCards();
+  KNV_bindFilters();
+}
+
+function KNV_renderFooter() {
+  var ses = KNV_sesiones();
+  var total = ses.length;
+  var sinConf = ses.filter(function(s){return !s.confirmo_asistencia;}).length;
+  var totalSaldo = ses.reduce(function(a,s){return a+Math.max(0,NAV_saldo(s));},0);
+  var footer = document.getElementById('knv-footer');
+  if (!footer) return;
+  footer.innerHTML =
+    '<div class="knv-fstat"><span class="knv-fn">'+total+'</span><span>activas</span></div>' +
+    (totalSaldo>0?'<div class="knv-fstat"><span style="color:#854f0b;font-weight:500">$'+totalSaldo.toLocaleString()+'</span><span>por cobrar</span></div>':'') +
+    (sinConf>0?'<div class="knv-fstat"><span style="color:#854f0b;font-weight:500">'+sinConf+'</span><span>sin confirmar</span></div>':'') +
+    '<div class="knv-fstat right" id="knv-arch-btn"><span>'+KNV_state.completed.length+' completadas</span></div>';
+  var archBtn = document.getElementById('knv-arch-btn');
+  if (archBtn) archBtn.onclick = function(){ KNV_state.showArchived=true; KNV_render(); };
+}
+
+function KNV_renderArchived() {
+  var comp = KNV_state.completed;
+  var div = document.createElement('div');
+  div.className = 'knv-arch';
+  div.innerHTML =
+    '<div class="knv-arch-hdr">' +
+    '<button class="knv-pbtn" style="flex:0;padding:4px 12px" onclick="KNV_closeArchived()">← Volver</button>' +
+    '<span class="knv-arch-title">Completadas ('+comp.length+')</span></div>' +
+    '<div class="knv-arch-body">' +
+    (comp.length===0?'<div class="knv-empty" style="margin-top:16px">Sin sesiones completadas aún</div>':
+      comp.map(function(c){
+        return '<div class="knv-arch-card"><div style="flex:1"><div class="knv-arch-name">'+NAV_esc(c.cliente)+'</div>' +
+               '<div class="knv-arch-meta">'+c.folio+' · '+NAV_fechaCorta(c.fecha_sesion)+'</div></div>' +
+               '<span class="knv-arch-badge">Completada</span></div>';
+      }).join('')) +
+    '</div>';
+  document.getElementById('knv-board').appendChild(div);
+}
+
+function KNV_renderPopup() {
+  var p = KNV_state.popup;
+  if (!p) return;
+  var toName = p.to==='completada'?'Completada':(KNV_COLS.find(function(c){return c.id===p.to;})||{name:p.to}).name;
+  var fromName = (KNV_COLS.find(function(c){return c.id===p.from;})||{name:p.from}).name;
+  var fromIdx = KNV_COLS.findIndex(function(c){return c.id===p.from;});
+  var toIdx = p.to==='completada'?KNV_COLS.length:KNV_COLS.findIndex(function(c){return c.id===p.to;});
+  var isBack = toIdx < fromIdx;
+  var blockingDone = p.actions.filter(function(a){return a.level==='block';}).every(function(a){return p.done[a.id];});
+
+  var actHTML = p.actions.length === 0
+    ? '<div class="knv-no-act">Sin acciones requeridas. Puedes mover directamente.</div>'
+    : '<div class="knv-slbl">Acciones para esta transición</div>' + p.actions.map(function(a) {
+        var isDone = p.done[a.id];
+        var cls = isDone?'done':a.level;
+        var badge = isDone?'Hecho':a.level==='block'?'Requerido':a.level==='suggest'?'Sugerido':'Info';
+        var body = '';
+        if (isDone) {
+          body = '<div class="knv-abody"><div class="knv-done-banner">✓ Completado</div></div>';
+        } else if (a.type==='pago') {
+          var saldo = Math.max(0, NAV_saldo(p.session));
+          body = '<div class="knv-abody">' +
+            '<div class="knv-ilbl">Monto a registrar</div>' +
+            '<div class="knv-irow">' +
+            '<input class="knv-input" id="knv-inp-'+a.id+'" type="number" value="'+(saldo||0)+'">' +
+            '<select class="knv-select" id="knv-met-'+a.id+'"><option>Transferencia</option><option>Efectivo</option><option>Tarjeta</option></select></div>' +
+            '<div id="knv-err-'+a.id+'" class="knv-err">Ingresa un monto válido</div>' +
+            '<button class="knv-ibtn ok" onclick="KNV_execPago(\''+a.id+'\')">Registrar pago</button></div>';
+        } else if (a.type==='whatsapp') {
+          var txt = KNV_waText(a.wid, p.session);
+          body = '<div class="knv-abody">' +
+            '<div class="knv-wa-pre">'+NAV_esc(txt)+'</div>' +
+            '<div style="display:flex;gap:5px">' +
+            '<button class="knv-ibtn wa" onclick="KNV_execWA(\''+a.id+'\',\''+a.wid+'\')">✉ Abrir WhatsApp</button>' +
+            '<button class="knv-ibtn" onclick="KNV_markDone(\''+a.id+'\')">Marcar enviado</button></div></div>';
+        } else if (a.type==='confirm') {
+          body = '<div class="knv-abody"><button class="knv-ibtn ok" onclick="KNV_markDone(\''+a.id+'\')">Confirmar</button></div>';
+        } else if (a.type==='reason') {
+          body = '<div class="knv-abody">' +
+            '<div class="knv-ilbl">Motivo de regreso</div>' +
+            '<div class="knv-irow"><input class="knv-input" id="knv-inp-'+a.id+'" placeholder="Escribe el motivo..." style="flex:1"></div>' +
+            '<div id="knv-err-'+a.id+'" class="knv-err">El motivo es requerido</div>' +
+            '<button class="knv-ibtn ok" onclick="KNV_execReason(\''+a.id+'\')">Confirmar regreso</button></div>';
+        }
+        return '<div class="knv-ab'+(isDone?' done-ab':'')+'">' +
+          '<div class="knv-ah"><div class="knv-ai '+cls+'">'+a.icon+'</div>' +
+          '<div class="knv-at"><div class="knv-at-title">'+a.title+'</div><div class="knv-at-desc">'+a.desc+'</div></div>' +
+          '<span class="knv-badge '+cls+'">'+badge+'</span></div>' + body + '</div>';
+      }).join('');
+
+  var ov = document.createElement('div');
+  ov.className = 'knv-overlay';
+  ov.innerHTML = '<div class="knv-popup">' +
+    '<div class="knv-ph"><div class="knv-ph-title">'+(isBack?'Regresar':'Avanzar')+': '+fromName+' → '+toName+'</div>' +
+    '<div class="knv-ph-sub">'+NAV_esc(p.session.cliente)+' · '+p.session.folio+'</div></div>' +
+    '<div class="knv-pscroll">'+actHTML+'</div>' +
+    '<div class="knv-pbtns">' +
+    '<button class="knv-pbtn" onclick="KNV_closePopup()">Cancelar</button>' +
+    '<button class="knv-pbtn primary'+(blockingDone?' ready':'')+'" id="knv-btn-mv" '+(blockingDone?'':'disabled')+' onclick="KNV_confirmMove()">' +
+    (blockingDone?'Mover sesión ✓':'Completa las requeridas')+'</button></div></div>';
+  document.getElementById('knv-board').appendChild(ov);
+}
+
+function KNV_bindFilters() {
+  document.querySelectorAll('.knv-filter').forEach(function(f){
+    f.onclick = function(){
+      KNV_state.filter = f.dataset.f;
+      document.querySelectorAll('.knv-filter').forEach(function(x){x.classList.remove('active');});
+      f.classList.add('active');
+      KNV_renderBoard();
+    };
+  });
+}
+
+function KNV_bindCards() {
+  document.querySelectorAll('.knv-card').forEach(function(card){
+    card.onclick = function(e){
+      if (KNV_state.popup) return;
+      var folio = card.dataset.folio;
+      KNV_state.expandedId = KNV_state.expandedId===folio ? null : folio;
+      KNV_renderBoard();
+    };
+  });
+}
+
+function KNV_bindDrag() {
+  document.querySelectorAll('.knv-card').forEach(function(card){
+    card.addEventListener('dragstart', function(e){
+      KNV_state.dragCard = card.dataset.folio;
+      KNV_state.dragFrom = card.dataset.col;
+      KNV_state.expandedId = null;
+      setTimeout(function(){card.classList.add('knv-dragging');}, 0);
+    });
+    card.addEventListener('dragend', function(){
+      document.querySelectorAll('.knv-col-body').forEach(function(b){b.classList.remove('knv-drag-over');});
+    });
+  });
+  document.querySelectorAll('.knv-col-body').forEach(function(body){
+    body.addEventListener('dragover', function(e){e.preventDefault(); body.classList.add('knv-drag-over');});
+    body.addEventListener('dragleave', function(){body.classList.remove('knv-drag-over');});
+    body.addEventListener('drop', function(e){
+      e.preventDefault();
+      document.querySelectorAll('.knv-col-body').forEach(function(b){b.classList.remove('knv-drag-over');});
+      var toCol = body.id.replace('knv-body-','');
+      if (!KNV_state.dragCard || toCol===KNV_state.dragFrom) return;
+      var session = KNV_sesiones().find(function(s){return s.folio===KNV_state.dragCard;});
+      if (!session) return;
+      KNV_state.popup = {folio:KNV_state.dragCard, from:KNV_state.dragFrom, to:toCol, session:session, actions:KNV_getActions(KNV_state.dragFrom,toCol), done:{}};
+      KNV_renderPopup();
+    });
+  });
+  // Drop zone completada en footer
+  var footer = document.getElementById('knv-footer');
+  if (footer) {
+    footer.addEventListener('dragover', function(e){e.preventDefault(); footer.style.background='rgba(24,95,165,.07)';});
+    footer.addEventListener('dragleave', function(){footer.style.background='';});
+    footer.addEventListener('drop', function(e){
+      e.preventDefault(); footer.style.background='';
+      if (!KNV_state.dragCard || KNV_state.dragFrom!=='entregada') return;
+      var session = KNV_sesiones().find(function(s){return s.folio===KNV_state.dragCard;});
+      if (!session) return;
+      KNV_state.popup = {folio:KNV_state.dragCard, from:'entregada', to:'completada', session:session, actions:KNV_getActions('entregada','completada'), done:{}};
+      KNV_renderPopup();
+    });
+  }
+}
+
+function KNV_markDone(id) {
+  KNV_state.popup.done[id] = true;
+  document.querySelector('.knv-overlay') && document.querySelector('.knv-overlay').remove();
+  KNV_renderPopup();
+}
+
+function KNV_execPago(id) {
+  var inp = document.getElementById('knv-inp-'+id);
+  var err = document.getElementById('knv-err-'+id);
+  var val = parseFloat(inp ? inp.value : '0');
+  if (!val || val <= 0) { if(err) err.style.display='block'; return; }
+  if (err) err.style.display = 'none';
+  var met = document.getElementById('knv-met-'+id);
+  var metVal = met ? met.value : 'Transferencia';
+  // Llamar backend
+  NAV_post('NAV_registrarPago', {
+    folio: KNV_state.popup.folio,
+    monto: val,
+    forma: metVal,
+    tipo: 'saldo'
+  }).then(function(r){
+    if (r && r.ok) { NAV_recargar(); KNV_markDone(id); }
+    else NAV_toast('Error al registrar pago');
+  }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+
+function KNV_execWA(id, wid) {
+  var txt = KNV_waText(wid, KNV_state.popup.session);
+  var tel = KNV_state.popup.session.telefono || '';
+  if (tel) window.open('https://wa.me/52'+tel.replace(/\D/g,'')+'?text='+encodeURIComponent(txt), '_blank');
+  KNV_markDone(id);
+}
+
+function KNV_execReason(id) {
+  var inp = document.getElementById('knv-inp-'+id);
+  var err = document.getElementById('knv-err-'+id);
+  if (!inp || !inp.value.trim()) { if(err) err.style.display='block'; return; }
+  if (err) err.style.display = 'none';
+  KNV_markDone(id);
+}
+
+function KNV_closePopup() { KNV_state.popup = null; KNV_render(); }
+function KNV_closeArchived() { KNV_state.showArchived = false; KNV_render(); }
+
+function KNV_confirmMove() {
+  var p = KNV_state.popup;
+  if (!p) return;
+  var toFase = p.to === 'completada' ? 7 : (KNV_COLS.find(function(c){return c.id===p.to;})||{fase:1}).fase;
+  KNV_state.popup = null;
+  if (toFase === 7) {
+    // Archivar localmente y marcar como completada en backend
+    var session = KNV_sesiones().find(function(s){return s.folio===p.folio;});
+    if (session) KNV_state.completed.unshift(session);
+    NAV_post('NAV_avanzarFase', {folio: p.folio, fase: 7}).then(function(r){
+      if (r && r.ok) NAV_recargar();
+    });
+  } else {
+    NAV_post('NAV_avanzarFase', {folio: p.folio, fase: toFase}).then(function(r){
+      if (r && r.ok) {
+        NAV_toast('Movida a ' + NAV_FASES[toFase-1]);
+        NAV_recargar().then(function(){ KNV_render(); });
+      } else {
+        NAV_toast('Error: ' + ((r&&r.error)||'no se pudo mover'));
+      }
+    }).catch(function(){ NAV_toast('Sin conexión'); });
+  }
+  KNV_render();
+}
+
+function KNV_toggleEmpty() {
+  KNV_state.hideEmpty = !KNV_state.hideEmpty;
+  document.getElementById('knv-hide-btn').classList.toggle('active', KNV_state.hideEmpty);
+  KNV_renderBoard();
+}
+
+// Mostrar botón kanban solo en desktop
+(function(){
+  function KNV_checkDesktop() {
+    var btn = document.getElementById('knv-toggle-btn');
+    if (btn) btn.style.display = window.innerWidth > 768 ? '' : 'none';
+  }
+  window.addEventListener('resize', KNV_checkDesktop);
+  document.addEventListener('DOMContentLoaded', KNV_checkDesktop);
+  setTimeout(KNV_checkDesktop, 1000);
+})();
 </script>
 </body>
 </html>
