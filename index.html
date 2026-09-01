@@ -1851,7 +1851,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.13';
+var APP_VERSION = 'v4.14';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7489,9 +7489,13 @@ function NAV_verSesion(folio) {
     '<div class="nav-sep"></div>' +
     '<div class="nav-row"><span class="nav-lb">Total</span><span class="nav-vl" style="font-size:17px">'+NAV_money(s.total)+'</span></div>' +
     '<div class="nav-row"><span class="nav-lb">Anticipo</span><span class="nav-vl">'+NAV_money(s.anticipo)+
-      (s.anticipo_forma?' · '+NAV_esc(s.anticipo_forma):'')+'</span></div>' +
+      (s.anticipo_forma?' · '+NAV_esc(s.anticipo_forma):'')+'</span>' +
+      (NAV_n(s.anticipo) > 0 ? '<button onclick="NAV_editarPago(\'anticipo\')" style="background:none;border:none;color:var(--brown-soft);font-size:12px;cursor:pointer;padding:4px 6px;font-family:Jost,sans-serif">✏️</button>' : '') +
+      '</div>' +
     '<div class="nav-row"><span class="nav-lb">Liquidación</span><span class="nav-vl">'+NAV_money(s.saldo_pagado)+
-      (s.saldo_forma?' · '+NAV_esc(s.saldo_forma):'')+'</span></div>' +
+      (s.saldo_forma?' · '+NAV_esc(s.saldo_forma):'')+'</span>' +
+      (NAV_n(s.saldo_pagado) > 0 ? '<button onclick="NAV_editarPago(\'saldo\')" style="background:none;border:none;color:var(--brown-soft);font-size:12px;cursor:pointer;padding:4px 6px;font-family:Jost,sans-serif">✏️</button>' : '') +
+      '</div>' +
     '<div class="nav-row"><span class="nav-lb">Saldo</span><span class="nav-vl '+(saldo>0?'nav-w':'nav-g')+'">'+NAV_money(saldo)+'</span></div>' +
     (NAV_n(s.comision_total) ? '<div class="nav-row"><span class="nav-lb">Comisiones</span><span class="nav-vl nav-w">'+NAV_money(s.comision_total)+'</span></div>' : '') +
     (saldo>0 ? '<button class="nav-btn" onclick="NAV_cobrar()">Registrar pago</button>' : '') +
@@ -7522,11 +7526,12 @@ function NAV_marcarEnvio(folio, campo, estaba) {
 }
  
 /* ── Bottom sheet de pago ── */
-var _navPagoTipo = '', _navPagoForma = '';
+var _navPagoTipo = '', _navPagoForma = '', _navPagoModo = 'nuevo';
 
 function NAV_cobrar() {
   var s = NAV_sesionActual;
   if (!s) return;
+  _navPagoModo = 'nuevo';
   _navPagoTipo = NAV_n(s.anticipo) === 0 ? 'anticipo' : 'saldo';
   _navPagoForma = '';
   var sug = _navPagoTipo === 'anticipo' ? NAV_n(NAV_D.camp.anticipo_monto) : NAV_saldo(s);
@@ -7543,6 +7548,7 @@ function NAV_cobrar() {
   });
   /* preseleccionar Transferencia como default seguro */
   NAV_pagoSelForma('Transferencia');
+  document.getElementById('nav-pago-btn').textContent = 'Registrar pago';
   var overlay = document.getElementById('nav-pago-overlay');
   overlay.style.display = 'flex';
 }
@@ -7585,18 +7591,49 @@ function NAV_pagoConfirmar() {
   var btn = document.getElementById('nav-pago-btn');
   btn.disabled = true; btn.textContent = 'Registrando…';
   var s = NAV_sesionActual;
-  NAV_post('NAV_registrarPago', { folio:s.folio, tipo:_navPagoTipo, monto:monto,
-    forma:_navPagoForma, fecha_pago:NAV_hoyISO() }).then(function(r){
+  var accion = _navPagoModo === 'editar' ? 'NAV_editarPago' : 'NAV_registrarPago';
+  var payload = _navPagoModo === 'editar'
+    ? { folio:s.folio, tipo:_navPagoTipo, monto_nuevo:monto, forma_nueva:_navPagoForma }
+    : { folio:s.folio, tipo:_navPagoTipo, monto:monto, forma:_navPagoForma, fecha_pago:NAV_hoyISO() };
+  NAV_post(accion, payload).then(function(r){
     btn.disabled = false; btn.textContent = 'Registrar pago';
     if (r && r.ok) {
       NAV_pagoCerrar();
-      NAV_toast('Pago registrado' + (r.comision ? ' · comisión ' + NAV_money(r.comision) : ''));
+      var msg = _navPagoModo === 'editar' ? 'Pago actualizado' : 'Pago registrado';
+      if (r.comision) msg += ' · comisión ' + NAV_money(r.comision);
+      NAV_toast(msg);
       NAV_recargar().then(function(){ NAV_verSesion(s.folio); });
     } else { err.textContent = 'No se pudo: ' + ((r&&r.error)||'error'); }
   }).catch(function(){
     btn.disabled = false; btn.textContent = 'Registrar pago';
     err.textContent = 'Sin conexión';
   });
+}
+
+function NAV_editarPago(tipo) {
+  var s = NAV_sesionActual;
+  if (!s) return;
+  _navPagoModo = 'editar';
+  _navPagoTipo = tipo;
+  var montoActual = tipo === 'anticipo' ? NAV_n(s.anticipo) : NAV_n(s.saldo_pagado);
+  var formaActual = tipo === 'anticipo' ? (s.anticipo_forma||'') : (s.saldo_forma||'');
+  document.getElementById('nav-pago-titulo').textContent =
+    tipo === 'anticipo' ? 'Editar anticipo' : 'Editar liquidación';
+  document.getElementById('nav-pago-sub').textContent = 'Pago original: ' + NAV_money(montoActual) + (formaActual ? ' · ' + formaActual : '');
+  document.getElementById('nav-pago-monto').value = montoActual || '';
+  document.getElementById('nav-pago-error').textContent = '';
+  document.getElementById('nav-pago-comision-aviso').style.display = 'none';
+  /* reset botones */
+  ['efectivo','transferencia','tarjeta'].forEach(function(k){
+    var btn = document.getElementById('nav-pf-' + k);
+    if (btn) { btn.style.background='var(--white)'; btn.style.color='var(--text-muted)'; btn.style.borderColor='var(--beige-dark)'; }
+  });
+  /* preseleccionar la forma actual */
+  var formaKey = formaActual.toLowerCase().indexOf('tarjeta') >= 0 ? 'Tarjeta · Mercado Pago'
+    : formaActual.toLowerCase().indexOf('transfer') >= 0 ? 'Transferencia' : 'Efectivo';
+  NAV_pagoSelForma(formaKey);
+  document.getElementById('nav-pago-btn').textContent = 'Guardar cambios';
+  document.getElementById('nav-pago-overlay').style.display = 'flex';
 }
  
 function NAV_agregarExtra() {
