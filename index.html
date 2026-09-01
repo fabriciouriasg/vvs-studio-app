@@ -6237,6 +6237,8 @@ function saveSettings() {
         <label class="nav-f"><span>Personas</span>
           <input id="nav-a-personas" inputmode="numeric" value="4"></label>
       </div>
+      <label class="nav-f"><span>Email</span>
+        <input id="nav-a-email" inputmode="email" placeholder="correo@ejemplo.com"></label>
       <label class="nav-f" style="margin-bottom:0"><span>Cómo nos encontró</span>
         <select id="nav-a-origen">
           <option value="">Sin especificar</option>
@@ -6802,7 +6804,7 @@ function NAV_pintarDia() {
   for (var i=0;i<horas.length;i++) {
     var hora = horas[i];
     var s = null;
-    for (var j=0;j<ses.length;j++) if (String(ses[j].hora)===hora) s = ses[j];
+    for (var j=0;j<ses.length;j++) if ((extraerHora(ses[j].hora)||String(ses[j].hora))===hora) s = ses[j];
     if (s) {
       var pag = NAV_saldo(s) <= 0;
       h += '<div class="nav-slot" onclick="NAV_verSesion(\''+s.folio+'\')" style="cursor:pointer">' +
@@ -7674,7 +7676,7 @@ function NAV_imprimirRecibo() {
   var evPDF = {
     folio: '',
     cliente: s.cliente,
-    email: s.telefono,
+    email: s.email || '',
     paquete: NAV_esc(c.nombre) + ' · ' + NAV_esc(NAV_paqNombre(s.id_paquete)),
     fecha_evento: s.fecha_sesion,
     hora: extraerHora(s.hora) || s.hora,
@@ -7790,6 +7792,7 @@ function NAV_agendar(fecha, hora) {
  
   document.getElementById('nav-a-nombre').value = '';
   document.getElementById('nav-a-tel').value = '';
+  if (document.getElementById('nav-a-email')) document.getElementById('nav-a-email').value = '';
   document.getElementById('nav-a-personas').value = '4';
   document.getElementById('nav-a-origen').value = '';
   document.getElementById('nav-a-extra').value = '0';
@@ -7882,6 +7885,7 @@ function NAV_altaGuardar() {
   var datos = {
     cliente: nombre,
     telefono: tel,
+    email: document.getElementById('nav-a-email') ? document.getElementById('nav-a-email').value.trim() : '',
     personas: NAV_n(document.getElementById('nav-a-personas').value),
     personas_extra_cobrar: NAV_n(document.getElementById('nav-a-extra').value),
     temporadas_previas: document.getElementById('nav-a-previas').value,
@@ -7950,7 +7954,7 @@ function NAV_pintarDia() {
   for (var i=0;i<horas.length;i++) {
     var hora = horas[i];
     var s = null;
-    for (var j=0;j<ses.length;j++) if (String(ses[j].hora)===hora) s = ses[j];
+    for (var j=0;j<ses.length;j++) if ((extraerHora(ses[j].hora)||String(ses[j].hora))===hora) s = ses[j];
     if (s) {
       var pag = NAV_saldo(s) <= 0;
       h += '<div class="nav-slot" onclick="NAV_verSesion(\''+s.folio+'\')" style="cursor:pointer">' +
