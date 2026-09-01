@@ -1847,7 +1847,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.10';
+var APP_VERSION = 'v4.11';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6872,44 +6872,7 @@ function NAV_hora24(raw) {
   return '';
 }
  
-function NAV_pintarDia() {
-  if (!NAV_diaActual) NAV_diaActual = NAV_D.camp.fecha_inicio;
-  document.getElementById('nav-dia-ttl').textContent = NAV_fechaLarga(NAV_diaActual);
-  var ses = NAV_ocupacion(NAV_diaActual), cupo = NAV_cupoDe(NAV_diaActual);
-  var pers = 0; ses.forEach(function(s){ pers += NAV_n(s.personas); });
-  document.getElementById('nav-dia-res').innerHTML =
-    '<div class="nav-row"><span class="nav-lb">Ocupación</span>' +
-    '<span class="nav-vl">'+ses.length+' de '+cupo+'</span></div>' +
-    '<div class="nav-bar"><i style="width:'+(cupo?Math.round(ses.length/cupo*100):0)+'%"></i></div>' +
-    '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Personas en el set</span>' +
-    '<span class="nav-vl">'+pers+'</span></div>';
- 
-  var horas = NAV_horasDia(), h = '', slot = NAV_n(NAV_D.camp.slot_min)||60;
-  for (var i=0;i<horas.length;i++) {
-    var hora = horas[i];
-    var s = null;
-    for (var j=0;j<ses.length;j++) if ((extraerHora(ses[j].hora)||String(ses[j].hora))===hora) s = ses[j];
-    if (s) {
-      var pag = NAV_saldo(s) <= 0;
-      h += '<div class="nav-slot" onclick="NAV_verSesion(\''+s.folio+'\')" style="cursor:pointer">' +
-        '<div class="nav-t">'+hora+'</div><div class="nav-bd">' +
-        '<div class="nav-nm">'+NAV_esc(s.cliente)+'</div>' +
-        '<div class="nav-me">'+NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+NAV_n(s.personas)+' personas</div>' +
-        '</div><span class="nav-s '+(pag?'nav-pg':'nav-an')+'">'+(pag?'Pagado':'Anticipo')+'</span></div>';
-    } else {
-      h += '<div class="nav-slot nav-fr"><div class="nav-t">'+hora+'</div>' +
-        '<div class="nav-bd"><span class="nav-pl">+</span> Libre</div></div>';
-    }
-    var sig = horas[i+1];
-    if (sig && NAV_min(sig) - NAV_min(hora) > slot) {
-      h += '<div class="nav-brk"><div class="nav-t">'+NAV_hhmm(NAV_min(hora)+slot)+'</div>' +
-        '<div>Comida · '+NAV_hhmm(NAV_min(hora)+slot)+' – '+sig+'</div></div>';
-    } else if (sig) {
-      h += '<div class="nav-gp">reacomodo</div>';
-    }
-  }
-  document.getElementById('nav-dia-slots').innerHTML = h;
-}
+/* NAV_pintarDia — definición canónica más abajo en parche B */
  
 /* ---------------- disponibilidad ---------------- */
  
@@ -8175,49 +8138,7 @@ function NAV_altaGuardar() {
 /* ---------- conectar los lugares libres del calendario ---------- */
  
 /** Reemplaza a la versión anterior: ahora los lugares libres son tappables. */
-function NAV_pintarDia() {
-  if (!NAV_diaActual) NAV_diaActual = NAV_D.camp.fecha_inicio;
-  document.getElementById('nav-dia-ttl').textContent = NAV_fechaLarga(NAV_diaActual);
-  var ses = NAV_ocupacion(NAV_diaActual), cupo = NAV_cupoDe(NAV_diaActual);
-  var pers = 0; ses.forEach(function(s){ pers += NAV_n(s.personas); });
-  document.getElementById('nav-dia-res').innerHTML =
-    '<div class="nav-row"><span class="nav-lb">Ocupación</span>' +
-    '<span class="nav-vl">'+ses.length+' de '+cupo+'</span></div>' +
-    '<div class="nav-bar"><i style="width:'+(cupo?Math.round(ses.length/cupo*100):0)+'%"></i></div>' +
-    '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Personas en el set</span>' +
-    '<span class="nav-vl">'+pers+'</span></div>';
- 
-  var horas = NAV_horasDia(), h = '', slot = NAV_n(NAV_D.camp.slot_min)||60;
-  var lleno = ses.length >= cupo;
-  for (var i=0;i<horas.length;i++) {
-    var hora = horas[i];
-    var s = null;
-    for (var j=0;j<ses.length;j++) if ((extraerHora(ses[j].hora)||String(ses[j].hora))===hora) s = ses[j];
-    if (s) {
-      var pag = NAV_saldo(s) <= 0;
-      h += '<div class="nav-slot" onclick="NAV_verSesion(\''+s.folio+'\')" style="cursor:pointer">' +
-        '<div class="nav-t">'+hora+'</div><div class="nav-bd">' +
-        '<div class="nav-nm">'+NAV_esc(s.cliente)+'</div>' +
-        '<div class="nav-me">'+NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+NAV_n(s.personas)+' personas</div>' +
-        '</div><span class="nav-s '+(pag?'nav-pg':'nav-an')+'">'+(pag?'Pagado':'Anticipo')+'</span></div>';
-    } else if (lleno) {
-      h += '<div class="nav-slot nav-fr" style="opacity:.45"><div class="nav-t">'+hora+'</div>' +
-        '<div class="nav-bd">Cupo del día alcanzado</div></div>';
-    } else {
-      h += '<div class="nav-slot nav-fr" onclick="NAV_agendar(\''+NAV_diaActual+'\',\''+hora+'\')">' +
-        '<div class="nav-t">'+hora+'</div>' +
-        '<div class="nav-bd"><span class="nav-pl">+</span> Agendar sesión</div></div>';
-    }
-    var sig = horas[i+1];
-    if (sig && NAV_min(sig) - NAV_min(hora) > slot) {
-      h += '<div class="nav-brk"><div class="nav-t">'+NAV_hhmm(NAV_min(hora)+slot)+'</div>' +
-        '<div>Comida · '+NAV_hhmm(NAV_min(hora)+slot)+' – '+sig+'</div></div>';
-    } else if (sig) {
-      h += '<div class="nav-gp">reacomodo</div>';
-    }
-  }
-  document.getElementById('nav-dia-slots').innerHTML = h;
-}
+/** NAV_pintarDia — definición canónica en parche B (más abajo) */
  
 /* ---------- botón de agendar en el tablero ---------- */
  
