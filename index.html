@@ -1851,7 +1851,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.14';
+var APP_VERSION = 'v4.15';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8000,7 +8000,7 @@ function NAV_abrirEditar() {
   document.getElementById('nav-e-previas').value = tp;
   var fecha = (function(d){ if (!d) return ''; var s=String(d); return s.indexOf('T')!==-1 ? s.substring(0,10) : s.substring(0,10); })(s.fecha_sesion);
   document.getElementById('nav-e-fecha').value = fecha;
-  NAV_editarFecha(extraerHora(s.hora) || String(s.hora));
+  NAV_editarFecha(NAV_hora24(s.hora) || String(s.hora));
   NAV_editarPrecio();
   var el = document.getElementById('nav-edit');
   el.style.display = 'block'; el.scrollTop = 0;
