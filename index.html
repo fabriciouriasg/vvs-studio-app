@@ -625,6 +625,11 @@
   #ded5c6 4px,#ded5c6 8px);border-color:var(--beige-dark);color:var(--text-muted)}
 #nav-ov .nav-d.nav-exc::after{content:"";position:absolute;top:4px;right:4px;width:5px;
   height:5px;border-radius:999px;background:#9a8bb5}
+#nav-ov .nav-d.nav-apagado{background:var(--beige-light);border-color:var(--beige-mid);
+  color:var(--beige-dark);cursor:pointer;opacity:.55}
+#nav-ov .nav-d.nav-apagado:active{opacity:.75}
+#nav-ov .nav-d.nav-cerrado{opacity:.65;border-style:dashed;cursor:pointer}
+#nav-ov .nav-d.nav-cerrado .nav-oc{color:var(--text-muted)}
 #nav-ov .nav-leg{display:flex;flex-wrap:wrap;gap:10px;margin-top:13px;font-size:9.5px;
   color:var(--text-muted)}
 #nav-ov .nav-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;
@@ -6599,18 +6604,21 @@ function NAV_cupoDe(fecha) {
       return NAV_n(NAV_D.dias[i].cupo);
   return NAV_n(NAV_D.camp.cupo_dia) || 7;
 }
-function NAV_esExcepcion(fecha) {
+function NAV_diaObj(fecha) {
   for (var i=0;i<NAV_D.dias.length;i++)
-    if (NAV_D.dias[i].fecha === fecha) return true;
-  return false;
+    if (NAV_D.dias[i].fecha === fecha) return NAV_D.dias[i];
+  return null;
+}
+function NAV_esExcepcion(fecha) {
+  var d = NAV_diaObj(fecha);
+  return !!(d && String(d.tipo) === 'Excepcion');
 }
 function NAV_esDiaTrabajo(fecha) {
   if (!NAV_D.camp) return false;
   if (fecha < NAV_D.camp.fecha_inicio || fecha > NAV_D.camp.fecha_fin) return false;
-  if (NAV_esExcepcion(fecha)) return true;
-  var dw = new Date(fecha+'T12:00:00').getDay();
-  var lista = String(NAV_D.camp.dias_semana).split(',').map(function(x){return parseInt(x,10);});
-  return lista.indexOf(dw) >= 0;
+  var d = NAV_diaObj(fecha);
+  if (!d) return false;
+  return String(d.tipo) !== 'Cerrado';
 }
 function NAV_pintarMes() {
   if (!NAV_D.camp || !NAV_mesActual) return;
@@ -6622,15 +6630,52 @@ function NAV_pintarMes() {
   var h = '';
   for (var i=0;i<primero;i++) h += '<div class="nav-d"></div>';
   var totalMes = 0, ocupMes = 0;
+  var dentroRango = NAV_D.camp.fecha_inicio && NAV_D.camp.fecha_fin;
   for (var d=1; d<=dim; d++) {
     var f = anio+'-'+('0'+(mes+1)).slice(-2)+'-'+('0'+d).slice(-2);
-    if (!NAV_esDiaTrabajo(f)) { h += '<div class="nav-d">'+d+'</div>'; continue; }
-    var cupo = NAV_cupoDe(f), ocup = NAV_ocupacion(f).length;
+    var dObj = NAV_diaObj(f);
+    var enRango = dentroRango && f >= NAV_D.camp.fecha_inicio && f <= NAV_D.camp.fecha_fin;
+    var esTrabajo = NAV_esDiaTrabajo(f);
+    var esCerrado = dObj && String(dObj.tipo) === 'Cerrado';
+    var sesiones = NAV_ocupacion(f);
+    /* Día cerrado con sesiones: visible pero marcado como cerrado */
+    if (esCerrado && sesiones.length > 0) {
+      var cupo = NAV_cupoDe(f);
+      h += '<div class="nav-d nav-hay nav-cerrado" ' +
+        'onclick="NAV_verDia(\''+f+'\')" ' +
+        'ontouchstart="NAV_tapInicio(\''+f+'\',event)" ontouchend="NAV_tapFin(\''+f+'\',event)" ' +
+        'onmousedown="NAV_tapInicio(\''+f+'\',event)" onmouseup="NAV_tapFin(\''+f+'\',event)">' +
+        '<span>'+d+'</span><span class="nav-oc">'+sesiones.length+'/'+cupo+' 🔒</span></div>';
+      continue;
+    }
+    /* Día cerrado sin sesiones: apagado, solo tap largo para reactivar */
+    if (esCerrado) {
+      h += '<div class="nav-d nav-apagado" ' +
+        'ontouchstart="NAV_tapInicio(\''+f+'\',event)" ontouchend="NAV_tapFin(\''+f+'\',event)" ' +
+        'onmousedown="NAV_tapInicio(\''+f+'\',event)" onmouseup="NAV_tapFin(\''+f+'\',event)">' +
+        '<span>'+d+'</span></div>';
+      continue;
+    }
+    /* Día dentro del rango pero sin fila (no generado aún): tap largo para activar */
+    if (!esTrabajo && enRango) {
+      h += '<div class="nav-d nav-apagado" ' +
+        'ontouchstart="NAV_tapInicio(\''+f+'\',event)" ontouchend="NAV_tapFin(\''+f+'\',event)" ' +
+        'onmousedown="NAV_tapInicio(\''+f+'\',event)" onmouseup="NAV_tapFin(\''+f+'\',event)">' +
+        '<span>'+d+'</span></div>';
+      continue;
+    }
+    /* Día fuera de rango: inerte */
+    if (!esTrabajo) { h += '<div class="nav-d">'+d+'</div>'; continue; }
+    /* Día de trabajo activo */
+    var cupo = NAV_cupoDe(f), ocup = sesiones.length;
     totalMes += cupo; ocupMes += ocup;
     var pct = cupo ? ocup/cupo : 0;
     var cls = 'nav-d nav-hay' + (pct>=1?' nav-full':(pct>=0.7?' nav-mid':'')) +
       (NAV_esExcepcion(f)?' nav-exc':'');
-    h += '<div class="'+cls+'" onclick="NAV_verDia(\''+f+'\')">' +
+    h += '<div class="'+cls+'" ' +
+      'onclick="NAV_verDia(\''+f+'\')" ' +
+      'ontouchstart="NAV_tapInicio(\''+f+'\',event)" ontouchend="NAV_tapFin(\''+f+'\',event)" ' +
+      'onmousedown="NAV_tapInicio(\''+f+'\',event)" onmouseup="NAV_tapFin(\''+f+'\',event)">' +
       '<span>'+d+'</span><span class="nav-oc">'+ocup+'/'+cupo+'</span></div>';
   }
   document.getElementById('nav-mes-grid').innerHTML = h;
@@ -6649,6 +6694,54 @@ function NAV_pintarMes() {
     '<span class="nav-vl nav-m">'+NAV_money(ingreso)+'</span></div>' +
     '<div class="nav-row"><span class="nav-lb">Cobrado</span>' +
     '<span class="nav-vl nav-m">'+NAV_money(cobrado)+'</span></div>';
+}
+
+/* ── Tap largo en calendario ── */
+var NAV_tapTimer = null, NAV_tapFecha = null;
+function NAV_tapInicio(fecha, ev) {
+  NAV_tapFecha = fecha;
+  NAV_tapTimer = setTimeout(function(){ NAV_tapTimer = null; NAV_toggleDiaTrabajo(fecha); }, 600);
+}
+function NAV_tapFin(fecha, ev) {
+  if (NAV_tapTimer) { clearTimeout(NAV_tapTimer); NAV_tapTimer = null; }
+}
+
+/** Toggle activar/desactivar día de trabajo con confirmación */
+function NAV_toggleDiaTrabajo(fecha) {
+  var dObj = NAV_diaObj(fecha);
+  var esCerrado = dObj && String(dObj.tipo) === 'Cerrado';
+  var esActivo = dObj && String(dObj.tipo) !== 'Cerrado';
+  var sesiones = NAV_ocupacion(fecha);
+  var etiqueta = NAV_fechaLarga(fecha);
+
+  if (esActivo) {
+    /* Desactivar */
+    var msg = sesiones.length > 0
+      ? '🔒 ' + etiqueta + ' tiene ' + sesiones.length + ' sesión(es) agendada(s).\n\n' +
+        'Si desactivas el día, las sesiones existentes seguirán su flujo normal pero ' +
+        'ya no se podrán agendar nuevas reservas en este día.\n\n¿Desactivar de todas formas?'
+      : '¿Desactivar ' + etiqueta + '?\n\nEste día dejará de estar disponible para nuevas reservas.';
+    if (!confirm(msg)) return;
+    NAV_post('NAV_toggleDia', {
+      id_campania: NAV_D.camp.id_campania,
+      fecha: fecha,
+      accion: 'desactivar'
+    }).then(function(r){
+      if (!r || !r.ok) { alert('Error: ' + ((r && r.error) || 'sin respuesta')); return; }
+      NAV_recargar().then(function(){ NAV_pintarMes(); });
+    });
+  } else {
+    /* Activar (día cerrado o sin fila) */
+    if (!confirm('¿Activar ' + etiqueta + ' como día de trabajo?')) return;
+    NAV_post('NAV_toggleDia', {
+      id_campania: NAV_D.camp.id_campania,
+      fecha: fecha,
+      accion: 'activar'
+    }).then(function(r){
+      if (!r || !r.ok) { alert('Error: ' + ((r && r.error) || 'sin respuesta')); return; }
+      NAV_recargar().then(function(){ NAV_pintarMes(); });
+    });
+  }
 }
 function NAV_verDia(f) {
   NAV_diaActual = f;
@@ -6733,9 +6826,18 @@ function NAV_mesesCampania() {
 
 /* Devuelve los días de semana que la campaña usa, filtrado a Vie/Sáb/Dom */
 function NAV_diasDisponibles() {
-  if (!NAV_D.camp || !NAV_D.camp.dias_semana) return NAV_DIAS_SEM;
-  var cfg = String(NAV_D.camp.dias_semana).split(',').map(function(x){ return parseInt(x,10); });
-  return NAV_DIAS_SEM.filter(function(d){ return cfg.indexOf(d.dw) >= 0; });
+  /* Extrae los días de semana únicos que aparecen en NAV_D.dias activos */
+  var dwSet = {};
+  NAV_D.dias.forEach(function(d){
+    if (String(d.tipo) === 'Cerrado') return;
+    var dw = new Date(d.fecha + 'T12:00:00').getDay();
+    dwSet[dw] = true;
+  });
+  /* Nombres para cualquier día de semana que aparezca */
+  var NOMBRES = ['Domingos','Lunes','Martes','Miércoles','Jueves','Viernes','Sábados'];
+  return Object.keys(dwSet).map(function(k){
+    return { dw: parseInt(k,10), label: NOMBRES[parseInt(k,10)] };
+  }).sort(function(a,b){ return a.dw - b.dw; });
 }
 
 function NAV_calcDisp(m) {
@@ -7680,43 +7782,6 @@ function NAV_agendar(fecha, hora) {
   NAV_abrirCapa('nav-alta');
 }
  
-/** Recarga las horas libres del día elegido. */
-function NAV_altaFecha(horaPre) {
-  var fecha = document.getElementById('nav-a-fecha').value;
-  var aviso = document.getElementById('nav-a-avisofecha');
-  var selH = document.getElementById('nav-a-hora');
-  if (!fecha) { selH.innerHTML = ''; return; }
- 
-  if (!NAV_esDiaTrabajo(fecha)) {
-    aviso.innerHTML = '<div class="nav-note">◷ Ese día no es de trabajo en esta temporada. ' +
-      'Puedes agendarlo igual como excepción.</div>';
-  } else {
-    aviso.innerHTML = '';
-  }
- 
-  var horas = NAV_horasDia();
-  var tomadas = NAV_ocupacion(fecha).map(function(s){ return String(s.hora); });
-  var cupo = NAV_cupoDe(fecha);
-  var libres = horas.filter(function(h){ return tomadas.indexOf(h) < 0; });
- 
-  document.getElementById('nav-alta-cupo').textContent =
-    tomadas.length + '/' + cupo;
- 
-  if (!libres.length) {
-    selH.innerHTML = '<option value="">Sin lugares libres</option>';
-    aviso.innerHTML += '<div class="nav-note">◷ Este día ya está lleno.</div>';
-  } else {
-    selH.innerHTML = libres.map(function(h){
-      return '<option value="'+h+'"'+(h===horaPre?' selected':'')+'>'+h+'</option>';
-    }).join('');
-  }
-  if (tomadas.length >= cupo) {
-    aviso.innerHTML += '<div class="nav-note">◷ Ya se alcanzó el cupo de ' + cupo +
-      ' del día.</div>';
-  }
-  NAV_altaPrecio();
-}
- 
 /** Busca el precio del paquete para el mes de la fecha elegida. */
 function NAV_altaPrecioBase(idPaquete, fecha) {
   if (!fecha) return 0;
@@ -8229,8 +8294,26 @@ function NAV_guardarAjustes() {
         NAV_esc((malas[0] && malas[0].error) || '') + '</div>';
       return;
     }
-    NAV_toast('Ajustes guardados');
-    NAV_recargar().then(function(){ NAV_ajustes(); });
+    /* Generar días de trabajo automáticamente si hay fechas configuradas */
+    var fi = datos.fecha_inicio, ff = datos.fecha_fin, ds = datos.dias_semana;
+    if (fi && ff && ds) {
+      NAV_post('NAV_generarDias', {
+        id_campania: datos.id_campania || (NAV_D.camp && NAV_D.camp.id_campania),
+        fecha_inicio: fi, fecha_fin: ff, dias_semana: ds
+      }).then(function(gr){
+        var msg = 'Ajustes guardados';
+        if (gr && gr.ok && gr.insertados > 0)
+          msg += ' · ' + gr.insertados + ' día(s) de trabajo generado(s)';
+        NAV_toast(msg);
+        NAV_recargar().then(function(){ NAV_ajustes(); });
+      }).catch(function(){
+        NAV_toast('Ajustes guardados');
+        NAV_recargar().then(function(){ NAV_ajustes(); });
+      });
+    } else {
+      NAV_toast('Ajustes guardados');
+      NAV_recargar().then(function(){ NAV_ajustes(); });
+    }
   }).catch(function(e){
     btn.disabled = false; btn.textContent = 'Guardar cambios';
     err.innerHTML = '<div class="nav-err">Sin conexión: '+NAV_esc(e.message)+'</div>';
