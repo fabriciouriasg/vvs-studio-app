@@ -321,11 +321,9 @@
     .mes-full-dia.bloqueado .dia-num{color:#1a1410 !important;font-weight:700}
     .mes-full-dia.bloqueado:active{background:#BE694260 !important}
     .dia-dot.personal{background:#BE6942}
-    .mes-mini-dia.navidad{background:#2d5a27 !important;border-radius:6px}
-    .mes-mini-dia.navidad *{color:#fff !important}
-    .mes-full-dia.navidad{background:#2d5a27 !important;border-radius:6px}
-    .mes-full-dia.navidad *{color:#fff !important}
-    .mes-full-dia.navidad:active{background:#234820 !important}
+    .mes-mini-dia.navidad{background:#2d5a2780 !important;border-radius:6px}
+    .mes-full-dia.navidad{background:#2d5a2780 !important;border-radius:6px}
+    .mes-full-dia.navidad:active{background:#2d5a27aa !important}
     .dia-panel-acciones{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
     .dia-panel-btn{flex:1;min-width:120px;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:10px 8px;font-family:'Jost',sans-serif;font-size:11px;font-weight:500;color:var(--text-main);cursor:pointer;text-align:center;letter-spacing:.04em;transition:all .15s}
     .dia-panel-btn:active{background:var(--beige-mid)}
@@ -3093,6 +3091,7 @@ async function cargarCalendario() {
   var resFechas = await offlineFetch(SCRIPT_URL + '?action=getFechasEspeciales&token=' + encodeURIComponent(SECRET_TOKEN), {}, 'cache_fechas', null);
   todosEventos = (resEventos && resEventos.eventos) ? resEventos.eventos : [];
   fechasEspeciales = (resFechas && resFechas.ok && resFechas.fechas) ? resFechas.fechas : [];
+  if (typeof NAV_inyectarDiasEnCalendario === 'function' && NAV_D.dias && NAV_D.dias.length) { NAV_D.dias.forEach(function(d){ if (String(d.tipo) !== 'Cerrado') fechasEspeciales.push({ fecha: d.fecha, tipo: 'NAVIDAD', motivo: NAV_D.camp ? NAV_D.camp.nombre : 'Navidad' }); }); }
   renderCalendario(todosEventos);
   renderPendientes(todosEventos);
   renderModoDia(todosEventos);
