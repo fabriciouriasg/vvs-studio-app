@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.37';
+var APP_VERSION = 'v4.38';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6521,11 +6521,27 @@ function NAV_post(action, datos) {
  
 /* ---------------- arranque ---------------- */
  
+function NAV_b64decode(str) {
+  try {
+    return decodeURIComponent(atob(str).split('').map(function(c){
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+  } catch(e) { return str; }
+}
+function NAV_decodeCamp(camp) {
+  if (!camp) return camp;
+  var campos = ['msg_apartado','msg_brochure','msg_confirma','msg_presel','msg_entrega','msg_encuesta','politicas_cancelacion','terminos_servicio'];
+  campos.forEach(function(k){
+    if (camp[k+'_b64'] && camp[k]) camp[k] = NAV_b64decode(camp[k]);
+  });
+  return camp;
+}
+
 function NAV_init() {
   if (!SCRIPT_URL) return;
   NAV_get('NAV_getCampania').then(function(r){
     if (!r || !r.ok || !r.campania) return;
-    NAV_D.camp = r.campania;
+    NAV_D.camp = NAV_decodeCamp(r.campania);
     NAV_D.paquetes = r.paquetes || [];
     NAV_D.precios = r.precios || [];
     NAV_D.dias = r.dias || [];
@@ -6625,7 +6641,7 @@ function NAV_recargar() {
     .then(function(res){
       var c = res[0], s = res[1];
       if (c && c.ok && c.campania) {
-        NAV_D.camp = c.campania; NAV_D.paquetes = c.paquetes||[];
+        NAV_D.camp = NAV_decodeCamp(c.campania); NAV_D.paquetes = c.paquetes||[];
         NAV_D.precios = c.precios||[]; NAV_D.dias = c.dias||[];
       }
       NAV_D.sesiones = (s && s.sesiones) ? s.sesiones : [];
