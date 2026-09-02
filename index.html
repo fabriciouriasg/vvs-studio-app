@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.44';
+var APP_VERSION = 'v4.45';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -5938,7 +5938,16 @@ function renderFinanzas() {
       if (gfHist[si].mes === nombres[mh] && String(gfHist[si].anio) === String(mhAnio)) { mhSnap = gfHist[si]; break; }
     }
     var mhGF = mhSnap ? (parseFloat(mhSnap.total)||0) : gastosFijos.reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
-    var mhGV = gastosVariables.filter(function(g){ return g.mes === nombres[mh] && (!g.anio || String(g.anio) === String(mhAnio)); }).reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
+    var mhGVRows = gastosVariables.filter(function(g){ return g.mes === nombres[mh] && (!g.anio || String(g.anio) === String(mhAnio)); });
+    var mhGV = mhGVRows.reduce(function(s,g){ return s+(parseFloat(g.monto)||0); }, 0);
+    // Agrupar gastos variables por categoría (separando Navidad)
+    var mhGVCats = {}, mhGVNav = 0;
+    mhGVRows.forEach(function(g){
+      var cat = g.categoria || 'Otros';
+      var isNav = g.id_campania && String(g.id_campania).indexOf('NAV') === 0;
+      if (isNav) { mhGVNav += parseFloat(g.monto)||0; }
+      else { mhGVCats[cat] = (mhGVCats[cat]||0) + (parseFloat(g.monto)||0); }
+    });
     var mhGanancia = mhIngreso - mhGF - mhGV;
     var mhEventos = eventos.filter(function(e){ return e.fecha_evento && e.fecha_evento.startsWith(mhPref) && e.estado !== 'Cancelado'; }).length;
     var mhEvLog = 0, mhSesLog = 0, mhAntLog = 0, mhPvLog = 0, mhNavAnt = 0, mhNavSes = 0;
@@ -5952,7 +5961,8 @@ function renderFinanzas() {
       else if (cat.startsWith('sesiones') && cat.includes('navidad')) mhNavSes += r.monto || 0;
     });
     mesesHistorial.push({ nombre: nombres[mh], anio: mhAnio, ingreso: mhIngreso, ganancia: mhGanancia, inversion: mhGF + mhGV, eventos: mhEventos,
-      dEventos: mhEvLog, dSesiones: mhSesLog, dAnticipos: mhAntLog, dPostventa: mhPvLog, dNavAnt: mhNavAnt, dNavSes: mhNavSes });
+      dEventos: mhEvLog, dSesiones: mhSesLog, dAnticipos: mhAntLog, dPostventa: mhPvLog, dNavAnt: mhNavAnt, dNavSes: mhNavSes,
+      mhGF: mhGF, mhGVCats: mhGVCats, mhGVNav: mhGVNav });
   }
 
   if (mesesHistorial.length) {
@@ -6043,7 +6053,32 @@ function renderFinanzas() {
         html += '<div style="height:100%;width:' + pct + '%;background:#8b7355;border-radius:999px"></div>';
         html += '</div></div>';
       });
-      // Navidad en historial
+      // Desglose de gastos del mes
+      var tlGasId = 'tl-gastos-' + ti2;
+      html += '<div style="margin-top:6px">';
+      html += '<button onclick="toggleFinGastos(\'' + tlGasId + '\',this)" style="background:none;border:none;padding:0;font-size:11px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;gap:4px;width:100%;text-align:left">';
+      html += '<span style="font-size:9px">▼</span>Desglose de gastos</button>';
+      html += '<div id="' + tlGasId + '" style="display:none;margin-top:8px">';
+      var mhiInv = mhi.inversion;
+      function _gasRow(lbl, val, bg) {
+        var pct = mhiInv > 0 ? Math.round((val / mhiInv) * 100) : 0;
+        return '<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">' +
+          '<span style="font-size:11px;color:var(--text-main)">' + lbl + '</span>' +
+          '<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:10px;color:var(--text-muted)">' + pct + '%</span>' +
+          '<span style="font-size:11px;font-weight:500;min-width:50px;text-align:right">' + fmtMXN(val) + '</span></div></div>' +
+          '<div style="height:4px;background:var(--beige-dark);border-radius:999px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + bg + ';border-radius:999px"></div></div></div>';
+      }
+      if (mhi.mhGF > 0) html += _gasRow('Renta (fijo)', mhi.mhGF, '#8b7355');
+      Object.keys(mhi.mhGVCats||{}).forEach(function(cat) {
+        html += _gasRow(cat, mhi.mhGVCats[cat], '#6b7a8d');
+      });
+      if ((mhi.mhGVNav||0) > 0 && localStorage.getItem('fin_nav_toggle') !== 'off') {
+        html += _gasRow('Navidad 2026', mhi.mhGVNav, '#3b6d11');
+      }
+      html += '</div></div>';
+
+      // Navidad en historial (ingresos)
       var mhNavTotal = (mhi.dNavAnt||0) + (mhi.dNavSes||0);
       if (mhNavTotal > 0 && localStorage.getItem('fin_nav_toggle') !== 'off') {
         html += '<div style="border-top:0.5px solid var(--beige-dark);margin:8px 0"></div>';
@@ -6068,6 +6103,15 @@ function renderFinanzas() {
   }
 
   document.getElementById('finanzas-content').innerHTML = html;
+}
+
+function toggleFinGastos(id, btn) {
+  var b = document.getElementById(id);
+  if (!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  var span = btn && btn.querySelector('span');
+  if (span) span.textContent = open ? '▼' : '▲';
 }
 
 function toggleFinPleg(id) {
