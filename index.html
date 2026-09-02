@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.54';
+var APP_VERSION = 'v4.55';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6854,7 +6854,12 @@ function NAV_tablero() {
   var h = '';
   for (var f=1; f<=6; f++) {
     var L = act.filter(function(s){ return NAV_n(s.fase) === f; });
-    L.sort(function(a,b){ return (NAV_aging(b)||0) - (NAV_aging(a)||0); });
+    // Apartada: fecha sesión ascendente (más próxima arriba). Resto: aging desc (más viejo arriba)
+    if (f === 1) {
+      L.sort(function(a,b){ return (a.fecha_sesion||'') < (b.fecha_sesion||'') ? -1 : 1; });
+    } else {
+      L.sort(function(a,b){ return (NAV_aging(b)||0) - (NAV_aging(a)||0); });
+    }
     var atr = L.filter(function(s){ var a=NAV_aging(s); return a!==null && a>=15; }).length;
     var sub;
     if (f===1) {
