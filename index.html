@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.45';
+var APP_VERSION = 'v4.46';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -5966,7 +5966,13 @@ function renderFinanzas() {
   }
 
   if (mesesHistorial.length) {
-    html += '<div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;margin-top:16px">Historial</div>';
+    html += '<div class="fin-pleg" style="margin-top:16px;margin-bottom:10px">';
+    html += '<div class="fin-pleg-header" onclick="KNV_finToggleHist()" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer">';
+    html += '<div><span style="font-size:13px;font-weight:500;color:var(--text-main)">Historial</span>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + mesesHistorial.length + ' meses</div></div>';
+    html += '<span id="fin-hist-arr" style="font-size:12px;color:var(--text-muted)">▼</span>';
+    html += '</div>';
+    html += '<div id="fin-hist-body" style="display:none;border-top:0.5px solid var(--beige-dark);padding:12px 16px">';
 
     // Gráfica de línea — ganancia neta por mes
     var chartMeses = mesesHistorial.slice(-12); // gráfica limitada a últimos 12 meses
@@ -6019,10 +6025,14 @@ function renderFinanzas() {
       var mhi = mesesHistorial[ti2];
       var tlId = 'tl-desglose-' + ti2;
       html += '<div class="tl-card">';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="KNV_finToggleMes(this)">';
       html += '<span style="font-size:12px;font-weight:500">' + mhi.nombre + ' ' + mhi.anio + '</span>';
-      html += '<span style="font-size:13px;font-weight:500">' + fmtMXN(mhi.ingreso) + '</span></div>';
-      html += '<div class="tl-stats">';
+      html += '<div style="display:flex;align-items:center;gap:10px">';
+      html += '<span style="font-size:13px;font-weight:500">' + fmtMXN(mhi.ingreso) + '</span>';
+      html += '<span class="fin-mes-arr" style="font-size:10px;color:var(--text-muted)">▼</span>';
+      html += '</div></div>';
+      html += '<div class="fin-mes-body" style="display:none">';
+      html += '<div class="tl-stats" style="margin-top:8px">';
       html += '<div class="tl-stat"><div class="tl-stat-lbl">Ganancia</div><div class="tl-stat-val ' + (mhi.ganancia >= 0 ? 'green' : 'red') + '">' + fmtMXN(mhi.ganancia) + '</div></div>';
       html += '<div class="tl-stat"><div class="tl-stat-lbl">Margen</div><div class="tl-stat-val">' + (mhi.ingreso > 0 ? Math.round((mhi.ganancia/mhi.ingreso)*100) : 0) + '%</div></div>';
       html += '<div class="tl-stat"><div class="tl-stat-lbl">Inversión</div><div class="tl-stat-val red">' + fmtMXN(mhi.inversion) + '</div></div>';
@@ -6096,13 +6106,32 @@ function renderFinanzas() {
         });
         html += '</div>';
       }
-      html += '</div></div>';
-      html += '</div>';
+      html += '</div></div>'; // cierre desglose gastos + ingresos
+      html += '</div>'; // cierre fin-mes-body
+      html += '</div>'; // cierre tl-card
     }
-    html += '</div></div>';
+    html += '</div></div>'; // cierre fin-hist-body
+    html += '</div></div>'; // cierre fin-pleg historial
   }
 
   document.getElementById('finanzas-content').innerHTML = html;
+}
+
+function KNV_finToggleHist() {
+  var b = document.getElementById('fin-hist-body');
+  var arr = document.getElementById('fin-hist-arr');
+  if (!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  if (arr) arr.textContent = open ? '▼' : '▲';
+}
+function KNV_finToggleMes(el) {
+  var body = el && el.nextElementSibling;
+  var arr = el && el.querySelector('.fin-mes-arr');
+  if (!body) return;
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (arr) arr.textContent = open ? '▼' : '▲';
 }
 
 function toggleFinGastos(id, btn) {
@@ -9164,12 +9193,33 @@ function KNV_renderBoard() {
 
   KNV_COLS.forEach(function(col) {
     var allInCol = ses.filter(function(s){return KNV_faseId(s)===col.id;});
+    // FIFO — más antigua arriba (fecha_sesion + hora ascendente)
+    allInCol.sort(function(a,b){
+      var fa = (a.fecha_sesion||'9') + (a.hora||'');
+      var fb = (b.fecha_sesion||'9') + (b.hora||'');
+      return fa < fb ? -1 : fa > fb ? 1 : 0;
+    });
     var visInCol = vis.filter(function(s){return KNV_faseId(s)===col.id;});
+    visInCol.sort(function(a,b){
+      var fa = (a.fecha_sesion||'9') + (a.hora||'');
+      var fb = (b.fecha_sesion||'9') + (b.hora||'');
+      return fa < fb ? -1 : fa > fb ? 1 : 0;
+    });
     var isEmpty = allInCol.length === 0;
     var colEl = document.createElement('div');
     colEl.className = 'knv-col' + (KNV_state.hideEmpty && isEmpty ? ' knv-hidden' : '');
+    colEl.style.position = 'relative';
 
-    var bodyCards = visInCol.map(function(s) {
+    // Línea de gradiente lateral — más intenso arriba (más antiguas = más urgentes)
+    if (allInCol.length > 0) {
+      var gradLine = document.createElement('div');
+      gradLine.style.cssText = 'position:absolute;left:0;top:36px;bottom:0;width:3px;border-radius:0 0 0 0;' +
+        'background:linear-gradient(to bottom,' + col.color + 'ee 0%,' + col.color + '88 40%,' + col.color + '22 100%);' +
+        'pointer-events:none;z-index:1';
+      colEl.appendChild(gradLine);
+    }
+
+    var bodyCards = visInCol.map(function(s, idx) {
       var isExp = KNV_state.expandedId === s.folio;
       var fase = NAV_n(s.fase);
       var saldo = NAV_saldo(s);
@@ -9206,7 +9256,13 @@ function KNV_renderBoard() {
       var tags = KNV_tags(s);
       var tagHTML = tags.map(function(t){return '<span class="knv-tag '+t.k+'">'+t.t+'</span>';}).join('');
 
-      return '<div class="knv-card'+agingClass+(isExp?' knv-expanded':'')+'" draggable="true" data-folio="'+s.folio+'" data-col="'+col.id+'">' +
+      // Borde izquierdo FIFO: más intenso para tarjetas más antiguas (idx 0 = más oscuro)
+      var _n = visInCol.length;
+      var _op = _n > 1 ? (1 - idx / (_n - 1)) * 0.8 + 0.2 : 0.7;
+      var _hex = Math.round(_op * 255).toString(16).padStart(2, '0');
+      var _bstyle = 'border-left:2.5px solid ' + col.color + _hex + ';';
+
+      return '<div class="knv-card'+agingClass+(isExp?' knv-expanded':'')+'" draggable="true" data-folio="'+s.folio+'" data-col="'+col.id+'" style="'+_bstyle+'">' +
         '<div class="knv-card-row"><span class="knv-card-name">'+NAV_esc(s.cliente)+'</span><div class="knv-dots">'+dotHTML+'</div></div>' +
         pillsHTML +
         '<div class="knv-card-detail">' +
@@ -9305,10 +9361,8 @@ function KNV_renderPopup() {
             '<div id="knv-err-'+a.id+'" class="knv-err">Ingresa un monto válido</div>' +
             '<button class="knv-ibtn ok" onclick="KNV_execPago(\''+a.id+'\')">Registrar pago</button></div>';
         } else if (a.type==='whatsapp') {
-          var txt = KNV_waText(a.wid, p.session);
           body = '<div class="knv-abody">' +
-            '<div class="knv-wa-pre" id="knv-pre-'+a.id+'"></div>' +
-            '<script>setTimeout(function(){var el=document.getElementById("knv-pre-'+a.id+'");if(el)el.textContent=KNV_waText("'+a.wid+'",window._knvPopupSession);},0);<\/script>' +
+            '<div class="knv-wa-pre" id="knv-pre-'+a.id+'" data-wid="'+a.wid+'"></div>' +
             '<div style="display:flex;gap:5px">' +
             '<button class="knv-ibtn wa" onclick="KNV_execWA(\''+a.id+'\',\''+a.wid+'\')">✉ Abrir WhatsApp</button>' +
             '<button class="knv-ibtn" onclick="KNV_markDone(\''+a.id+'\')">Marcar enviado</button></div></div>';
@@ -9339,6 +9393,10 @@ function KNV_renderPopup() {
     '<button class="knv-pbtn primary'+(blockingDone?' ready':'')+'" id="knv-btn-mv" '+(blockingDone?'':'disabled')+' onclick="KNV_confirmMove()">' +
     (blockingDone?'Mover sesión ✓':'Completa las requeridas')+'</button></div></div>';
   document.getElementById('knv-board').appendChild(ov);
+  // Llenar previews de WhatsApp con textContent (preserva emojis, sin inline script)
+  ov.querySelectorAll('.knv-wa-pre[data-wid]').forEach(function(el) {
+    el.textContent = KNV_waText(el.getAttribute('data-wid'), p.session);
+  });
 }
 
 function KNV_bindFilters() {
