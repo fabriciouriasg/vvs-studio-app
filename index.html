@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.38';
+var APP_VERSION = 'v4.39';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -5525,15 +5525,21 @@ function renderFinanzas() {
     return r.fecha && r.fecha.startsWith(prefMes);
   });
   var ingresoEventos = 0, ingresoSesiones = 0, ingresoPersonalizado = 0, ingresoAnticipos = 0;
+  var ingresoNavAnticipos = 0, ingresoNavSesiones = 0;
   logMes.forEach(function(r) {
-    var cat = (r.categoria || '').toLowerCase();
+    var cat = (r.categoria || '').toLowerCase().trim();
     var monto = r.monto || 0;
     if (cat === 'eventos') ingresoEventos += monto;
     else if (cat === 'sesiones') ingresoSesiones += monto;
     else if (cat === 'personalizado' || cat === 'personalizado/extra') ingresoPersonalizado += monto;
     else if (cat === 'anticipos') ingresoAnticipos += monto;
-    // Anticipos y Otros también suman al total
+    else if (cat === 'anticipos navidad' || (cat.startsWith('anticipos') && cat.includes('navidad'))) ingresoNavAnticipos += monto;
+    else if (cat === 'sesiones navidad' || (cat.startsWith('sesiones') && cat.includes('navidad'))) ingresoNavSesiones += monto;
+    // otras campañas futuras (anticipos madres, etc.) se suman al total pero no al base
   });
+  var ingresoNavTotal = ingresoNavAnticipos + ingresoNavSesiones;
+  // Toggle Navidad — persistente en localStorage
+  var _navToggle = localStorage.getItem('fin_nav_toggle') !== 'off';
   // Total = todo lo recibido en el mes según Log
   var ingresoTotal = logMes.reduce(function(s, r) { return s + (r.monto || 0); }, 0);
   var totalGF = gastosFijos.reduce(function(s,g) { return s + (parseFloat(g.monto)||0); }, 0);
@@ -5635,8 +5641,22 @@ function renderFinanzas() {
     { lbl: 'Anticipos', key: 'anticipos', val: ingresoAnticipos },
     { lbl: 'Postventa', key: 'postventa', val: ingresoPersonalizado }
   ];
+  var _navId = 'fin-nav-toggle-' + mesActual + '-' + anioActual;
   html += '<div class="fin-pleg" style="margin-bottom:10px"><div style="padding:14px 16px">';
-  html += '<div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">Desglose de ingresos</div>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  html += '<div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)">Desglose de ingresos</div>';
+  if (ingresoNavTotal > 0) {
+    html += '<div id="' + _navId + '" onclick="(function(el){' +
+      'var on=el.dataset.on!==\'1\';' +
+      'el.dataset.on=on?\'1\':\'\';' +
+      'el.textContent=on?\'Navidad activo\':\'+ Navidad\';' +
+      'el.style.background=on?\'var(--beige-dark)\':\'\';' +
+      'var s=document.getElementById(\'fin-nav-sec-' + mesActual + '-' + anioActual + '\');' +
+      'if(s)s.style.display=on?\'block\':\'none\';' +
+      'localStorage.setItem(\'fin_nav_toggle\',on?\'on\':\'off\');' +
+      '})(this)" data-on="' + (_navToggle?'1':'') + '" style="font-size:10px;padding:3px 9px;border-radius:10px;border:0.5px solid var(--beige-dark);cursor:pointer;color:var(--text-muted);background:' + (_navToggle?'var(--beige-dark)':'') + '">' + (_navToggle?'Navidad activo':'+ Navidad') + '</div>';
+  }
+  html += '</div>';
   desgloseItems.forEach(function(d) {
     var pct = ingresoTotal > 0 ? Math.round((d.val / ingresoTotal) * 100) : 0;
     html += '<div style="margin-bottom:8px;cursor:pointer" onclick="abrirDesgloseCat(\'' + d.key + '\',\'' + prefMes + '\',\'' + d.lbl + ' · ' + NOMBRES_MESES[mesActual-1] + '\')">';
@@ -5650,6 +5670,34 @@ function renderFinanzas() {
     html += '<div style="height:100%;width:' + pct + '%;background:#8b7355;border-radius:999px;transition:width .3s"></div>';
     html += '</div></div>';
   });
+  // Sección Navidad (toggle)
+  if (ingresoNavTotal > 0) {
+    html += '<div id="fin-nav-sec-' + mesActual + '-' + anioActual + '" style="display:' + (_navToggle?'block':'none') + '">';
+    html += '<div style="border-top:0.5px solid var(--beige-dark);margin:10px 0 10px"></div>';
+    html += '<div style="background:var(--beige-light);border-radius:8px;padding:10px 12px">';
+    html += '<div style="font-size:10px;font-weight:500;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Navidad 2026</div>';
+    [
+      {lbl:'Anticipos Navidad', val:ingresoNavAnticipos, color:'#5f9ea0'},
+      {lbl:'Sesiones Navidad',  val:ingresoNavSesiones,  color:'#2d5a27'}
+    ].forEach(function(d) {
+      if (!d.val) return;
+      var pct = ingresoTotal > 0 ? Math.round((d.val / ingresoTotal) * 100) : 0;
+      html += '<div style="margin-bottom:8px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">';
+      html += '<span style="font-size:11px;color:var(--text-main)">' + d.lbl + '</span>';
+      html += '<div style="display:flex;align-items:baseline;gap:8px">';
+      html += '<span style="font-size:10px;color:var(--text-muted)">' + pct + '%</span>';
+      html += '<span style="font-size:11px;font-weight:500;min-width:54px;text-align:right">' + fmtMXN(d.val) + '</span>';
+      html += '</div></div>';
+      html += '<div style="height:4px;background:var(--beige-dark);border-radius:999px;overflow:hidden">';
+      html += '<div style="height:100%;width:' + pct + '%;background:' + d.color + ';border-radius:999px"></div>';
+      html += '</div></div>';
+    });
+    html += '<div style="border-top:0.5px solid var(--beige-dark);padding-top:8px;display:flex;justify-content:space-between">';
+    html += '<span style="font-size:11px;color:var(--text-muted)">Total Navidad</span>';
+    html += '<span style="font-size:11px;font-weight:500;color:var(--text-main)">' + fmtMXN(ingresoNavTotal) + '</span>';
+    html += '</div></div></div>';
+  }
   html += '</div></div>';
 
   // Calcular saldo pendiente del mes actual
