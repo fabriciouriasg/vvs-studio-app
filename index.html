@@ -569,10 +569,10 @@
   place-items:center;font-size:10px;color:var(--beige-deeper);cursor:pointer}
 #nav-ov .nav-ck.nav-ok{background:var(--brown-soft);border-color:var(--brown-soft);
   color:var(--white)}
-#nav-ov .nav-tc .nav-tx{flex:1;min-width:0;cursor:pointer}
-#nav-ov .nav-tc .nav-nm{font-family:'Cormorant Garamond',serif;font-size:13.5px;
+#nav-ov .nav-tc .nav-tx{flex:1;min-width:0;overflow:hidden;cursor:pointer}
+#nav-ov .nav-tc .nav-nm{font-family:'Cormorant Garamond',serif;font-size:13px;
   font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;
-  color:var(--text-main);max-width:100%}
+  color:var(--text-main);display:block;max-width:100%}
 #nav-ov .nav-tc .nav-mt{font-size:9px;color:var(--text-muted);margin-top:1px;display:flex;
   gap:4px;align-items:center;flex-wrap:wrap}
 #nav-ov .nav-fl{font-size:8px;padding:1px 5px;border-radius:999px;letter-spacing:.03em}
@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.32';
+var APP_VERSION = 'v4.33';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -9225,7 +9225,7 @@ function KNV_renderPopup() {
         } else if (a.type==='whatsapp') {
           var txt = KNV_waText(a.wid, p.session);
           body = '<div class="knv-abody">' +
-            '<div class="knv-wa-pre">'+NAV_esc(txt)+'</div>' +
+            '<div class="knv-wa-pre" id="knv-pre-'+a.id+'"></div>' +
             '<div style="display:flex;gap:5px">' +
             '<button class="knv-ibtn wa" onclick="KNV_execWA(\''+a.id+'\',\''+a.wid+'\')">✉ Abrir WhatsApp</button>' +
             '<button class="knv-ibtn" onclick="KNV_markDone(\''+a.id+'\')">Marcar enviado</button></div></div>';
@@ -9255,6 +9255,13 @@ function KNV_renderPopup() {
     '<button class="knv-pbtn primary'+(blockingDone?' ready':'')+'" id="knv-btn-mv" '+(blockingDone?'':'disabled')+' onclick="KNV_confirmMove()">' +
     (blockingDone?'Mover sesión ✓':'Completa las requeridas')+'</button></div></div>';
   document.getElementById('knv-board').appendChild(ov);
+  // Setear previews de WA con textContent para preservar emojis
+  p.actions.forEach(function(a){
+    if(a.type==='whatsapp' && !p.done[a.id]){
+      var pre = document.getElementById('knv-pre-'+a.id);
+      if(pre) pre.textContent = KNV_waText(a.wid, p.session);
+    }
+  });
 }
 
 function KNV_bindFilters() {
