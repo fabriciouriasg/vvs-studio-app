@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.42';
+var APP_VERSION = 'v4.43';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2787,6 +2787,17 @@ function renderResumen(resumen, resEventos) {
   var html = '';
   var porEditar = (resEventos && resEventos.porEditar) || [];
   var porEntregar = (resEventos && resEventos.porEntregar) || [];
+
+  // Alerta eventos por validar
+  var _porValidar = (_finanzasData && _finanzasData.eventos) ? _finanzasData.eventos.filter(function(e) {
+    return (e.estado === 'Cubierto' || e.estado === 'Editado' || e.estado === 'Entregado') && !e.fin_aprobado;
+  }) : [];
+  if (_porValidar.length) {
+    html += '<div onclick="switchTab(4)" style="background:#fdecea;border:0.5px solid #f0999533;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:var(--error);cursor:pointer;display:flex;justify-content:space-between;align-items:center">';
+    html += '<span>⚠ ' + _porValidar.length + ' evento' + (_porValidar.length===1?'':'s') + ' por validar financieramente</span>';
+    html += '<span style="font-size:11px;opacity:.7">Ver en Finanzas →</span>';
+    html += '</div>';
+  }
 
   // Helper de tarjeta de ingresos de un mes
   function tarjetaIngresoMes(r) {
@@ -5751,66 +5762,52 @@ function renderFinanzas() {
   var totalPendienteAnterior = saldosMesesAnteriores.reduce(function(s,e) { return s + (e.total - e.pagado); }, 0);
 
   // Tarjeta saldo pendiente mes actual
-  if (saldosMesActual.length > 0 || true) {
+  // SALDO PENDIENTE CONSOLIDADO (mes actual + anteriores)
+  var totalPendienteTotal = totalPendienteMes + totalPendienteAnterior;
+  var todosSaldos = saldosMesActual.concat(saldosMesesAnteriores).sort(function(a,b){ return a.fecha_evento > b.fecha_evento ? 1 : -1; });
+  if (todosSaldos.length > 0) {
     html += '<div class="fin-pleg" style="margin-bottom:10px">';
     html += '<div style="padding:14px 16px">';
     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
     html += '<div><div style="font-size:13px;font-weight:500;color:var(--text-main)">Saldo pendiente por cobrar</div>';
-    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Eventos del mes con saldo abierto</div></div>';
-    html += '<div style="font-size:20px;font-weight:500;color:#854F0B">' + fmtMXN(totalPendienteMes) + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + todosSaldos.length + ' evento' + (todosSaldos.length > 1 ? 's' : '') + ' con saldo abierto</div></div>';
+    html += '<div style="font-size:20px;font-weight:500;color:#854F0B">' + fmtMXN(totalPendienteTotal) + '</div>';
     html += '</div>';
     if (totalMes > 0) {
       html += '<div style="height:6px;background:var(--beige-dark);border-radius:999px;overflow:hidden;margin:8px 0 4px">';
       html += '<div style="height:100%;width:' + pctCobrado + '%;background:#8b7355;border-radius:999px"></div></div>';
-      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:' + (saldosMesActual.length ? '10px' : '0') + '">';
-      html += '<span>Cobrado ' + fmtMXN(ingresoTotal) + '</span><span>Pendiente ' + fmtMXN(totalPendienteMes) + '</span></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:10px">';
+      html += '<span>Cobrado este mes ' + fmtMXN(ingresoTotal) + '</span><span>Pendiente ' + fmtMXN(totalPendienteTotal) + '</span></div>';
     }
-    if (saldosMesActual.length) {
-      saldosMesActual.forEach(function(e) {
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:0.5px solid var(--beige-dark);font-size:13px">';
-        html += '<span style="color:var(--text-muted)">' + e.cliente + ' · ' + (e.paquete||'').split(' - ')[0] + '</span>';
-        html += '<span style="color:#854F0B;font-weight:500">' + fmtMXN(e.total - e.pagado) + '</span></div>';
-      });
-    } else {
-      html += '<div style="font-size:12px;color:var(--success);padding:6px 0">✓ Sin saldos pendientes este mes</div>';
-    }
+    todosSaldos.forEach(function(e) {
+      var mesEv = NOMBRES_MESES[parseInt((e.fecha_evento||'').split('-')[1]||0) - 1] || '';
+      var esMesActual = (e.fecha_evento||'').startsWith(prefMes);
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:0.5px solid var(--beige-dark);font-size:13px">';
+      html += '<div><div style="color:var(--text-main)">' + e.cliente + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted)">' + (e.paquete||'').split(' - ')[0] + ' · ' + mesEv + (esMesActual ? ' · este mes' : '') + '</div></div>';
+      html += '<span style="color:#854F0B;font-weight:500">' + fmtMXN(e.total - e.pagado) + '</span></div>';
+    });
     html += '</div></div>';
   }
 
-  // SECCIÓN 2: EVENTOS POR VALIDAR
+  // EVENTOS POR VALIDAR — compacto
   if (porValidar.length) {
-    html += '<div class="fin-pendiente">';
-    html += '<span class="fin-pendiente-badge">' + porValidar.length + ' evento' + (porValidar.length > 1 ? 's' : '') + ' por validar</span>';
-    html += '<div style="font-size:12px;color:#712B13;margin-bottom:8px">Revisa y aprueba los gastos para reflejar la ganancia real</div>';
+    html += '<div class="fin-pleg" style="margin-bottom:10px">';
+    html += '<div class="fin-pleg-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">';
+    html += '<span style="font-size:13px;font-weight:500;color:#712B13">⚠ ' + porValidar.length + ' evento' + (porValidar.length > 1 ? 's' : '') + ' por validar</span>';
+    html += '<span style="font-size:11px;color:var(--text-muted)">toca para ver ▼</span>';
+    html += '</div>';
+    html += '<div style="display:none;border-top:0.5px solid var(--beige-dark);padding:10px 16px">';
+    html += '<div style="font-size:12px;color:#712B13;margin-bottom:8px">Aprueba los gastos para reflejar la ganancia real</div>';
     porValidar.forEach(function(ev) {
       var fechaCorta = fmtFecha(ev.fecha_evento).replace(/\s*\d{4}/,'');
       html += '<div class="fin-ev-row">';
       html += '<div style="font-size:13px;font-weight:500;color:#1a1410">' + ev.cliente + '</div>';
-      html += '<div style="font-size:11px;color:#712B13;margin-top:2px">' + ev.paquete.split(' - ')[0] + ' · ' + fechaCorta + ' · Ingreso ' + fmtMXN(ev.pagado) + '</div>';
+      html += '<div style="font-size:11px;color:#712B13;margin-top:2px">' + ev.paquete.split(' - ')[0] + ' · ' + fechaCorta + ' · ' + fmtMXN(ev.pagado) + '</div>';
       html += '<div class="fin-ev-btns">';
       html += '<button class="fin-btn-edit" data-evid="' + ev.id_evento + '" onclick="abrirDetalleEvento(this.dataset.evid)">Actualizar</button>';
       html += '<button class="fin-btn-aprobar" data-evid="' + ev.id_evento + '" onclick="aprobarEvento(this.dataset.evid)">Aprobar</button>';
       html += '</div></div>';
-    });
-    html += '</div>';
-  }
-
-  // SALDO PENDIENTE MESES ANTERIORES
-  if (saldosMesesAnteriores.length > 0) {
-    html += '<div class="fin-pleg" style="margin-bottom:10px">';
-    html += '<div style="padding:14px 16px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
-    html += '<div><div style="font-size:13px;font-weight:500;color:var(--error)">Saldo pendiente de meses anteriores</div>';
-    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + saldosMesesAnteriores.length + ' evento' + (saldosMesesAnteriores.length > 1 ? 's' : '') + ' con saldo abierto</div></div>';
-    html += '<div style="font-size:20px;font-weight:500;color:var(--error)">' + fmtMXN(totalPendienteAnterior) + '</div>';
-    html += '</div>';
-    saldosMesesAnteriores.sort(function(a,b) { return a.fecha_evento > b.fecha_evento ? 1 : -1; });
-    saldosMesesAnteriores.forEach(function(e) {
-      var mesEv = NOMBRES_MESES[parseInt((e.fecha_evento||'').split('-')[1]||0) - 1] || '';
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:0.5px solid var(--beige-dark);font-size:13px">';
-      html += '<div><div style="color:var(--text-main)">' + e.cliente + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted)">' + (e.paquete||'').split(' - ')[0] + ' · ' + mesEv + '</div></div>';
-      html += '<span style="color:var(--error);font-weight:500">' + fmtMXN(e.total - e.pagado) + '</span></div>';
     });
     html += '</div></div>';
   }
