@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.50';
+var APP_VERSION = 'v4.51';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6712,7 +6712,7 @@ function NAV_init() {
     document.getElementById('nav-btn-nombre').textContent = NAV_D.camp.nombre;
     document.getElementById('nav-ttl').textContent = NAV_D.camp.nombre;
     // Mostrar botón Kanban en header Navidad (desktop)
-    if (window.innerWidth > 900) {
+    if (window.innerWidth > 768) {
       var knvBtn = document.getElementById('knv-toggle-btn');
       if (knvBtn) knvBtn.style.display = 'inline-block';
     }
@@ -9529,8 +9529,8 @@ function KNV_toggleEmpty() {
   }
   function KNV_checkDesktop() {
     var btn = document.getElementById('knv-toggle-btn');
-    if (btn && NAV_D && NAV_D.camp && window.innerWidth > 900) btn.style.display = 'inline-block';
-    else if (btn && window.innerWidth <= 900) btn.style.display = 'none';
+    if (btn && NAV_D && NAV_D.camp && window.innerWidth > 768) btn.style.display = 'inline-block';
+    else if (btn && window.innerWidth <= 768) btn.style.display = 'none';
   }
   window.addEventListener('resize', KNV_checkDesktop);
   document.addEventListener('DOMContentLoaded', KNV_checkDesktop);
