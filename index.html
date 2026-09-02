@@ -437,14 +437,14 @@
   background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);padding:12px 16px;
   position:sticky;top:0;z-index:5}
 #nav-ov .nav-lh-in,#nav-ses .nav-lh-in,#nav-wa .nav-lh-in,#nav-rec .nav-lh-in,#nav-edit .nav-lh-in{
-  max-width:480px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  max-width:480px;margin:0 auto;display:flex;align-items:flex-start;gap:12px}
 #nav-ov .nav-bk,#nav-ses .nav-bk,#nav-wa .nav-bk,#nav-rec .nav-bk,#nav-edit .nav-bk{
   background:none;border:none;font-family:'Jost',sans-serif;font-size:11px;font-weight:500;
   letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);cursor:pointer;
-  flex:none;padding:6px 0}
+  flex:none;padding:6px 0;align-self:flex-start}
 #nav-ov .nav-ttl,#nav-ses .nav-ttl,#nav-wa .nav-ttl,#nav-rec .nav-ttl,#nav-edit .nav-ttl{
   font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:500;flex:1;
-  text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-align:center;white-space:normal;overflow:visible;text-overflow:unset;word-break:break-word;
   color:var(--text-main)}
 #nav-ov .nav-st,#nav-ses .nav-st,#nav-wa .nav-st,#nav-rec .nav-st,#nav-edit .nav-st{
   font-size:9px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.58';
+var APP_VERSION = 'v4.59';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
