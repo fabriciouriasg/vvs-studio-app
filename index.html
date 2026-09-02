@@ -9017,8 +9017,8 @@ function NAV_msg(folio, tipo) {
 .knv-col-body.knv-drag-over{background:rgba(24,95,165,.07)}
 .knv-col-help{position:relative;width:14px;height:14px;border-radius:50%;background:var(--beige-dark);color:var(--text-muted);font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:default;flex-shrink:0;line-height:1}
 .knv-col-help:hover .knv-col-tip{display:block}
-.knv-col-tip{display:none;position:absolute;top:18px;left:50%;transform:translateX(-50%);background:#333;color:#fff;font-size:10px;font-weight:400;white-space:nowrap;padding:4px 8px;border-radius:5px;z-index:10010;pointer-events:none;line-height:1.4}
-.knv-col-tip::before{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:4px solid transparent;border-bottom-color:#333}
+.knv-col-tip{display:none;position:fixed;background:#333;color:#fff;font-size:10px;font-weight:400;white-space:normal;width:160px;padding:5px 8px;border-radius:5px;z-index:20000;pointer-events:none;line-height:1.5}
+.knv-col-tip::before{content:'';position:absolute;bottom:100%;left:10px;border:4px solid transparent;border-bottom-color:#333}
 .knv-card{background:var(--white);border:1px solid var(--beige-dark);border-radius:8px;padding:9px 11px;cursor:grab;user-select:none}
 .knv-card:hover{border-color:var(--brown-soft)}
 .knv-card.knv-dragging{opacity:.3;cursor:grabbing}
@@ -9152,6 +9152,19 @@ var KNV_state = {
   completed: []
 };
 
+function KNV_showTip(el, txt) {
+  var tip = document.getElementById('knv-global-tip');
+  if (!tip) { tip = document.createElement('div'); tip.id = 'knv-global-tip'; tip.className = 'knv-col-tip'; document.body.appendChild(tip); }
+  tip.textContent = txt;
+  tip.style.display = 'block';
+  var r = el.getBoundingClientRect();
+  tip.style.top = (r.bottom + 6) + 'px';
+  tip.style.left = Math.min(r.left, window.innerWidth - 170) + 'px';
+}
+function KNV_hideTip() {
+  var tip = document.getElementById('knv-global-tip');
+  if (tip) tip.style.display = 'none';
+}
 function KNV_toggle() {
   KNV_state.visible = !KNV_state.visible;
   var root = document.getElementById('knv-root');
@@ -9363,7 +9376,7 @@ function KNV_renderBoard() {
       '<div class="knv-col-dot" style="background:'+col.color+'"></div>' +
       '<span class="knv-col-name">'+col.name+'</span>' +
       '<span class="knv-col-count">'+allInCol.length+'</span>' +
-      (KNV_TIPS[col.id] ? '<span class="knv-col-help">?<span class="knv-col-tip">'+KNV_TIPS[col.id]+'</span></span>' : '') +
+      (KNV_TIPS[col.id] ? '<span class="knv-col-help" onmouseenter="KNV_showTip(this,\''+KNV_TIPS[col.id]+'\')" onmouseleave="KNV_hideTip()">?</span>' : '') +
       '</div></div>' +
       '<div class="knv-col-body" id="knv-body-'+col.id+'">' +
       (visInCol.length===0 && !isEmpty ? '<div class="knv-empty">'+hiddenByFilter+' oculta'+(hiddenByFilter>1?'s':'')+' por filtro</div>' :
