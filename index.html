@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.59';
+var APP_VERSION = 'v4.60';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8217,7 +8217,7 @@ function NAV_editarFecha(horaPreselect) {
   }
   var libres = horas.filter(function(h){ return tomadas.indexOf(h) < 0 && blq.indexOf(h) < 0; });
   selH.innerHTML = libres.map(function(h){
-    return '<option value="'+h+'"'+(h===horaPreselect?' selected':'')+'>'+h+'</option>';
+    return '<option value="'+h+'"'+(h===horaPreselect?' selected':'')+'>'+a12h(h)+'</option>';
   }).join('');
   if (!libres.length) aviso.innerHTML += '<div class="nav-note">Sin horas libres en este día.</div>';
   NAV_editarPrecio();
@@ -8611,7 +8611,7 @@ function NAV_altaFecha(horaPre) {
     aviso.innerHTML += '<div class="nav-note">◷ No hay horas disponibles este día.</div>';
   } else {
     selH.innerHTML = libres.map(function(h){
-      return '<option value="'+h+'"'+(h===horaPre?' selected':'')+'>'+h+'</option>';
+      return '<option value="'+h+'"'+(h===horaPre?' selected':'')+'>'+a12h(h)+'</option>';
     }).join('');
   }
   if (blq.length) {
