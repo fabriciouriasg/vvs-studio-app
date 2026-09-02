@@ -617,14 +617,14 @@
   border:1.5px solid transparent;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:2px;font-family:'Cormorant Garamond',serif;font-size:15px;
   font-weight:500;color:var(--beige-deeper);position:relative}
-#nav-ov .nav-d.nav-hay{background:var(--white);border-color:var(--beige-dark);
+#nav-ov .nav-d.nav-hay{background:transparent;border-color:#639922;border-width:2px;
   color:var(--black-soft);cursor:pointer}
-#nav-ov .nav-d .nav-oc{font-family:'Jost',sans-serif;font-size:8.5px;font-weight:500;
-  color:var(--brown-soft)}
-#nav-ov .nav-d.nav-mid{background:#f5eeda;border-color:#e0d0a8}
-#nav-ov .nav-d.nav-mid .nav-oc{color:var(--warning)}
-#nav-ov .nav-d.nav-full{background:#f5e4e4;border-color:#dfc0c0}
-#nav-ov .nav-d.nav-full .nav-oc{color:var(--error)}
+#nav-ov .nav-d .nav-oc{font-family:'Jost',sans-serif;font-size:8.5px;font-weight:600;
+  color:#3B6D11}
+#nav-ov .nav-d.nav-mid{background:transparent;border-color:#EF9F27;border-width:2px}
+#nav-ov .nav-d.nav-mid .nav-oc{color:#854F0B}
+#nav-ov .nav-d.nav-full{background:transparent;border-color:#D85A30;border-width:2px}
+#nav-ov .nav-d.nav-full .nav-oc{color:#993C1D}
 #nav-ov .nav-d.nav-blk{background:repeating-linear-gradient(135deg,#eae3d8,#eae3d8 4px,
   #ded5c6 4px,#ded5c6 8px);border-color:var(--beige-dark);color:var(--text-muted)}
 #nav-ov .nav-d.nav-exc::after{content:"";position:absolute;top:4px;right:4px;width:5px;
@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.61';
+var APP_VERSION = 'v4.62';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6250,9 +6250,9 @@ function saveSettings() {
         </div>
         <div class="nav-grid" id="nav-mes-grid"></div>
         <div class="nav-leg">
-          <span><i style="background:var(--white);border:1px solid var(--beige-dark)"></i>Disponible</span>
-          <span><i style="background:#f5eeda;border:1px solid #e0d0a8"></i>Casi lleno</span>
-          <span><i style="background:#f5e4e4;border:1px solid #dfc0c0"></i>Lleno</span>
+          <span><i style="background:transparent;border:2px solid #639922"></i>Disponible</span>
+          <span><i style="background:transparent;border:2px solid #EF9F27"></i>Casi lleno</span>
+          <span><i style="background:transparent;border:2px solid #D85A30"></i>Lleno</span>
           <span><i style="background:#ded5c6"></i>Bloqueado</span>
           <span><i style="background:#9a8bb5"></i>Excepción</span>
         </div>
