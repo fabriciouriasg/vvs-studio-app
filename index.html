@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.53';
+var APP_VERSION = 'v4.54';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6443,7 +6443,7 @@ function saveSettings() {
       <div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Monto</div>
       <div style="display:flex;align-items:center;background:var(--beige-light);border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:11px 14px;gap:4px">
         <span style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--text-muted)">$</span>
-        <input id="nav-pago-monto" type="number" inputmode="decimal" placeholder="0" step="1" min="0" oninput="if(_navPagoForma) NAV_pagoSelForma(_navPagoForma)"
+        <input id="nav-pago-monto" type="number" inputmode="decimal" placeholder="0" step="1" min="0" oninput="NAV_pagoMontoChange()"
           style="border:none;background:transparent;font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--black);outline:none;width:100%;font-variant-numeric:tabular-nums">
       </div>
     </div>
@@ -6464,6 +6464,10 @@ function saveSettings() {
     </div>
     <div id="nav-pago-comision-aviso" style="display:none;background:#fff8e1;border:1px solid #f0c040;border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:#5c4a00;margin-bottom:14px">
       ⚠️ <strong>Incluye comisión.</strong> Se registrará un gasto de <span id="nav-pago-comision-val"></span> por procesamiento de tarjeta.
+    </div>
+    <div id="nav-pago-compromiso-row" style="display:none;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Fecha compromiso de pago</div>
+      <input id="nav-pago-compromiso" type="date" style="width:100%;border:1.5px solid var(--beige-dark);border-radius:var(--radius-sm);padding:11px 14px;font-family:'Jost',sans-serif;font-size:14px;background:var(--beige-light);color:var(--black);box-sizing:border-box">
     </div>
     <div id="nav-pago-error" style="color:var(--error);font-size:12px;margin-bottom:8px;min-height:16px"></div>
     <button id="nav-pago-btn" onclick="NAV_pagoConfirmar()"
@@ -7692,6 +7696,10 @@ function NAV_cobrar() {
   document.getElementById('nav-pago-monto').value = sug || '';
   document.getElementById('nav-pago-error').textContent = '';
   document.getElementById('nav-pago-comision-aviso').style.display = 'none';
+  var compromisoRow = document.getElementById('nav-pago-compromiso-row');
+  var compromisoInput = document.getElementById('nav-pago-compromiso');
+  if (compromisoInput) compromisoInput.value = s.pago_comprometido || '';
+  if (compromisoRow) compromisoRow.style.display = (!sug || sug === 0) ? 'block' : 'none';
   /* reset botones */
   ['efectivo','transferencia','tarjeta'].forEach(function(k){
     var btn = document.getElementById('nav-pf-' + k);
@@ -7729,23 +7737,36 @@ function NAV_pagoSelForma(forma) {
   }
 }
 
+function NAV_pagoMontoChange() {
+  var monto = parseFloat(document.getElementById('nav-pago-monto').value) || 0;
+  var compromisoRow = document.getElementById('nav-pago-compromiso-row');
+  var formaLabel = document.querySelector('[for="nav-pago-forma"], .nav-pago-forma-label');
+  // Mostrar fecha compromiso solo si monto es 0
+  if (compromisoRow) compromisoRow.style.display = monto === 0 ? 'block' : 'none';
+  // Recalcular comisión si había forma seleccionada
+  if (_navPagoForma && monto > 0) NAV_pagoSelForma(_navPagoForma);
+}
+
 function NAV_pagoCerrar() {
   document.getElementById('nav-pago-overlay').style.display = 'none';
 }
 
 function NAV_pagoConfirmar() {
-  var monto = parseFloat(document.getElementById('nav-pago-monto').value) || 0;
   var err = document.getElementById('nav-pago-error');
-  if (monto <= 0) { err.textContent = 'Ingresa un monto válido'; return; }
-  if (!_navPagoForma) { err.textContent = 'Selecciona la forma de pago'; return; }
+  var monto = parseFloat(document.getElementById('nav-pago-monto').value);
+  if (isNaN(monto) || monto < 0) { err.textContent = 'Ingresa un monto válido'; return; }
+  var sinMonto = monto === 0;
+  if (!sinMonto && !_navPagoForma) { err.textContent = 'Selecciona la forma de pago'; return; }
+  var compromisoInput = document.getElementById('nav-pago-compromiso');
+  var compromiso = sinMonto ? (compromisoInput ? compromisoInput.value : '') : '';
   err.textContent = '';
   var btn = document.getElementById('nav-pago-btn');
   btn.disabled = true; btn.textContent = 'Registrando…';
   var s = NAV_sesionActual;
   var accion = _navPagoModo === 'editar' ? 'NAV_editarPago' : 'NAV_registrarPago';
   var payload = _navPagoModo === 'editar'
-    ? { folio:s.folio, tipo:_navPagoTipo, monto_nuevo:monto, forma_nueva:_navPagoForma }
-    : { folio:s.folio, tipo:_navPagoTipo, monto:monto, forma:_navPagoForma, fecha_pago:NAV_hoyISO() };
+    ? { folio:s.folio, tipo:_navPagoTipo, monto_nuevo:monto, forma_nueva:_navPagoForma, pago_comprometido:compromiso }
+    : { folio:s.folio, tipo:_navPagoTipo, monto:monto, forma:sinMonto?'':_navPagoForma, fecha_pago:NAV_hoyISO(), pago_comprometido:compromiso };
   NAV_post(accion, payload).then(function(r){
     btn.disabled = false; btn.textContent = 'Registrar pago';
     if (r && r.ok) {
@@ -7774,6 +7795,11 @@ function NAV_editarPago(tipo) {
   document.getElementById('nav-pago-monto').value = montoActual || '';
   document.getElementById('nav-pago-error').textContent = '';
   document.getElementById('nav-pago-comision-aviso').style.display = 'none';
+  // Compromiso
+  var compromisoRow = document.getElementById('nav-pago-compromiso-row');
+  var compromisoInput = document.getElementById('nav-pago-compromiso');
+  if (compromisoInput) compromisoInput.value = s.pago_comprometido || '';
+  if (compromisoRow) compromisoRow.style.display = montoActual === 0 ? 'block' : 'none';
   /* reset botones */
   ['efectivo','transferencia','tarjeta'].forEach(function(k){
     var btn = document.getElementById('nav-pf-' + k);
