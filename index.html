@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.40';
+var APP_VERSION = 'v4.41';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -5999,26 +5999,26 @@ function renderFinanzas() {
         html += '</div></div>';
         html += '<div style="height:4px;background:var(--beige-dark);border-radius:999px;overflow:hidden">';
         html += '<div style="height:100%;width:' + pct + '%;background:#8b7355;border-radius:999px"></div>';
+        html += '</div></div>';
+      });
       // Navidad en historial
       var mhNavTotal = (mhi.dNavAnt||0) + (mhi.dNavSes||0);
       if (mhNavTotal > 0 && localStorage.getItem('fin_nav_toggle') !== 'off') {
         html += '<div style="border-top:0.5px solid var(--beige-dark);margin:8px 0"></div>';
         html += '<div style="background:var(--beige-light);border-radius:8px;padding:8px 10px">';
         html += '<div style="font-size:10px;font-weight:500;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Navidad</div>';
-        [{lbl:'Anticipos Navidad',val:mhi.dNavAnt||0,color:'#5f9ea0'},{lbl:'Sesiones Navidad',val:mhi.dNavSes||0,color:'#2d5a27'}].forEach(function(d){
-          if(!d.val)return;
-          var pct=mhi.ingreso>0?Math.round((d.val/mhi.ingreso)*100):0;
+        [{lbl:'Anticipos Navidad',val:mhi.dNavAnt||0,color:'#5f9ea0'},{lbl:'Sesiones Navidad',val:mhi.dNavSes||0,color:'#2d5a27'}].forEach(function(nd){
+          if(!nd.val)return;
+          var npct=mhi.ingreso>0?Math.round((nd.val/mhi.ingreso)*100):0;
           html+='<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">';
-          html+='<span style="font-size:11px;color:var(--text-main)">'+d.lbl+'</span>';
-          html+='<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:10px;color:var(--text-muted)">'+pct+'%</span>';
-          html+='<span style="font-size:11px;font-weight:500;min-width:50px;text-align:right">'+fmtMXN(d.val)+'</span></div></div>';
+          html+='<span style="font-size:11px;color:var(--text-main)">'+nd.lbl+'</span>';
+          html+='<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:10px;color:var(--text-muted)">'+npct+'%</span>';
+          html+='<span style="font-size:11px;font-weight:500;min-width:50px;text-align:right">'+fmtMXN(nd.val)+'</span></div></div>';
           html+='<div style="height:4px;background:var(--beige-dark);border-radius:999px;overflow:hidden">';
-          html+='<div style="height:100%;width:'+pct+'%;background:'+d.color+';border-radius:999px"></div></div></div>';
+          html+='<div style="height:100%;width:'+npct+'%;background:'+nd.color+';border-radius:999px"></div></div></div>';
         });
         html += '</div>';
       }
-        html += '</div></div>';
-      });
       html += '</div></div>';
       html += '</div>';
     }
