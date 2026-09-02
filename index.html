@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.43';
+var APP_VERSION = 'v4.44';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7475,72 +7475,6 @@ function NAV_buscar() {
  
 /* ---------------- ajustes ---------------- */
  
-function NAV_ajustes() {
-  var c = NAV_D.camp;
-  if (!c) return;
-  var precios = '';
-  NAV_D.paquetes.forEach(function(p){
-    var filas = '';
-    NAV_D.precios.filter(function(x){
-      return x.tipo==='paquete' && x.referencia===p.id_paquete;
-    }).sort(function(a,b){ return NAV_n(a.mes)-NAV_n(b.mes); }).forEach(function(x){
-      var normal = NAV_n(x.precio), pre = normal - NAV_n(c.preventa_descuento);
-      filas += '<div class="nav-row"><span class="nav-lb">'+NAV_MESES[NAV_n(x.mes)-1]+'</span>' +
-        '<span class="nav-vl"><span class="nav-g">'+NAV_money(pre)+'</span> · '+NAV_money(normal)+'</span></div>';
-    });
-    precios += '<div class="nav-lab">'+NAV_esc(p.nombre)+'</div><div class="nav-card">' +
-      '<div class="nav-row"><span class="nav-lb">Duración</span><span class="nav-vl">'+NAV_n(p.duracion_min)+' min</span></div>' +
-      '<div class="nav-row"><span class="nav-lb">Fotos</span><span class="nav-vl">'+NAV_n(p.fotos)+'</span></div>' +
-      '<div class="nav-row"><span class="nav-lb">Personas</span><span class="nav-vl">'+NAV_esc(p.personas_desc)+'</span></div>' +
-      (String(p.sorteo_album)==='SI' ? '<div class="nav-row"><span class="nav-lb">Sorteo de álbum</span><span class="nav-vl nav-g">Incluido</span></div>' : '') +
-      '<div class="nav-sep"></div>' + filas +
-      '<p class="nav-hint">Preventa en verde · precio normal a la derecha.</p></div>';
-  });
- 
-  var extras = '';
-  NAV_D.precios.filter(function(x){ return x.tipo==='extra'; }).forEach(function(x){
-    extras += '<div class="nav-row"><span class="nav-lb">'+NAV_esc(x.referencia)+
-      '</span><span class="nav-vl">'+NAV_money(x.precio)+'</span></div>';
-  });
- 
-  document.getElementById('nav-ajustes').innerHTML =
-    '<div class="nav-lab">Temporada</div><div class="nav-card">' +
-    '<div class="nav-row"><span class="nav-lb">Nombre</span><span class="nav-vl">'+NAV_esc(c.nombre)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Estado</span><span class="nav-vl">'+NAV_esc(c.estado)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Sesiones</span><span class="nav-vl">'+NAV_fechaCorta(c.fecha_inicio)+' al '+NAV_fechaCorta(c.fecha_fin)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Entrega máxima</span><span class="nav-vl">'+NAV_fechaCorta(c.fecha_entrega_max)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Meta</span><span class="nav-vl">'+NAV_n(c.meta_sesiones)+' sesiones</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Lugares por día</span><span class="nav-vl">'+NAV_n(c.cupo_dia)+'</span></div>' +
-    '</div>' +
- 
-    '<div class="nav-lab">Horario</div><div class="nav-card">' +
-    '<div class="nav-row"><span class="nav-lb">Mañana</span><span class="nav-vl">'+NAV_esc(c.hora_am_inicio)+' – '+NAV_esc(c.hora_am_fin)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Tarde</span><span class="nav-vl">'+NAV_esc(c.hora_pm_inicio)+' – '+NAV_esc(c.hora_pm_fin)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Duración del lugar</span><span class="nav-vl">'+NAV_n(c.slot_min)+' min</span></div></div>' +
- 
-    '<div class="nav-lab">Preventa</div><div class="nav-card">' +
-    '<div class="nav-row"><span class="nav-lb">Ventana</span><span class="nav-vl">'+NAV_esc(c.preventa_inicio)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Descuento</span><span class="nav-vl">'+NAV_money(c.preventa_descuento)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Anticipo</span><span class="nav-vl">'+NAV_money(c.anticipo_monto)+'</span></div></div>' +
- 
-    precios +
- 
-    '<div class="nav-lab">Extras</div><div class="nav-card">' + extras +
-    '<div class="nav-row"><span class="nav-lb">Persona adicional</span><span class="nav-vl">'+NAV_money(c.costo_persona_extra)+'</span></div></div>' +
- 
-    '<div class="nav-lab">Cobros con tarjeta</div><div class="nav-card">' +
-    '<div class="nav-row"><span class="nav-lb">Comisión</span><span class="nav-vl">'+NAV_n(c.mp_pct)+'% + '+NAV_money(c.mp_fija)+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">IVA sobre comisión</span><span class="nav-vl">'+NAV_n(c.mp_iva)+'%</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Cobro de $1,000</span><span class="nav-vl nav-w">'+NAV_money(NAV_comision(1000))+'</span></div>' +
-    '<p class="nav-hint">La comisión se absorbe y se registra sola como gasto.</p></div>' +
- 
-    '<div class="nav-lab">Enlaces</div><div class="nav-card">' +
-    '<div class="nav-row"><span class="nav-lb">PDF Venta</span><span class="nav-vl">'+(c.brochure_url?'configurado':'pendiente')+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Brochure</span><span class="nav-vl">'+(c.brochure2_url?'configurado':'pendiente')+'</span></div>' +
-    '<div class="nav-row"><span class="nav-lb">Encuesta</span><span class="nav-vl">'+(c.encuesta_url?'configurada':'pendiente')+'</span></div>' +
-    '<p class="nav-hint">Se editan directo en la hoja Campanias del Sheet.</p></div>';
-}
- 
 function NAV_comision(monto) {
   var c = NAV_D.camp;
   if (!c) return 0;
@@ -7841,75 +7775,6 @@ function NAV_cancelar() {
  
 /* ---------------- mensajes ---------------- */
  
-function NAV_msg(folio, tipo) {
-  var s = NAV_buscarSesion(folio);
-  if (!s) return;
-  var c = NAV_D.camp;
-  var nombre = String(s.cliente).split(' ')[0];
-  if (String(s.cliente).toLowerCase().indexOf('familia') === 0) nombre = s.cliente;
-  var paq = NAV_paqNombre(s.id_paquete);
-  var pobj = null;
-  NAV_D.paquetes.forEach(function(p){ if (p.id_paquete===s.id_paquete) pobj=p; });
-  var fotos = pobj ? NAV_n(pobj.fotos) : 0;
-  var regalo = 0;
-  (s.extras||[]).forEach(function(e){ if (String(e.es_regalo)==='SI') regalo += NAV_n(e.cantidad); });
-  var saldo = NAV_saldo(s);
-  var T = {
-    apartado: ['Al apartar',
-      '¡Hola '+nombre+'! 🎄 Tu sesión navideña quedó apartada.\n\n' +
-      '📅 '+NAV_fechaLarga(s.fecha_sesion)+', '+(extraerHora(s.hora)||s.hora)+'\n' +
-      '📸 '+paq+' · '+fotos+' fotos\n' +
-      '👥 '+NAV_n(s.personas)+' personas\n\n' +
-      'Anticipo recibido: '+NAV_money(s.anticipo)+'\n' +
-      'Saldo: '+NAV_money(saldo)+' — se liquida el día de la sesión o antes.\n\n' +
-      '¡Nos vemos pronto!'],
-    brochure: ['Brochure e instrucciones',
-      'Hola '+nombre+' 🎄 Falta poco para tu sesión del '+NAV_fechaLarga(s.fecha_sesion)+
-      ' a las '+(extraerHora(s.hora)||s.hora)+'.\n\n' +
-      'Aquí está toda la información del set y sugerencias de vestuario:\n' +
-      (c.brochure_url || '[falta configurar la liga del brochure]') + '\n\n' +
-      'Un par de recordatorios:\n• Llega 10 minutos antes\n' +
-      '• Hay 10 min de tolerancia; el tiempo de retraso se descuenta de la sesión\n\n' +
-      'Cualquier duda, aquí estoy 💛'],
-    confirma: ['Confirmación',
-      'Hola '+nombre+' 🎄 Te recordamos tu sesión mañana '+NAV_fechaLarga(s.fecha_sesion)+
-      ' a las '+(extraerHora(s.hora)||s.hora)+', para '+NAV_n(s.personas)+' personas.\n\n' +
-      '¿Nos confirmas tu asistencia por favor? Es necesario confirmar para conservar tu lugar.\n\n' +
-      'Recuerda que si no puedes asistir el anticipo no es reembolsable, ' +
-      'así que avísanos con tiempo si necesitas cambiar algo.'],
-    presel: ['Preselección',
-      'Hola '+nombre+' 🎄 ¡Ya está lista tu galería para preselección!\n\n' +
-      (s.galeria_url || '[falta la liga de la galería]') + '\n\n' +
-      'Escoge tus '+fotos+' fotos favoritas y mándamelas por aquí. ' +
-      'En cuanto las reciba empiezo la edición.' +
-      (regalo ? '\n\nTienes '+regalo+' fotos de regalo por tus temporadas anteriores 💛 ' +
-        'así que puedes elegir '+(fotos+regalo)+' en total.' : '')],
-    entrega: ['Entrega de galería',
-      '¡Hola '+nombre+'! 🎄 Tus fotos están listas.\n\n' +
-      (s.galeria_url || '[falta la liga de la galería]') + '\n\n' +
-      'Son '+(fotos+regalo)+' fotos editadas en alta resolución, listas para descargar.\n\n' +
-      'Fue un gusto tenerlos en el estudio esta Navidad 💛 ¡Felices fiestas!'],
-    encuesta: ['Encuesta',
-      'Hola '+nombre+' 🎄 Espero que te hayan encantado tus fotos.\n\n' +
-      '¿Nos regalas 2 minutos para contarnos cómo te fue?\n' +
-      (c.encuesta_url ? c.encuesta_url + '?folio=' + s.folio : '[falta configurar la encuesta]') +
-      '\n\n¡Gracias! 💛']
-  };
-  var t = T[tipo] || T.apartado;
-  NAV_waTel = s.telefono;
-  NAV_waTexto = t[1];
-  document.getElementById('nav-wa-ttl').textContent = t[0];
-  document.getElementById('nav-wa-av').textContent = String(s.cliente).charAt(0);
-  document.getElementById('nav-wa-who').innerHTML = NAV_esc(s.cliente) +
-    '<small>' + NAV_esc(s.telefono) + '</small>';
-  var bub = document.getElementById('nav-wa-bub');
-  var textoEscapado = t[1]
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>')
-    .replace(/(https?:\/\/[^\s<]+)/g,'<span class="nav-lk">$1</span>');
-  bub.innerHTML = textoEscapado + '<span class="nav-mt">Listo para enviar</span>';
-  NAV_abrirCapa('nav-wa');
-}
  
 function NAV_enviarWA() {
   if (typeof waLink === 'function') {
