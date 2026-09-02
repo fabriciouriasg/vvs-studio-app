@@ -570,9 +570,9 @@
 #nav-ov .nav-ck.nav-ok{background:var(--brown-soft);border-color:var(--brown-soft);
   color:var(--white)}
 #nav-ov .nav-tc .nav-tx{flex:1;min-width:0;cursor:pointer}
-#nav-ov .nav-tc .nav-nm{font-family:'Cormorant Garamond',serif;font-size:14.5px;
+#nav-ov .nav-tc .nav-nm{font-family:'Cormorant Garamond',serif;font-size:13.5px;
   font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;
-  color:var(--text-main)}
+  color:var(--text-main);max-width:100%}
 #nav-ov .nav-tc .nav-mt{font-size:9px;color:var(--text-muted);margin-top:1px;display:flex;
   gap:4px;align-items:center;flex-wrap:wrap}
 #nav-ov .nav-fl{font-size:8px;padding:1px 5px;border-radius:999px;letter-spacing:.03em}
@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.31';
+var APP_VERSION = 'v4.32';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -9067,16 +9067,29 @@ function KNV_getActions(from, to) {
 
 function KNV_waText(wid, s) {
   var c = NAV_D.camp || {};
-  var nombre = NAV_esc(s.cliente||'');
-  var fecha = NAV_fechaCorta(s.fecha_sesion||'');
-  var brochure = c.brochure2_url || c.brochure_url || '[link brochure]';
-  var galeria = s.galeria_url || '[link galería]';
-  var encuesta = c.encuesta_url || '[link encuesta]';
+  var s_full = NAV_buscarSesion(s.folio) || s;
+  var nombre = String(s_full.cliente||'').split(' ')[0];
+  if (String(s_full.cliente||'').toLowerCase().indexOf('familia') === 0) nombre = s_full.cliente;
+  var pobj = null;
+  (NAV_D.paquetes||[]).forEach(function(p){ if (p.id_paquete===s_full.id_paquete) pobj=p; });
+  var fotos = pobj ? NAV_n(pobj.fotos) : 0;
+  var hora = extraerHora(s_full.hora) || s_full.hora || '';
+  var fecha = NAV_fechaLarga(s_full.fecha_sesion||'');
+  var brochure = c.brochure_url || '[falta configurar la liga del brochure]';
+  var galeria = s_full.galeria_url || '[link galería]';
+  var encuesta = c.encuesta_url ? c.encuesta_url + '?folio=' + s_full.folio : '[link encuesta]';
   var msgs = {
-    brochure: (c.msg_brochure||'Hola {nombre} 🎄\n{brochure}').replace('{nombre}',nombre).replace('{brochure}',brochure).replace('{fecha}',fecha),
-    presel: (c.msg_presel||'Hola {nombre} 🎄 ¡Ya está lista tu galería!\n{galeria}').replace('{nombre}',nombre).replace('{galeria}',galeria),
-    galeria: (c.msg_entrega||'¡Hola {nombre}! 🎄 Tus fotos están listas.\n{galeria}').replace('{nombre}',nombre).replace('{galeria}',galeria),
-    encuesta: (c.msg_encuesta||'Hola {nombre} 🎄\n{encuesta}').replace('{nombre}',nombre).replace('{encuesta}',encuesta),
+    brochure: 'Hola '+nombre+' 🎄 Falta poco para tu sesión del '+fecha+' a las '+hora+'.\n\n' +
+      'Aquí está toda la información del set y sugerencias de vestuario:\n'+brochure+'\n\n' +
+      'Un par de recordatorios:\n• Llega 10 minutos antes\n' +
+      '• Hay 10 min de tolerancia; el tiempo de retraso se descuenta de la sesión\n\n' +
+      'Cualquier duda, aquí estoy 💛',
+    presel: 'Hola '+nombre+' 🎄 ¡Ya está lista tu galería para preselección!\n\n'+galeria+'\n\n' +
+      'Escoge tus '+fotos+' fotos favoritas y mándamelas por aquí. En cuanto las reciba empiezo la edición.',
+    galeria: '¡Hola '+nombre+'! 🎄 Tus fotos están listas.\n\n'+galeria+'\n\n' +
+      'Fue un gusto tenerlos en el estudio esta Navidad 💛 ¡Felices fiestas!',
+    encuesta: 'Hola '+nombre+' 🎄 Espero que te hayan encantado tus fotos.\n\n' +
+      '¿Nos regalas 2 minutos para contarnos cómo te fue?\n'+encuesta+'\n\n¡Gracias! 💛',
   };
   return msgs[wid] || '';
 }
