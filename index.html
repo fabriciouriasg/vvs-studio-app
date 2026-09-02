@@ -1872,7 +1872,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.56';
+var APP_VERSION = 'v4.58';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6481,6 +6481,21 @@ function saveSettings() {
   </div>
 </div>
 
+<!-- ============ REMINDER · PAGOS COMPROMETIDOS ============ -->
+<div id="nav-reminder-overlay" style="display:none;position:fixed;inset:0;background:rgba(26,20,16,.55);z-index:10700;align-items:flex-end;justify-content:center" onclick="NAV_reminderCerrar(event)">
+  <div style="background:var(--white);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:24px 20px 40px" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span style="font-size:20px">⏰</span>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--black)">Pagos comprometidos</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">Estos clientes tenían fecha de pago hoy o antes</div>
+    <div id="nav-reminder-list" style="display:flex;flex-direction:column;gap:10px;max-height:300px;overflow-y:auto;margin-bottom:18px"></div>
+    <button onclick="NAV_reminderCerrar()" style="width:100%;background:none;border:1.5px solid var(--beige-dark);border-radius:var(--radius);padding:12px;font-family:'Jost',sans-serif;font-size:12px;color:var(--text-muted);cursor:pointer">
+      Cerrar — recordar después
+    </button>
+  </div>
+</div>
+
 <!-- ============ CAPA 3 · WHATSAPP ============ -->
 <div id="nav-wa">
   <div class="nav-lh"><div class="nav-lh-in">
@@ -6762,7 +6777,7 @@ function NAV_abrir() {
   document.getElementById('nav-ov').classList.add('nav-open');
   document.getElementById('nav-ov').scrollTop = 0;
   if (!NAV_cargado) { NAV_recargar(); NAV_cargado = true; }
-  else NAV_tablero();
+  else { NAV_tablero(); setTimeout(NAV_checkPagosComprometidos, 400); }
 }
 function NAV_cerrar() {
   document.getElementById('nav-ov').classList.remove('nav-open');
@@ -6820,6 +6835,7 @@ function NAV_recargar() {
         var kb = document.getElementById('knv-toggle-btn');
         if (kb) kb.style.display = 'inline-block';
       }
+      setTimeout(NAV_checkPagosComprometidos, 400);
     })
     .catch(function(e){ NAV_error('nav-tb', 'No se pudo cargar: ' + e.message); });
 }
@@ -7787,6 +7803,39 @@ function NAV_pagoConfirmar() {
   });
 }
 
+function NAV_checkPagosComprometidos() {
+  var hoy = NAV_hoyISO();
+  var pendientes = (NAV_D.sesiones || []).filter(function(s) {
+    return s.pago_comprometido && s.pago_comprometido <= hoy &&
+      NAV_n(s.anticipo) === 0 && String(s.estado) !== 'Cancelada';
+  });
+  if (!pendientes.length) return;
+  var list = document.getElementById('nav-reminder-list');
+  if (!list) return;
+  list.innerHTML = pendientes.map(function(s) {
+    var diasAtras = NAV_dias(s.pago_comprometido, hoy);
+    var diasText = diasAtras === 0 ? 'Hoy' : 'Hace ' + diasAtras + ' día' + (diasAtras > 1 ? 's' : '');
+    return '<div style="background:var(--beige-light);border-radius:var(--radius-sm);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+      '<div><div style="font-size:13px;font-weight:500;color:var(--text-main)">' + NAV_esc(s.cliente) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + NAV_esc(NAV_paqNombre(s.id_paquete)) + ' · ' + diasText + '</div></div>' +
+      '<button onclick="NAV_reminderPagar(\'' + s.folio + '\')" style="background:var(--black);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 14px;font-family:\'Jost\',sans-serif;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap">Registrar pago</button>' +
+      '</div>';
+  }).join('');
+  document.getElementById('nav-reminder-overlay').style.display = 'flex';
+}
+function NAV_reminderCerrar(e) {
+  if (e && e.target !== document.getElementById('nav-reminder-overlay') && e.type === 'click') {
+    // Solo cerrar si el clic fue en el fondo
+    if (e.currentTarget !== document.getElementById('nav-reminder-overlay')) return;
+  }
+  document.getElementById('nav-reminder-overlay').style.display = 'none';
+}
+function NAV_reminderPagar(folio) {
+  document.getElementById('nav-reminder-overlay').style.display = 'none';
+  var s = (NAV_D.sesiones || []).find(function(x){ return x.folio === folio; });
+  if (s) { NAV_sesionActual = s; NAV_abrirPago(s); }
+}
+
 function NAV_editarPago(tipo) {
   var s = NAV_sesionActual;
   if (!s) return;
@@ -8125,7 +8174,8 @@ function NAV_abrirEditar() {
   document.getElementById('nav-e-aviso-fecha').innerHTML = '';
   document.getElementById('nav-e-error').innerHTML = '';
   var selPaq = document.getElementById('nav-e-paquete');
-  selPaq.innerHTML = NAV_D.paquetes.map(function(p){
+  selPaq.innerHTML = '<option value=""'+((!s.id_paquete||s.id_paquete===''||s.id_paquete==='pendiente')?' selected':'')+'">⏳ Pendiente — por definir</option>' +
+    NAV_D.paquetes.map(function(p){
     return '<option value="'+p.id_paquete+'"'+(p.id_paquete===s.id_paquete?' selected':'')+'>'+
       NAV_esc(p.nombre)+' · '+p.duracion_min+' min · '+p.fotos+' fotos</option>';
   }).join('');
@@ -8278,7 +8328,8 @@ function NAV_agendar(fecha, hora) {
   document.getElementById('nav-a-error').innerHTML = '';
  
   var sel = document.getElementById('nav-a-paquete');
-  sel.innerHTML = NAV_D.paquetes.map(function(p){
+  sel.innerHTML = '<option value="">⏳ Pendiente — por definir</option>' +
+    NAV_D.paquetes.map(function(p){
     return '<option value="'+p.id_paquete+'">'+NAV_esc(p.nombre)+' · '+
       NAV_n(p.duracion_min)+' min · '+NAV_n(p.fotos)+' fotos</option>';
   }).join('');
@@ -9424,13 +9475,27 @@ function KNV_bindFilters() {
 }
 
 function KNV_bindCards() {
-  document.querySelectorAll('.knv-card').forEach(function(card){
-    card.onclick = function(e){
+  document.querySelectorAll('.knv-card').forEach(function(card) {
+    card.onclick = function(e) {
       if (KNV_state.popup) return;
+      if (e.target.closest && e.target.closest('.knv-dots')) return;
       var folio = card.dataset.folio;
-      KNV_state.expandedId = KNV_state.expandedId===folio ? null : folio;
-      KNV_renderBoard();
+      KNV_toggle();
+      setTimeout(function(){ NAV_verSesion(folio); }, 80);
     };
+    var dots = card.querySelector('.knv-dots');
+    if (dots) {
+      dots.onclick = function(e) {
+        e.stopPropagation();
+        if (KNV_state.popup) return;
+        var folio = card.dataset.folio;
+        var col = card.dataset.col;
+        var session = KNV_sesiones().find(function(s){ return s.folio === folio; });
+        if (!session) return;
+        KNV_state.popup = { folio: folio, from: col, to: col, session: session, actions: KNV_getActions(col, col), done: {} };
+        KNV_renderPopup();
+      };
+    }
   });
 }
 
