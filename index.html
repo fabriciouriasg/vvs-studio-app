@@ -1871,7 +1871,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.35';
+var APP_VERSION = 'v4.36';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7773,9 +7773,11 @@ function NAV_msg(folio, tipo) {
   document.getElementById('nav-wa-who').innerHTML = NAV_esc(s.cliente) +
     '<small>' + NAV_esc(s.telefono) + '</small>';
   var bub = document.getElementById('nav-wa-bub');
-  bub.textContent = t[1];
-  bub.innerHTML = bub.innerHTML.replace(/(https?:\/\/[^\s<]+)/g, '<span class="nav-lk">$1</span>');
-  bub.innerHTML += '<span class="nav-mt">Listo para enviar</span>';
+  var textoEscapado = t[1]
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>')
+    .replace(/(https?:\/\/[^\s<]+)/g,'<span class="nav-lk">$1</span>');
+  bub.innerHTML = textoEscapado + '<span class="nav-mt">Listo para enviar</span>';
   NAV_abrirCapa('nav-wa');
 }
  
@@ -8836,10 +8838,12 @@ function NAV_msg(folio, tipo) {
   document.getElementById('nav-wa-av').textContent = String(s.cliente).charAt(0);
   document.getElementById('nav-wa-who').innerHTML = NAV_esc(s.cliente) +
     '<small>' + NAV_esc(s.telefono) + '</small>';
-  document.getElementById('nav-wa-bub').textContent = texto;
   var bub = document.getElementById('nav-wa-bub');
-  bub.innerHTML = bub.innerHTML.replace(/(https?:\/\/[^\s<]+)/g, '<span class="nav-lk">$1</span>');
-  bub.innerHTML += '<span class="nav-mt">Listo para enviar</span>';
+  var textoEscapado2 = texto
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>')
+    .replace(/(https?:\/\/[^\s<]+)/g,'<span class="nav-lk">$1</span>');
+  bub.innerHTML = textoEscapado2 + '<span class="nav-mt">Listo para enviar</span>';
   NAV_abrirCapa('nav-wa');
 }
 </script>
