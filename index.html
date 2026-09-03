@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.65';
+var APP_VERSION = 'v4.66';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6281,6 +6281,12 @@ function saveSettings() {
         <div class="nav-chips" id="nav-dis-meses"></div>
         <div class="nav-lab" style="margin-top:11px">Días</div>
         <div class="nav-chips" id="nav-dis-dias"></div>
+        <div id="nav-dis-esp-wrap" style="display:none">
+          <div class="nav-lab" style="margin-top:11px">Días específicos <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"> — opcional</span></div>
+          <p class="nav-hint" style="margin-bottom:8px">Toca los días que te interesan. Sin selección = todos los del filtro.</p>
+          <div id="nav-dis-especificos"></div>
+          <button class="nav-all" id="nav-dis-esp-clear" style="display:none;margin-top:8px" onclick="NAV_dispClearEsp()">Limpiar días</button>
+        </div>
         <button class="nav-btn" onclick="NAV_descargarImagen()">Descargar imagen</button>
         <p class="nav-hint">La imagen lleva la fecha de generación al pie, para que se note
           cuándo caducó.</p>
@@ -7211,7 +7217,7 @@ function NAV_hora24(raw) {
  
 /* ---------------- disponibilidad ---------------- */
  
-var NAV_dispMeses = [], NAV_dispSel = [], NAV_dispDias = [];
+var NAV_dispMeses = [], NAV_dispSel = [], NAV_dispDias = [], NAV_dispEspecificos = {};
 /* dias_semana disponibles en la campaña (ej. "5,6,0") */
 var NAV_DIAS_SEM = [
   { dw: 5, label: 'Viernes' },
@@ -7261,6 +7267,8 @@ function NAV_calcDisp(m) {
     if (!NAV_esDiaTrabajo(f)) continue;
     var dw = new Date(f + 'T12:00:00').getDay();
     if (NAV_dispDias.length && NAV_dispDias.indexOf(dw) < 0) continue;
+    var espM = NAV_dispEspecificos[m];
+    if (espM && espM.length && espM.indexOf(d) < 0) continue;
     var ses = NAV_ocupacion(f), tomadas = {};
     ses.forEach(function(x){ var h24=NAV_hora24(x.hora); if(h24) tomadas[h24]=1; });
     var libres = horas.filter(function(h){ return !tomadas[h]; });
@@ -7278,8 +7286,10 @@ function NAV_disponibilidad() {
   /* reset al abrir: nada seleccionado */
   NAV_dispSel = [];
   NAV_dispDias = [];
+  NAV_dispEspecificos = {};
   NAV_pintarChipsMeses();
   NAV_pintarChipsDias();
+  NAV_pintarChipsEspecificos();
   NAV_dibujarDisp();
 }
 
@@ -7301,10 +7311,11 @@ function NAV_pintarChipsMeses() {
 
 function NAV_dispToggleMes(m) {
   var i = NAV_dispSel.indexOf(m);
-  if (i >= 0) NAV_dispSel.splice(i,1);
+  if (i >= 0) { NAV_dispSel.splice(i,1); delete NAV_dispEspecificos[m]; }
   else NAV_dispSel.push(m);
   NAV_dispSel.sort();
   NAV_pintarChipsMeses();
+  NAV_pintarChipsEspecificos();
   NAV_dibujarDisp();
 }
 
@@ -7312,7 +7323,9 @@ function NAV_dispTodosMeses() {
   NAV_dispSel = (NAV_dispSel.length === NAV_dispMeses.length && NAV_dispMeses.length > 0)
     ? []
     : NAV_dispMeses.slice();
+  if (!NAV_dispSel.length) NAV_dispEspecificos = {};
   NAV_pintarChipsMeses();
+  NAV_pintarChipsEspecificos();
   NAV_dibujarDisp();
 }
 
@@ -7335,6 +7348,7 @@ function NAV_dispToggleDia(dw) {
   if (i >= 0) NAV_dispDias.splice(i,1);
   else NAV_dispDias.push(dw);
   NAV_pintarChipsDias();
+  NAV_pintarChipsEspecificos();
   NAV_dibujarDisp();
 }
 
@@ -7344,6 +7358,71 @@ function NAV_dispTodosDias() {
     ? []
     : opciones.map(function(d){ return d.dw; });
   NAV_pintarChipsDias();
+  NAV_pintarChipsEspecificos();
+  NAV_dibujarDisp();
+}
+
+/* ── días específicos ── */
+function NAV_pintarChipsEspecificos() {
+  var wrap = document.getElementById('nav-dis-esp-wrap');
+  var cont = document.getElementById('nav-dis-especificos');
+  var clearBtn = document.getElementById('nav-dis-esp-clear');
+  if (!wrap || !cont) return;
+
+  if (!NAV_dispSel.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  var html = '';
+  NAV_dispSel.forEach(function(m) {
+    var mm = parseInt(m.split('-')[1],10);
+    var anio = parseInt(m.split('-')[0],10);
+    var dim = new Date(anio, mm, 0).getDate();
+    var selM = NAV_dispEspecificos[m] || [];
+
+    // Días disponibles en este mes (respetando filtro de día de semana)
+    var disponibles = [];
+    for (var d = 1; d <= dim; d++) {
+      var f = anio + '-' + ('0'+mm).slice(-2) + '-' + ('0'+d).slice(-2);
+      if (!NAV_esDiaTrabajo(f)) continue;
+      var dw = new Date(f + 'T12:00:00').getDay();
+      if (NAV_dispDias.length && NAV_dispDias.indexOf(dw) < 0) continue;
+      disponibles.push(d);
+    }
+    if (!disponibles.length) return;
+
+    html += '<div style="margin-bottom:12px">';
+    html += '<div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:6px">' +
+            NAV_MESES[mm-1] + '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:7px">';
+    disponibles.forEach(function(d) {
+      var on = selM.indexOf(d) >= 0;
+      html += '<button onclick="NAV_dispToggleEsp(\'' + m + '\',' + d + ')" ' +
+        'style="width:34px;height:34px;border-radius:50%;border:1px solid var(--beige-dark);' +
+        'background:' + (on ? 'var(--text-main,#1a1410)' : 'var(--white,#fff)') + ';' +
+        'color:' + (on ? 'var(--white,#fff)' : 'var(--text-main,#1a1410)') + ';' +
+        'font-size:12px;font-weight:500;cursor:pointer;font-family:Jost,sans-serif;' +
+        'display:inline-flex;align-items:center;justify-content:center">' + d + '</button>';
+    });
+    html += '</div></div>';
+  });
+
+  cont.innerHTML = html || '';
+  var anyEsp = Object.values(NAV_dispEspecificos).some(function(a){ return a.length > 0; });
+  clearBtn.style.display = anyEsp ? 'inline-block' : 'none';
+}
+
+function NAV_dispToggleEsp(m, d) {
+  if (!NAV_dispEspecificos[m]) NAV_dispEspecificos[m] = [];
+  var idx = NAV_dispEspecificos[m].indexOf(d);
+  if (idx >= 0) NAV_dispEspecificos[m].splice(idx, 1);
+  else NAV_dispEspecificos[m].push(d);
+  NAV_pintarChipsEspecificos();
+  NAV_dibujarDisp();
+}
+
+function NAV_dispClearEsp() {
+  NAV_dispEspecificos = {};
+  NAV_pintarChipsEspecificos();
   NAV_dibujarDisp();
 }
 
