@@ -1882,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.84';
+var APP_VERSION = 'v4.85';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6811,6 +6811,12 @@ function NAV_abrirCapa(id) {
   var c = document.getElementById(id);
   c.classList.add('nav-open');
   c.scrollTop = 0;
+  // Si el Kanban está abierto, elevar el panel por encima
+  if (typeof KNV_state !== 'undefined' && KNV_state.visible) {
+    c.style.zIndex = '100010';
+  } else {
+    c.style.zIndex = '';
+  }
 }
 function NAV_tab(btn, id) {
   var bs = btn.parentNode.querySelectorAll('button');
