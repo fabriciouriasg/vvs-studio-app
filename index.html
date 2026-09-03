@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.64';
+var APP_VERSION = 'v4.65';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7500,11 +7500,6 @@ function NAV_dinero() {
       '<div class="nav-row"><span class="nav-lb">Utilidad</span><span class="nav-vl" style="font-size:17px">'+NAV_money(cobrado-totalGastos)+'</span></div>' +
       '<p class="nav-hint">Los ingresos entran a Log_Ingresos con la categoría «'+NAV_esc(NAV_D.camp.nombre)+'», así que Finanzas los muestra aparte.</p></div>' +
  
-      '<div class="nav-lab">Promociones</div><div class="nav-card">' +
-      '<div class="nav-row"><span class="nav-lb">Fotos regaladas</span><span class="nav-vl">'+nRegalos+' · '+NAV_money(regalos)+'</span></div>' +
-      '<div class="nav-row"><span class="nav-lb">Reels entregados</span><span class="nav-vl">'+reels+' de '+NAV_n(NAV_D.camp.promo_reel_limite)+'</span></div>' +
-      '<p class="nav-hint">Las cortesías cobran $0 pero conservan su valor de lista.</p></div>' +
- 
       '<div class="nav-lab">Extras y comisiones</div><div class="nav-card">' +
       '<div class="nav-row"><span class="nav-lb">Extras vendidos</span><span class="nav-vl">'+NAV_money(extras)+'</span></div>' +
       '<div class="nav-row"><span class="nav-lb">Comisiones de pasarela</span><span class="nav-vl nav-w">'+NAV_money(comis)+'</span></div>' +
@@ -9176,9 +9171,9 @@ var KNV_COLS = [
 var KNV_TIPS = {
   apartada:     'Fecha de sesión ↑ (más próxima primero)',
   confirmada:   'Fecha de sesión ↑ (más próxima primero)',
-  realizada:    'Antigüedad ↓ (sin avanzar más tiempo)',
-  preseleccion: 'Antigüedad ↓ (sin avanzar más tiempo)',
-  edicion:      'Antigüedad ↓ (sin avanzar más tiempo)',
+  realizada:    'Fecha de sesión ↑ (más antigua primero)',
+  preseleccion: 'Fecha de sesión ↑ (más antigua primero)',
+  edicion:      'Fecha de entrada a edición ↑ (más antigua primero)',
   entregada:    'Antigüedad ↓ (sin avanzar más tiempo)',
 };
 var KNV_FASE_ID = {1:'apartada',2:'confirmada',3:'realizada',4:'preseleccion',5:'edicion',6:'entregada',7:'completada'};
@@ -9333,18 +9328,21 @@ function KNV_renderBoard() {
 
   KNV_COLS.forEach(function(col) {
     var allInCol = ses.filter(function(s){return KNV_faseId(s)===col.id;});
-    // FIFO — más antigua arriba (fecha_sesion + hora ascendente)
-    allInCol.sort(function(a,b){
-      var fa = (a.fecha_sesion||'9') + (a.hora||'');
-      var fb = (b.fecha_sesion||'9') + (b.hora||'');
+    // Orden por columna: Edición → fecha_editada ↑; resto → fecha_sesion + hora ↑
+    var _knvSort = function(a, b) {
+      var fa, fb;
+      if (col.id === 'edicion') {
+        fa = a.fecha_editada || 'z';
+        fb = b.fecha_editada || 'z';
+      } else {
+        fa = (a.fecha_sesion || '9') + (a.hora || '');
+        fb = (b.fecha_sesion || '9') + (b.hora || '');
+      }
       return fa < fb ? -1 : fa > fb ? 1 : 0;
-    });
+    };
+    allInCol.sort(_knvSort);
     var visInCol = vis.filter(function(s){return KNV_faseId(s)===col.id;});
-    visInCol.sort(function(a,b){
-      var fa = (a.fecha_sesion||'9') + (a.hora||'');
-      var fb = (b.fecha_sesion||'9') + (b.hora||'');
-      return fa < fb ? -1 : fa > fb ? 1 : 0;
-    });
+    visInCol.sort(_knvSort);
     var isEmpty = allInCol.length === 0;
     var colEl = document.createElement('div');
     colEl.className = 'knv-col' + (KNV_state.hideEmpty && isEmpty ? ' knv-hidden' : '');
@@ -9553,8 +9551,7 @@ function KNV_bindCards() {
       if (KNV_state.popup) return;
       if (e.target.closest && e.target.closest('.knv-dots')) return;
       var folio = card.dataset.folio;
-      KNV_toggle();
-      setTimeout(function(){ NAV_verSesion(folio); }, 80);
+      NAV_verSesion(folio);
     };
     var dots = card.querySelector('.knv-dots');
     if (dots) {
