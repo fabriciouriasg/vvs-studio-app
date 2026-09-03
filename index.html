@@ -1882,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.77';
+var APP_VERSION = 'v4.78';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -9629,7 +9629,9 @@ function KNV_renderBoard() {
       var listaHTML = '';
       if (col.id === 'edicion') {
         var esLista = KNV_isLista(s.folio);
-        listaHTML = '<span class="knv-tag '+(esLista?'ok':'warn')+'" style="cursor:pointer" title="'+(esLista?'Quitar marca':'Marcar lista')+'" onclick="event.stopPropagation();KNV_toggleLista(\''+s.folio+'\')">'+(esLista?'✓ Lista':'Editando')+'</span>';
+        var _lbg = esLista ? '#eaf3de' : '#faeeda';
+        var _lco = esLista ? '#3b6d11' : '#854f0b';
+        listaHTML = '<span style="cursor:pointer;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;flex-shrink:0;background:'+_lbg+';color:'+_lco+'" onclick="event.stopPropagation();KNV_toggleLista(\''+s.folio+'\')">'+(esLista?'✓ Lista':'• Editando')+'</span>';
       }
 
       // Borde izquierdo FIFO: más intenso para tarjetas más antiguas (idx 0 = más oscuro)
@@ -9639,14 +9641,14 @@ function KNV_renderBoard() {
       var _bstyle = 'border-left:2.5px solid ' + col.color + _hex + ';';
 
       return '<div class="knv-card'+agingClass+(isExp?' knv-expanded':'')+'" draggable="true" data-folio="'+s.folio+'" data-col="'+col.id+'" style="'+_bstyle+'">' +
-        '<div class="knv-card-row"><span class="knv-card-name">'+NAV_esc(s.cliente)+'</span><div class="knv-dots">'+dotHTML+'</div></div>' +
+        '<div class="knv-card-row"><span class="knv-card-name">'+NAV_esc(s.cliente)+'</span>'+listaHTML+'<div class="knv-dots">'+dotHTML+'</div></div>' +
         pillsHTML +
         '<div class="knv-card-detail">' +
         '<div class="knv-drow"><span class="knv-dlbl">Paquete</span><span class="knv-dval">'+NAV_esc(NAV_paqNombre(s.id_paquete))+'</span></div>' +
         '<div class="knv-drow"><span class="knv-dlbl">Sesión</span><span class="knv-dval">'+NAV_fechaCorta(s.fecha_sesion)+'</span></div>' +
         '<div class="knv-drow"><span class="knv-dlbl">Folio</span><span class="knv-dval">'+s.folio+'</span></div>' +
         (saldo>0?'<div class="knv-drow"><span class="knv-dlbl">Saldo</span><span class="knv-dval" style="color:#854f0b">$'+NAV_n(saldo).toLocaleString()+'</span></div>':'') +
-        '<div class="knv-tags">'+tagHTML+listaHTML+'</div>' +
+        '<div class="knv-tags">'+tagHTML+'</div>' +
         '</div></div>';
     }).join('');
 
