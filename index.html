@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.74';
+var APP_VERSION = 'v4.75';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6773,9 +6773,12 @@ function NAV_subtitulo() {
   if (!el || !NAV_D.camp) return;
   var act = NAV_activas();
   var meta = NAV_n(NAV_D.camp.meta_sesiones);
-  var falta = NAV_dias(NAV_hoyISO(), NAV_D.camp.fecha_entrega_max);
+  var navidad = NAV_D.camp.fecha_fin
+    ? (NAV_D.camp.fecha_fin.substring(0,4) + '-12-25')
+    : (new Date().getFullYear() + '-12-25');
+  var falta = NAV_dias(NAV_hoyISO(), navidad);
   el.textContent = act.length + ' DE ' + meta +
-    (falta !== null && falta >= 0 ? ' · ' + falta + ' DÍAS PARA LA ENTREGA' : '');
+    (falta !== null && falta >= 0 ? ' · ' + falta + ' DÍAS PARA NAVIDAD' : '');
 }
 function NAV_activas() {
   return NAV_D.sesiones.filter(function(s){ return String(s.estado) !== 'Cancelada'; });
@@ -6868,10 +6871,12 @@ function NAV_saldo(s) {
  
 function NAV_tablero() {
   if (!NAV_D.camp) return;
-  var falta = NAV_dias(NAV_hoyISO(), NAV_D.camp.fecha_entrega_max);
+  var navidad2 = NAV_D.camp.fecha_fin
+    ? (NAV_D.camp.fecha_fin.substring(0,4) + '-12-25')
+    : (new Date().getFullYear() + '-12-25');
+  var falta = NAV_dias(NAV_hoyISO(), navidad2);
   document.getElementById('nav-dl-n').textContent = (falta===null?'—':falta);
-  document.getElementById('nav-dl-t').textContent =
-    'Días para el ' + NAV_fechaLarga(NAV_D.camp.fecha_entrega_max);
+  document.getElementById('nav-dl-t').textContent = 'Días para el Jueves 25 de diciembre';
   var act = NAV_activas();
   var pend = act.filter(function(s){ return NAV_n(s.fase) < 6; }).length;
   document.getElementById('nav-dl-s').textContent =
