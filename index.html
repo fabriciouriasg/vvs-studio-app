@@ -597,6 +597,8 @@
 #nav-ov .nav-fact{flex:1;padding:11px 5px;text-align:center;
   border-right:1px solid var(--beige-mid)}
 #nav-ov .nav-fact:last-child{border-right:0}
+#nav-ov .nav-fact.nav-fact-tap{cursor:pointer;transition:background .15s}
+#nav-ov .nav-fact.nav-fact-tap:active{background:var(--beige-light)}
 #nav-ov .nav-fact .nav-n{font-family:'Cormorant Garamond',serif;font-size:19px;
   font-weight:500;line-height:1;color:var(--text-main)}
 #nav-ov .nav-fact .nav-l{font-size:7.5px;color:var(--text-muted);letter-spacing:.05em;
@@ -1872,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.63';
+var APP_VERSION = 'v4.64';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6933,8 +6935,8 @@ function NAV_tablero() {
   document.getElementById('nav-facts').innerHTML =
     '<div class="nav-fact"><div class="nav-n">'+act.length+'</div><div class="nav-l">Agendadas</div></div>'+
     '<div class="nav-fact"><div class="nav-n">'+NAV_money(porCobrar)+'</div><div class="nav-l">Por cobrar</div></div>'+
-    '<div class="nav-fact"><div class="nav-n">'+sinBro+'</div><div class="nav-l">Sin brochure</div></div>'+
-    '<div class="nav-fact"><div class="nav-n">'+sinAnt+'</div><div class="nav-l">Pago pendiente</div></div>';
+    '<div class="nav-fact nav-fact-tap" onclick="NAV_factPanel(\'brochure\')"><div class="nav-n">'+sinBro+'</div><div class="nav-l">Sin brochure</div></div>'+
+    '<div class="nav-fact nav-fact-tap" onclick="NAV_factPanel(\'pago\')"><div class="nav-n">'+sinAnt+'</div><div class="nav-l">Pago pendiente</div></div>';
  
   var man = NAV_hoyISO();
   var d = new Date(); d.setDate(d.getDate()+1);
@@ -6956,6 +6958,48 @@ function NAV_tablero() {
     }).join('') : '');
 }
  
+function NAV_factPanel(tipo) {
+  var act = NAV_D.sesiones.filter(function(s){ return String(s.estado||'Activa')==='Activa'; });
+  var lista, titulo, badge, badgeColor;
+  if (tipo === 'brochure') {
+    lista = act.filter(function(s){ return NAV_n(s.fase) >= 1 && !s.brochure_enviado; });
+    titulo = 'Sin brochure';
+    badge = function(s){ return '<span class="knv-arch-badge" style="background:#fff3cd;color:#856404">'+NAV_FASES[NAV_n(s.fase)-1]+'</span>'; };
+  } else {
+    lista = act.filter(function(s){ return NAV_n(s.anticipo) === 0; });
+    titulo = 'Pago pendiente';
+    badge = function(s){ return '<span class="knv-arch-badge" style="background:#fde8d8;color:#7d3b0a">$'+NAV_n(s.total).toLocaleString()+' total</span>'; };
+  }
+  lista.sort(function(a,b){ return (a.fecha_sesion||'') < (b.fecha_sesion||'') ? -1 : 1; });
+
+  // Reutilizar overlay sobre el tablero principal
+  var cont = document.getElementById('nav-tb') || document.getElementById('nav-ov');
+  var prev = document.getElementById('nav-fact-panel');
+  if (prev) prev.remove();
+
+  var div = document.createElement('div');
+  div.id = 'nav-fact-panel';
+  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--white);z-index:20100;display:flex;flex-direction:column;overflow:hidden';
+  div.innerHTML =
+    '<div class="knv-arch-hdr">' +
+    '<button class="knv-pbtn" style="flex:0;padding:4px 12px" onclick="document.getElementById(\'nav-fact-panel\').remove()">← Volver</button>' +
+    '<span class="knv-arch-title">'+titulo+' ('+lista.length+')</span></div>' +
+    '<div class="knv-arch-body">' +
+    (lista.length === 0
+      ? '<div class="knv-empty" style="margin-top:24px">¡Todo en orden! 🎉</div>'
+      : lista.map(function(s){
+          return '<div class="knv-arch-card" style="cursor:pointer" onclick="document.getElementById(\'nav-fact-panel\').remove();NAV_verSesion(\''+s.folio+'\')">' +
+            '<div style="flex:1">' +
+            '<div class="knv-arch-name">'+NAV_esc(s.cliente)+'</div>' +
+            '<div class="knv-arch-meta">'+s.folio+' · '+NAV_fechaCorta(s.fecha_sesion)+' · '+NAV_esc(NAV_paqNombre(s.id_paquete))+'</div>' +
+            '</div>' +
+            badge(s) +
+            '</div>';
+        }).join('')) +
+    '</div>';
+  document.body.appendChild(div);
+}
+
 function NAV_avanzar(folio, fase, ev) {
   if (ev) ev.stopPropagation();
   if (fase > 7) return;
