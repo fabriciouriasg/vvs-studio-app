@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.71';
+var APP_VERSION = 'v4.72';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8633,16 +8633,29 @@ function NAV_horasBloqueadas(fecha) {
  
 /** Bloquea o libera una hora suelta. */
 function NAV_toggleHora(fecha, hora) {
+  // Construir lista actualizada en memoria (valores ya normalizados HH:MM)
   var actuales = NAV_horasBloqueadas(fecha);
   var i = actuales.indexOf(hora);
   var bloqueando = i < 0;
   if (bloqueando) actuales.push(hora); else actuales.splice(i, 1);
- 
+
   NAV_post('NAV_bloquearHoras', { fecha: fecha, horas: actuales })
     .then(function(r){
       if (r && r.ok) {
+        // Actualizar NAV_D.dias en memoria con el valor limpio HH:MM
+        // independientemente de lo que devuelva el Sheet (puede tener timestamps)
+        var encontrado = false;
+        for (var j = 0; j < NAV_D.dias.length; j++) {
+          if (NAV_D.dias[j].fecha === fecha) {
+            NAV_D.dias[j].horas_bloqueadas = actuales.join(',');
+            encontrado = true; break;
+          }
+        }
+        if (!encontrado) {
+          NAV_D.dias.push({ fecha: fecha, horas_bloqueadas: actuales.join(',') });
+        }
         NAV_toast(bloqueando ? 'Hora bloqueada' : 'Hora liberada');
-        NAV_recargar().then(function(){ NAV_pintarDia(); });
+        NAV_pintarDia();
       } else NAV_toast('No se pudo: ' + ((r && r.error) || ''));
     }).catch(function(){ NAV_toast('Sin conexión'); });
 }
