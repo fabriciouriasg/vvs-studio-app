@@ -1882,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.83';
+var APP_VERSION = 'v4.84';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -9398,6 +9398,13 @@ function NAV_avanzarConWA(folio, tipo, faseSiguiente) {
   if (!s) return;
   // Abrir panel WA con el mensaje correspondiente
   NAV_msg(folio, tipo);
+  // Elevar #nav-wa por encima del knv-root si el Kanban está abierto
+  if (KNV_state.visible) {
+    setTimeout(function() {
+      var navWa = document.getElementById('nav-wa');
+      if (navWa) navWa.style.zIndex = '100010';
+    }, 50);
+  }
   // Hookear el botón de enviar para que también avance la fase
   setTimeout(function() {
     var btnEnviar = document.getElementById('nav-wa-send');
@@ -9911,7 +9918,6 @@ function KNV_bindCards() {
     // Click en la tarjeta → detalle directo
     card.onclick = function(e) {
       if (KNV_state.popup) return;
-      if (window._knvMenuOpen) return;
       if (e.target.closest && (e.target.closest('.knv-more-btn') || e.target.closest('.knv-card-detail'))) return;
       NAV_verSesion(card.dataset.folio);
     };
