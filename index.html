@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.70';
+var APP_VERSION = 'v4.71';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8621,9 +8621,12 @@ function NAV_altaGuardar() {
 /** Horas bloqueadas de un día, como arreglo HH:MM normalizadas. */
 function NAV_horasBloqueadas(fecha) {
   for (var i = 0; i < NAV_D.dias.length; i++) {
-    if (NAV_D.dias[i].fecha === fecha && NAV_D.dias[i].horas_bloqueadas)
-      return String(NAV_D.dias[i].horas_bloqueadas).split(',')
-        .map(function(h){ return NAV_hora24(h.trim()); }).filter(Boolean);
+    var d = NAV_D.dias[i];
+    if (d.fecha === fecha && d.horas_bloqueadas) {
+      return String(d.horas_bloqueadas).split(',')
+        .map(function(h){ return NAV_hora24(h.trim()); })
+        .filter(function(h){ return /^\d{2}:\d{2}$/.test(h); });
+    }
   }
   return [];
 }
