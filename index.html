@@ -889,6 +889,14 @@
 }
  
 /* ---- bloqueo de horas ---- */
+.nav-tc-si{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--white);border:0.5px solid var(--beige-dark);border-radius:10px;margin-bottom:8px;cursor:pointer}
+.nav-tc-si:last-child{margin-bottom:0}
+.nav-tc-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0}
+.nav-tc-green{background:#EAF3DE;color:#3B6D11}
+.nav-tc-blue{background:#E6F1FB;color:#185FA5}
+.nav-tc-gray{background:var(--beige-light);color:var(--text-muted)}
+.nav-tc-txt{font-size:13px;font-weight:500;color:var(--text-main)}
+.nav-tc-sub{font-size:11px;color:var(--text-muted);margin-top:2px}
 #nav-ov .nav-slot.nav-blqh { background: repeating-linear-gradient(135deg,
   var(--beige-light), var(--beige-light) 6px, var(--beige-mid) 6px, var(--beige-mid) 12px); }
 #nav-ov .nav-slot.nav-blqh .nav-bd { color: var(--text-muted); font-size: 13px; }
@@ -1874,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.75';
+var APP_VERSION = 'v4.77';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6869,6 +6877,52 @@ function NAV_saldo(s) {
   return NAV_n(s.total) - NAV_n(s.anticipo) - NAV_n(s.saldo_pagado);
 }
  
+/* ── Tap largo en filas de Edición (tablero móvil) ── */
+var _tcTapTimer = null, _tcTapFolio = null;
+function NAV_tcTapInicio(folio, ev) {
+  _tcTapFolio = folio;
+  _tcTapTimer = setTimeout(function() {
+    _tcTapTimer = null;
+    NAV_tcBottomSheet(folio);
+  }, 550);
+}
+function NAV_tcTapFin(ev) {
+  if (_tcTapTimer) { clearTimeout(_tcTapTimer); _tcTapTimer = null; }
+}
+function NAV_tcBottomSheet(folio) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  var esLista = KNV_isLista(folio);
+  var prev = document.getElementById('nav-tc-sheet');
+  if (prev) prev.remove();
+  var div = document.createElement('div');
+  div.id = 'nav-tc-sheet';
+  div.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:20200;display:flex;flex-direction:column;justify-content:flex-end';
+  div.onclick = function(e){ if (e.target === div) div.remove(); };
+  div.innerHTML =
+    '<div style="background:var(--white);border-radius:16px 16px 0 0;padding:14px 16px 28px">' +
+    '<div style="width:32px;height:3px;border-radius:2px;background:var(--beige-dark);margin:0 auto 14px"></div>' +
+    '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:12px;letter-spacing:.05em">' +
+      NAV_esc(s.cliente).toUpperCase() + ' · ' + NAV_esc(NAV_paqNombre(s.id_paquete)) + ' · ' + NAV_fechaCorta(s.fecha_sesion) +
+    '</div>' +
+    '<div class="nav-tc-si" onclick="KNV_toggleLista(\''+folio+'\');document.getElementById(\'nav-tc-sheet\').remove()">' +
+      '<div class="nav-tc-icon '+(esLista?'nav-tc-gray':'nav-tc-green')+'">'+(esLista?'✕':'✓')+'</div>' +
+      '<div><div class="nav-tc-txt">'+(esLista?'Quitar marca lista':'Marcar lista para entregar')+'</div>' +
+      '<div class="nav-tc-sub">'+( esLista?'Regresa a estado editando':'Muestra badge verde en la fila')+'</div></div>' +
+    '</div>' +
+    '<div class="nav-tc-si" onclick="document.getElementById(\'nav-tc-sheet\').remove();NAV_avanzarConWA(\''+folio+'\',\'entrega\',6)">' +
+      '<div class="nav-tc-icon nav-tc-blue">→</div>' +
+      '<div><div class="nav-tc-txt">Avanzar a entregada</div>' +
+      '<div class="nav-tc-sub">Genera WA y avanza la fase</div></div>' +
+    '</div>' +
+    '<div class="nav-tc-si" onclick="document.getElementById(\'nav-tc-sheet\').remove();NAV_verSesion(\''+folio+'\')">' +
+      '<div class="nav-tc-icon nav-tc-gray">👤</div>' +
+      '<div><div class="nav-tc-txt">Ver sesión</div></div>' +
+    '</div>' +
+    '</div>';
+  document.body.appendChild(div);
+}
+
 function NAV_tablero() {
   if (!NAV_D.camp) return;
   var navidad2 = NAV_D.camp.fecha_fin
@@ -6888,6 +6942,15 @@ function NAV_tablero() {
     // Apartada: fecha sesión ascendente (más próxima arriba). Resto: aging desc (más viejo arriba)
     if (f === 1) {
       L.sort(function(a,b){ return (a.fecha_sesion||'') < (b.fecha_sesion||'') ? -1 : 1; });
+    } else if (f === 5) {
+      // Edición: edicion_activa=SI sube al tope, resto por aging desc
+      L.sort(function(a,b){
+        var aA = String(a.edicion_activa) === 'SI';
+        var bA = String(b.edicion_activa) === 'SI';
+        if (aA && !bA) return -1;
+        if (!aA && bA) return 1;
+        return (NAV_aging(b)||0) - (NAV_aging(a)||0);
+      });
     } else {
       L.sort(function(a,b){ return (NAV_aging(b)||0) - (NAV_aging(a)||0); });
     }
@@ -6918,12 +6981,21 @@ function NAV_tablero() {
       if (f===4) flags += '<span class="nav-fl ' + (s.fecha_presel_recibida?'nav-tur':'nav-esp') +
         '">' + (s.fecha_presel_recibida?'recibida':'esperando') + '</span>';
       if (NAV_n(s.anticipo)===0) flags += '<span class="nav-fl nav-deb">pago pendiente</span>';
+      // Badge Lista/Editando en fase Edición (f===5)
+      if (f === 5) {
+        var esLista = KNV_isLista(s.folio);
+        flags += '<span class="nav-fl '+(esLista?'nav-tur':'nav-esp')+'" style="cursor:pointer" onclick="event.stopPropagation();KNV_toggleLista(\''+s.folio+'\')">'+(esLista?'✓ lista':'editando')+'</span>';
+      }
       var derecha = (ag===null)
         ? '<span class="nav-ag">'+NAV_fechaCorta(s.fecha_sesion)+'<small>agendada</small></span>'
         : (f===6
           ? '<span class="nav-ag">'+ag+'d<small>ciclo</small></span>'
           : '<span class="nav-ag '+cls+'">'+ag+'d<small>desde toma</small></span>');
-      body += '<div class="nav-tc">' +
+      // Tap largo en filas de Edición → bottom sheet de opciones
+      var tapAttrs = f === 5
+        ? ' ontouchstart="NAV_tcTapInicio(\''+s.folio+'\',event)" ontouchend="NAV_tcTapFin(event)" onmousedown="NAV_tcTapInicio(\''+s.folio+'\',event)" onmouseup="NAV_tcTapFin(event)"'
+        : '';
+      body += '<div class="nav-tc"'+tapAttrs+'>' +
         '<span class="nav-ck" onclick="NAV_avanzar(\''+s.folio+'\','+(f+1)+',event)"></span>' +
         '<span class="nav-tx" onclick="NAV_verSesion(\''+s.folio+'\')">' +
         '<span class="nav-nm">'+NAV_esc(s.cliente)+'</span>' +
@@ -9293,8 +9365,59 @@ var KNV_state = {
   dragFrom: null,
   popup: null,
   showArchived: false,
+  /* edicion_activa se lee de NAV_D.sesiones — no hay estado local */
   completed: []
 };
+
+/* ── Badge "Lista para entregar" ── */
+function KNV_isLista(folio) {
+  var s = (NAV_D.sesiones||[]).find(function(x){ return x.folio === folio; });
+  return s && String(s.edicion_activa) === 'SI';
+}
+function KNV_toggleLista(folio) {
+  NAV_post('NAV_toggleEdicionActiva', { folio: folio })
+    .then(function(r) {
+      if (r && r.ok) {
+        // Actualizar en memoria sin recargar todo
+        var s = (NAV_D.sesiones||[]).find(function(x){ return x.folio === folio; });
+        if (s) s.edicion_activa = r.edicion_activa;
+        KNV_render();
+        NAV_tablero();
+      } else {
+        NAV_toast('No se pudo: ' + ((r && r.error) || ''));
+      }
+    }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+
+/* ── Avanzar con WA (preselección o entregada) ── */
+function NAV_avanzarConWA(folio, tipo, faseSiguiente) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  // Abrir panel WA con el mensaje correspondiente
+  NAV_msg(folio, tipo);
+  // Hookear el botón de enviar para que también avance la fase
+  setTimeout(function() {
+    var btnEnviar = document.getElementById('nav-wa-send');
+    if (!btnEnviar) return;
+    var _prev = btnEnviar.onclick;
+    btnEnviar.onclick = function(e) {
+      if (_prev) _prev.call(btnEnviar, e);
+      setTimeout(function() {
+        NAV_post('NAV_avanzarFase', { folio: folio, fase: faseSiguiente })
+          .then(function(r) {
+            if (r && r.ok) {
+              NAV_recargar().then(function() {
+                NAV_tablero();
+                if (KNV_state.visible) KNV_render();
+              });
+            } else {
+              NAV_toast('WA enviado. No se pudo avanzar fase: ' + ((r && r.error) || ''));
+            }
+          });
+      }, 400);
+    };
+  }, 250);
+}
 
 function KNV_showTip(el, txt) {
   var tip = document.getElementById('knv-global-tip');
@@ -9435,14 +9558,18 @@ function KNV_renderBoard() {
     var allInCol = ses.filter(function(s){return KNV_faseId(s)===col.id;});
     // Orden por columna: Edición → fecha_editada ↑; resto → fecha_sesion + hora ↑
     var _knvSort = function(a, b) {
-      var fa, fb;
+      // edicion_activa=SI siempre va al tope de Edición
       if (col.id === 'edicion') {
-        fa = a.fecha_editada || 'z';
-        fb = b.fecha_editada || 'z';
-      } else {
-        fa = (a.fecha_sesion || '9') + (a.hora || '');
-        fb = (b.fecha_sesion || '9') + (b.hora || '');
+        var aLista = String(a.edicion_activa) === 'SI';
+        var bLista = String(b.edicion_activa) === 'SI';
+        if (aLista && !bLista) return -1;
+        if (!aLista && bLista) return 1;
+        var fa = a.fecha_editada || 'z';
+        var fb = b.fecha_editada || 'z';
+        return fa < fb ? -1 : fa > fb ? 1 : 0;
       }
+      var fa = (a.fecha_sesion || '9') + (a.hora || '');
+      var fb = (b.fecha_sesion || '9') + (b.hora || '');
       return fa < fb ? -1 : fa > fb ? 1 : 0;
     };
     allInCol.sort(_knvSort);
@@ -9498,6 +9625,12 @@ function KNV_renderBoard() {
 
       var tags = KNV_tags(s);
       var tagHTML = tags.map(function(t){return '<span class="knv-tag '+t.k+'">'+t.t+'</span>';}).join('');
+      // Badge Lista/Editando solo en columna Edición
+      var listaHTML = '';
+      if (col.id === 'edicion') {
+        var esLista = KNV_isLista(s.folio);
+        listaHTML = '<span class="knv-tag '+(esLista?'ok':'warn')+'" style="cursor:pointer" title="'+(esLista?'Quitar marca':'Marcar lista')+'" onclick="event.stopPropagation();KNV_toggleLista(\''+s.folio+'\')">'+(esLista?'✓ Lista':'Editando')+'</span>';
+      }
 
       // Borde izquierdo FIFO: más intenso para tarjetas más antiguas (idx 0 = más oscuro)
       var _n = visInCol.length;
@@ -9513,7 +9646,7 @@ function KNV_renderBoard() {
         '<div class="knv-drow"><span class="knv-dlbl">Sesión</span><span class="knv-dval">'+NAV_fechaCorta(s.fecha_sesion)+'</span></div>' +
         '<div class="knv-drow"><span class="knv-dlbl">Folio</span><span class="knv-dval">'+s.folio+'</span></div>' +
         (saldo>0?'<div class="knv-drow"><span class="knv-dlbl">Saldo</span><span class="knv-dval" style="color:#854f0b">$'+NAV_n(saldo).toLocaleString()+'</span></div>':'') +
-        '<div class="knv-tags">'+tagHTML+'</div>' +
+        '<div class="knv-tags">'+tagHTML+listaHTML+'</div>' +
         '</div></div>';
     }).join('');
 
