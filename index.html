@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.67';
+var APP_VERSION = 'v4.68';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8618,12 +8618,12 @@ function NAV_altaGuardar() {
  
 /* ---------------- bloqueo de horas ---------------- */
  
-/** Horas bloqueadas de un día, como arreglo. */
+/** Horas bloqueadas de un día, como arreglo HH:MM normalizadas. */
 function NAV_horasBloqueadas(fecha) {
   for (var i = 0; i < NAV_D.dias.length; i++) {
     if (NAV_D.dias[i].fecha === fecha && NAV_D.dias[i].horas_bloqueadas)
       return String(NAV_D.dias[i].horas_bloqueadas).split(',')
-        .map(function(h){ return h.trim(); }).filter(Boolean);
+        .map(function(h){ return NAV_hora24(h.trim()); }).filter(Boolean);
   }
   return [];
 }
@@ -8656,15 +8656,13 @@ function NAV_pintarDia() {
  
   document.getElementById('nav-dia-res').innerHTML =
     '<div class="nav-row"><span class="nav-lb">Ocupación</span>' +
-    '<span class="nav-vl">'+ses.length+' de '+cupo+'</span></div>' +
-    '<div class="nav-bar"><i style="width:'+(cupo?Math.round(ses.length/cupo*100):0)+'%"></i></div>' +
+    '<span class="nav-vl">'+ses.length+' de '+(cupo-blq.length)+'</span></div>' +
+    '<div class="nav-bar"><i style="width:'+((cupo-blq.length)?Math.round(ses.length/(cupo-blq.length)*100):0)+'%"></i></div>' +
     '<div class="nav-row" style="margin-top:11px"><span class="nav-lb">Personas en el set</span>' +
-    '<span class="nav-vl">'+pers+'</span></div>' +
-    (blq.length ? '<div class="nav-row"><span class="nav-lb">Horas bloqueadas</span>' +
-      '<span class="nav-vl nav-w">'+blq.join(' · ')+'</span></div>' : '');
+    '<span class="nav-vl">'+pers+'</span></div>';
  
   var horas = NAV_horasDia(), h = '', slot = NAV_n(NAV_D.camp.slot_min) || 60;
-  var lleno = ses.length >= cupo;
+  var lleno = ses.length >= (cupo - blq.length);
  
   for (var i = 0; i < horas.length; i++) {
     var hora = horas[i], s = null;
