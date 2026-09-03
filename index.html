@@ -1882,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.78';
+var APP_VERSION = 'v4.80';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -9499,6 +9499,9 @@ function KNV_getActions(from, to) {
       {id:'reg_pago',level:'block',type:'pago',icon:'$',title:'Registrar pago',desc:'Liquidación antes de entregar la galería'},
       {id:'send_galeria',level:'suggest',type:'whatsapp',wid:'galeria',icon:'✉',title:'Enviar galería final',desc:'Mensaje #5 · Link de entrega'},
     ],
+    'edicion→edicion':[
+      {id:'toggle_lista',level:'info',type:'toggle_lista',icon:'✓',title:'',desc:''},
+    ],
     'entregada→completada':[
       {id:'confirm_pago_liq',level:'block',type:'confirm',icon:'✓',title:'Confirmar pago liquidado',desc:'Sin saldo pendiente'},
       {id:'send_encuesta',level:'suggest',type:'whatsapp',wid:'encuesta',icon:'✉',title:'Enviar encuesta',desc:'Mensaje #6 · Satisfacción del cliente'},
@@ -9631,7 +9634,7 @@ function KNV_renderBoard() {
         var esLista = KNV_isLista(s.folio);
         var _lbg = esLista ? '#eaf3de' : '#faeeda';
         var _lco = esLista ? '#3b6d11' : '#854f0b';
-        listaHTML = '<span style="cursor:pointer;font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;flex-shrink:0;background:'+_lbg+';color:'+_lco+'" onclick="event.stopPropagation();KNV_toggleLista(\''+s.folio+'\')">'+(esLista?'✓ Lista':'• Editando')+'</span>';
+        listaHTML = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap;flex-shrink:0;background:'+_lbg+';color:'+_lco+'">'+(esLista?'✓ Lista':'• Editando')+'</span>';
       }
 
       // Borde izquierdo FIFO: más intenso para tarjetas más antiguas (idx 0 = más oscuro)
@@ -9785,6 +9788,66 @@ function KNV_bindFilters() {
   });
 }
 
+/* ── Mini menú columna Edición ── */
+function KNV_showEdicionMenu(folio, session, anchor) {
+  var prev = document.getElementById('knv-ed-menu');
+  if (prev) { prev.remove(); return; }
+  var esLista = KNV_isLista(folio);
+  var menu = document.createElement('div');
+  menu.id = 'knv-ed-menu';
+  menu.style.cssText = 'position:fixed;background:var(--white);border:1px solid var(--beige-dark);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:10020;min-width:210px;overflow:hidden;font-family:Jost,sans-serif';
+  // Posicionar junto al anchor
+  var r = anchor.getBoundingClientRect();
+  menu.style.top = (r.bottom + 4) + 'px';
+  menu.style.left = Math.min(r.left, window.innerWidth - 220) + 'px';
+
+  var items = [
+    { icon: esLista ? '○' : '✓',
+      label: esLista ? 'Quitar marca lista' : 'Marcar lista para entregar',
+      color: esLista ? '#854f0b' : '#3b6d11',
+      bg: esLista ? '#faeeda' : '#eaf3de',
+      action: function() { KNV_toggleLista(folio); }
+    },
+    { icon: '→',
+      label: 'Avanzar a entregada',
+      color: '#185fa5', bg: '#e6f1fb',
+      action: function() {
+        menu.remove();
+        KNV_state.popup = { folio: folio, from: 'edicion', to: 'entregada', session: session, actions: KNV_getActions('edicion','entregada'), done: {} };
+        KNV_renderPopup();
+      }
+    },
+    { icon: '👤',
+      label: 'Ver sesión',
+      color: 'var(--text-muted)', bg: 'var(--beige-light)',
+      action: function() { menu.remove(); NAV_verSesion(folio); }
+    }
+  ];
+
+  items.forEach(function(item) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:0.5px solid var(--beige-mid)';
+    row.onmouseenter = function(){ row.style.background = 'var(--beige-light)'; };
+    row.onmouseleave = function(){ row.style.background = ''; };
+    row.innerHTML =
+      '<div style="width:28px;height:28px;border-radius:7px;background:'+item.bg+';color:'+item.color+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0">'+item.icon+'</div>' +
+      '<div style="font-size:13px;font-weight:500;color:var(--text-main)">'+item.label+'</div>';
+    row.onclick = function(e) { e.stopPropagation(); menu.remove(); item.action(); };
+    menu.appendChild(row);
+  });
+  // Último item sin border-bottom
+  menu.lastChild.style.borderBottom = 'none';
+
+  document.body.appendChild(menu);
+  // Cerrar al hacer click fuera
+  setTimeout(function() {
+    document.addEventListener('click', function closeMenu() {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+    }, { once: true });
+  }, 10);
+}
+
 function KNV_bindCards() {
   document.querySelectorAll('.knv-card').forEach(function(card) {
     card.onclick = function(e) {
@@ -9802,6 +9865,11 @@ function KNV_bindCards() {
         var col = card.dataset.col;
         var session = KNV_sesiones().find(function(s){ return s.folio === folio; });
         if (!session) return;
+        // Columna Edición: mostrar mini menú con toggle lista + avanzar
+        if (col === 'edicion') {
+          KNV_showEdicionMenu(folio, session, dots);
+          return;
+        }
         KNV_state.popup = { folio: folio, from: col, to: col, session: session, actions: KNV_getActions(col, col), done: {} };
         KNV_renderPopup();
       };
