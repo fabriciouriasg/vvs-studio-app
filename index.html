@@ -1882,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.85';
+var APP_VERSION = 'v4.86';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -9815,7 +9815,7 @@ function KNV_showCardMenu(folio, colId, session, anchor) {
     preseleccion:'edicion', edicion:'entregada', entregada:'completada' };
   var colNames = { apartada:'Confirmada', confirmada:'Realizada', realizada:'Preselección',
     preseleccion:'Edición', edicion:'Entregada', entregada:'Completada' };
-  var waMap = { realizada:'presel', edicion:'galeria', entregada:'encuesta' };
+  var waMap = { realizada:'presel', edicion:'entrega', entregada:'encuesta' };
 
   var items = [];
 
