@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.72';
+var APP_VERSION = 'v4.73';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7081,11 +7081,12 @@ function NAV_pintarMes() {
     /* Día cerrado con sesiones: visible pero marcado como cerrado */
     if (esCerrado && sesiones.length > 0) {
       var cupo = NAV_cupoDe(f);
+      var cupoEfCerrado = Math.max(0, cupo - NAV_horasBloqueadas(f).length);
       h += '<div class="nav-d nav-hay nav-cerrado" ' +
         'onclick="NAV_verDia(\''+f+'\')" ' +
         'ontouchstart="NAV_tapInicio(\''+f+'\',event)" ontouchend="NAV_tapFin(\''+f+'\',event)" ' +
         'onmousedown="NAV_tapInicio(\''+f+'\',event)" onmouseup="NAV_tapFin(\''+f+'\',event)">' +
-        '<span>'+d+'</span><span class="nav-oc">'+sesiones.length+'/'+cupo+' 🔒</span></div>';
+        '<span>'+d+'</span><span class="nav-oc">'+sesiones.length+'/'+cupoEfCerrado+' 🔒</span></div>';
       continue;
     }
     /* Día cerrado sin sesiones: apagado, solo tap largo para reactivar */
@@ -7108,15 +7109,17 @@ function NAV_pintarMes() {
     if (!esTrabajo) { h += '<div class="nav-d">'+d+'</div>'; continue; }
     /* Día de trabajo activo */
     var cupo = NAV_cupoDe(f), ocup = sesiones.length;
-    totalMes += cupo; ocupMes += ocup;
-    var pct = cupo ? ocup/cupo : 0;
+    var blqDia = NAV_horasBloqueadas(f).length;
+    var cupoEfectivo = Math.max(0, cupo - blqDia);
+    totalMes += cupoEfectivo; ocupMes += ocup;
+    var pct = cupoEfectivo ? ocup/cupoEfectivo : 0;
     var cls = 'nav-d nav-hay' + (pct>=1?' nav-full':(pct>=0.7?' nav-mid':'')) +
       (NAV_esExcepcion(f)?' nav-exc':'');
     h += '<div class="'+cls+'" ' +
       'onclick="NAV_verDia(\''+f+'\')" ' +
       'ontouchstart="NAV_tapInicio(\''+f+'\',event)" ontouchend="NAV_tapFin(\''+f+'\',event)" ' +
       'onmousedown="NAV_tapInicio(\''+f+'\',event)" onmouseup="NAV_tapFin(\''+f+'\',event)">' +
-      '<span>'+d+'</span><span class="nav-oc">'+ocup+'/'+cupo+'</span></div>';
+      '<span>'+d+'</span><span class="nav-oc">'+ocup+'/'+cupoEfectivo+'</span></div>';
   }
   document.getElementById('nav-mes-grid').innerHTML = h;
  
