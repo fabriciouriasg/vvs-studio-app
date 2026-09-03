@@ -1874,7 +1874,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.69';
+var APP_VERSION = 'v4.70';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -8635,7 +8635,7 @@ function NAV_toggleHora(fecha, hora) {
   var bloqueando = i < 0;
   if (bloqueando) actuales.push(hora); else actuales.splice(i, 1);
  
-  NAV_post('NAV_bloquearHoras', { fecha: fecha, horas: actuales.join(',') })
+  NAV_post('NAV_bloquearHoras', { fecha: fecha, horas: actuales })
     .then(function(r){
       if (r && r.ok) {
         NAV_toast(bloqueando ? 'Hora bloqueada' : 'Hora liberada');
