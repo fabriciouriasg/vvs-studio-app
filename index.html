@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.94';
+var APP_VERSION = 'v4.95';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7847,16 +7847,49 @@ function NAV_subirLogo(input) {
     // Redimensionar a máx 400px de ancho antes de guardar
     var img = new Image();
     img.onload = function() {
-      var maxW = 400, maxH = 200;
-      var scale = Math.min(maxW / img.width, maxH / img.height, 1);
-      var w = Math.round(img.width * scale);
-      var h = Math.round(img.height * scale);
+      // 1. Dibujar imagen original en canvas temporal
+      var tmp = document.createElement('canvas');
+      tmp.width = img.width; tmp.height = img.height;
+      var tc = tmp.getContext('2d');
+      tc.clearRect(0, 0, tmp.width, tmp.height);
+      tc.drawImage(img, 0, 0);
+
+      // 2. Detectar bounding box del contenido real (excluir fondo blanco/transparente)
+      var pd = tc.getImageData(0, 0, tmp.width, tmp.height).data;
+      var minX = tmp.width, minY = tmp.height, maxX = 0, maxY = 0;
+      for (var py = 0; py < tmp.height; py++) {
+        for (var px = 0; px < tmp.width; px++) {
+          var i = (py * tmp.width + px) * 4;
+          var r = pd[i], g = pd[i+1], b = pd[i+2], a = pd[i+3];
+          // Píxel con contenido: no transparente Y no blanco (umbral 245)
+          var esBlanco = r > 245 && g > 245 && b > 245;
+          if (a > 10 && !esBlanco) {
+            if (px < minX) minX = px;
+            if (px > maxX) maxX = px;
+            if (py < minY) minY = py;
+            if (py > maxY) maxY = py;
+          }
+        }
+      }
+      // Agregar padding de 4% alrededor del contenido real
+      var pad = Math.round(Math.max(tmp.width, tmp.height) * 0.04);
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(tmp.width - 1, maxX + pad);
+      maxY = Math.min(tmp.height - 1, maxY + pad);
+      var cw = maxX - minX + 1;
+      var ch = maxY - minY + 1;
+
+      // 3. Recortar y escalar a max 400x120px preservando proporción
+      var maxW = 400, maxH = 120;
+      var scale = Math.min(maxW / cw, maxH / ch, 1);
+      var w = Math.round(cw * scale);
+      var h = Math.round(ch * scale);
       var cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
       var ctx = cv.getContext('2d');
-      // clearRect preserva la transparencia del PNG (no rellena con blanco)
       ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(img, 0, 0, w, h);
+      ctx.drawImage(tmp, minX, minY, cw, ch, 0, 0, w, h);
       var data = cv.toDataURL('image/png');
       localStorage.setItem('vvs_logo', data);
       NAV_aplicarLogo();
