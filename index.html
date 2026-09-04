@@ -931,7 +931,7 @@
       <circle cx="11" cy="10.5" r="1.5" fill="#1a1410"/>
       <rect x="3" y="6.5" width="2.5" height="1.5" rx="0.75" fill="#1a1410"/>
     </svg>
-    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="max-height:40px;max-width:180px;object-fit:contain;display:none"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
+    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="max-height:44px;max-width:200px;object-fit:contain;display:none;background:transparent"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
   </div>
   <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px">
     <span id="app-version" style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500"></span>
@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.91';
+var APP_VERSION = 'v4.92';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7854,6 +7854,8 @@ function NAV_subirLogo(input) {
       var cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
       var ctx = cv.getContext('2d');
+      // clearRect preserva la transparencia del PNG (no rellena con blanco)
+      ctx.clearRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
       var data = cv.toDataURL('image/png');
       localStorage.setItem('vvs_logo', data);
