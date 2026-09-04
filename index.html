@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.95';
+var APP_VERSION = 'v4.96';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -7574,7 +7574,7 @@ function NAV_dibujarDisp() {
   }
 
   var CW = 232, CH = 126, PAD = 22, cols = 3;
-  var HEAD = 150, TITMES = 62, GAPMES = 14, PIE = 70;
+  var HEAD = 200, TITMES = 62, GAPMES = 14, PIE = 70;
   var W = PAD*2 + CW*cols;
 
   var bloques = NAV_dispSel.slice().sort().map(function(m){
@@ -7590,28 +7590,37 @@ function NAV_dibujarDisp() {
 
   /* encabezado */
   x.fillStyle = '#e8ddd0'; x.fillRect(0,0,W,HEAD-24);
-  x.textAlign = 'center'; x.fillStyle = '#1a1410';
+
+  var titulo = (NAV_D.camp && NAV_D.camp.nombre ? String(NAV_D.camp.nombre).toUpperCase() : 'SESIONES');
+  var totalLug = 0;
+  bloques.forEach(function(b){ b.libres.forEach(function(r){ totalLug += r.horas.length; }); });
+
+  function _dibujarTextoHeader() {
+    x.textAlign = 'center';
+    x.font = '500 15px Jost, sans-serif'; x.fillStyle = '#8b7355';
+    x.fillText(titulo + '  ·  LUGARES DISPONIBLES', W/2, HEAD-52);
+    x.font = '300 13px Jost, sans-serif'; x.fillStyle = '#a89880';
+    x.fillText(totalLug + (totalLug === 1 ? ' lugar libre' : ' lugares libres'), W/2, HEAD-30);
+  }
+
   var _logo = localStorage.getItem('vvs_logo');
   if (_logo) {
     var _img = new Image();
     _img.onload = function() {
-      var _maxH = 60, _maxW = 400;
+      var _areaH = HEAD - 80; // área para el logo (dejando espacio para texto debajo)
+      var _maxW = W * 0.6, _maxH = _areaH;
       var _scale = Math.min(_maxW/_img.width, _maxH/_img.height, 1);
       var _iw = _img.width*_scale, _ih = _img.height*_scale;
-      x.drawImage(_img, W/2-_iw/2, (HEAD-24)/2-_ih/2, _iw, _ih);
+      x.drawImage(_img, W/2-_iw/2, (HEAD-80)/2-_ih/2+10, _iw, _ih);
+      _dibujarTextoHeader();
     };
     _img.src = _logo;
   } else {
+    x.textAlign = 'center'; x.fillStyle = '#1a1410';
     x.font = '500 40px "Cormorant Garamond", Georgia, serif';
     x.fillText('Vanessa Velasco Studio', W/2, 54);
+    _dibujarTextoHeader();
   }
-  x.font = '500 15px Jost, sans-serif'; x.fillStyle = '#8b7355';
-  var titulo = (NAV_D.camp && NAV_D.camp.nombre ? String(NAV_D.camp.nombre).toUpperCase() : 'SESIONES');
-  x.fillText(titulo + '  ·  LUGARES DISPONIBLES', W/2, 84);
-  x.font = '300 13px Jost, sans-serif'; x.fillStyle = '#a89880';
-  var totalLug = 0;
-  bloques.forEach(function(b){ b.libres.forEach(function(r){ totalLug += r.horas.length; }); });
-  x.fillText(totalLug + (totalLug === 1 ? ' lugar libre' : ' lugares libres'), W/2, 108);
 
   /* bloques por mes */
   var y = HEAD;
