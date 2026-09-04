@@ -931,7 +931,7 @@
       <circle cx="11" cy="10.5" r="1.5" fill="#1a1410"/>
       <rect x="3" y="6.5" width="2.5" height="1.5" rx="0.75" fill="#1a1410"/>
     </svg>
-    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="max-height:32px;max-width:160px;object-fit:contain;display:none"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
+    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="max-height:40px;max-width:180px;object-fit:contain;display:none"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
   </div>
   <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px">
     <span id="app-version" style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500"></span>
@@ -1258,7 +1258,7 @@
 
 <!-- PANTALLA DE BLOQUEO -->
 <div id="lock-screen" style="display:none;position:fixed;inset:0;background:#1a1410;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:26px 20px;text-align:center">
-  <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0ea">Vanessa Velasco Studio</div>
+  <div id="lock-logo-wrap" style="margin-bottom:4px"><img id="lock-logo-img" src="" style="max-height:50px;max-width:180px;object-fit:contain;display:none;filter:brightness(0) invert(1)"><span id="lock-logo-txt" style="font-family:'Cormorant Garamond',serif;font-size:26px;color:#f5f0ea">Vanessa Velasco Studio</span></div>
   <div style="font-size:10px;letter-spacing:.2em;color:#8b7355;margin-bottom:22px">F O T O G R A F Í A</div>
   <div id="lock-bio-wrap" style="display:none;flex-direction:column;align-items:center;margin-bottom:6px">
     <button onclick="intentarBiometrico()" style="width:64px;height:64px;border-radius:50%;border:1.5px solid #8b7355;background:none;color:#e8ddd0;font-size:28px;cursor:pointer">☺</button>
@@ -1365,6 +1365,14 @@
       <button class="btn-modal-save" onclick="saveSettings()">Guardar</button>
     </div>
     <div style="border-top:1px solid var(--beige-dark);margin-top:16px;padding-top:14px">
+      <div class="modal-label">🖼 Logo de marca</div>
+      <div id="cfg-logo-preview" style="margin-bottom:10px;min-height:50px;display:flex;align-items:center;justify-content:center;background:var(--beige-light);border-radius:8px;padding:10px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <label class="btn-modal-save" style="cursor:pointer;margin:0;font-size:12px;padding:8px 14px">Subir logo<input type="file" accept="image/*" style="display:none" onchange="NAV_subirLogo(this);closeSettings()"></label>
+        <button class="btn-modal-cancel" style="font-size:12px" onclick="NAV_quitarLogo();closeSettings()">Quitar</button>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--beige-dark);margin-top:4px;padding-top:14px">
       <div class="modal-label">🔒 Seguridad</div>
       <input type="password" inputmode="numeric" maxlength="4" id="pin-actual-input" class="modal-input" placeholder="PIN actual" style="margin-bottom:8px"/>
       <input type="password" inputmode="numeric" maxlength="4" id="pin-nuevo-input" class="modal-input" placeholder="Nuevo PIN (4 dígitos)" style="margin-bottom:8px"/>
@@ -1882,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.88';
+var APP_VERSION = 'v4.91';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -3175,8 +3183,21 @@ async function compartirTarjetaPrecios() {
   ctx.fillStyle = '#f5f0ea'; ctx.fillRect(0, 0, 1080, cv.height);
   ctx.fillStyle = '#1a1410'; ctx.fillRect(0, 0, 1080, 200);
   ctx.fillStyle = '#f5f0ea'; ctx.textAlign = 'center';
-  ctx.font = '500 56px "Cormorant Garamond", serif';
-  ctx.fillText('Vanessa Velasco Studio', 540, 100);
+  var _logoExt = localStorage.getItem('vvs_logo');
+  if (_logoExt) {
+    var _imgExt = new Image(); _imgExt.src = _logoExt;
+    _imgExt.onload = function(){
+      var _s = Math.min(400/_imgExt.width, 100/_imgExt.height, 1);
+      var _iw = _imgExt.width*_s, _ih = _imgExt.height*_s;
+      // Fondo oscuro: invertir colores del logo para que se vea blanco
+      ctx.filter = 'brightness(0) invert(1)';
+      ctx.drawImage(_imgExt, 540-_iw/2, 100-_ih/2, _iw, _ih);
+      ctx.filter = 'none';
+    };
+  } else {
+    ctx.font = '500 56px "Cormorant Garamond", serif';
+    ctx.fillText('Vanessa Velasco Studio', 540, 100);
+  }
   ctx.fillStyle = '#b8a68f'; ctx.font = '400 26px Jost, sans-serif';
   ctx.fillText('E X T R A S   ·   P R E C I O S', 540, 155);
   var y = 280;
@@ -3299,10 +3320,20 @@ function generarImagenTestimonioCanvas(txt, nombreFirma) {
   if (nombreFirma) ctx.fillText('— ' + nombreFirma, 540, yT + 60);
   ctx.strokeStyle = '#b8a68f'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(440, yT + 110); ctx.lineTo(640, yT + 110); ctx.stroke();
-  ctx.fillStyle = '#1a1410'; ctx.font = '500 40px "Cormorant Garamond", serif';
-  ctx.fillText('Vanessa Velasco Studio', 540, 1760);
-  ctx.fillStyle = '#8b7355'; ctx.font = '400 24px Jost, sans-serif';
-  ctx.fillText('F O T O G R A F Í A   F A M I L I A R', 540, 1810);
+  var _logoTest = localStorage.getItem('vvs_logo');
+  if (_logoTest) {
+    var _imgTest = new Image(); _imgTest.src = _logoTest;
+    _imgTest.onload = function(){
+      var _s = Math.min(400/_imgTest.width, 80/_imgTest.height, 1);
+      var _iw = _imgTest.width*_s, _ih = _imgTest.height*_s;
+      ctx.drawImage(_imgTest, 540-_iw/2, 1760-_ih/2, _iw, _ih);
+    };
+  } else {
+    ctx.fillStyle = '#1a1410'; ctx.font = '500 40px "Cormorant Garamond", serif';
+    ctx.fillText('Vanessa Velasco Studio', 540, 1760);
+    ctx.fillStyle = '#8b7355'; ctx.font = '400 24px Jost, sans-serif';
+    ctx.fillText('F O T O G R A F Í A   F A M I L I A R', 540, 1810);
+  }
   descargarOCompartirCanvas(cv, 'testimonio-vvs.png', 'Testimonio — Vanessa Velasco Studio');
 }
 
@@ -6198,7 +6229,18 @@ async function eliminarGastoVariable(id) {
   cargarFinanzas();
 }
 
-function openSettings() { document.getElementById('script-url-input').value = SCRIPT_URL; document.getElementById('modal-settings').classList.add('open'); }
+function openSettings() {
+  document.getElementById('script-url-input').value = SCRIPT_URL;
+  // Mostrar preview del logo actual
+  var prev = document.getElementById('cfg-logo-preview');
+  if (prev) {
+    var logo = localStorage.getItem('vvs_logo');
+    prev.innerHTML = logo
+      ? '<img src="'+logo+'" style="max-height:50px;max-width:180px;object-fit:contain">'
+      : '<span style="font-size:12px;color:var(--text-muted)">Sin logo — se muestra el nombre de texto</span>';
+  }
+  document.getElementById('modal-settings').classList.add('open');
+}
 function closeSettings() { document.getElementById('modal-settings').classList.remove('open'); }
 function saveSettings() {
   const url = document.getElementById('script-url-input').value.trim();
@@ -7831,16 +7873,19 @@ function NAV_quitarLogo() {
 }
 function NAV_aplicarLogo() {
   var logo = localStorage.getItem('vvs_logo');
+  // Header principal
   var img = document.getElementById('app-logo-img');
   var txt = document.getElementById('app-logo-txt');
-  if (!img || !txt) return;
-  if (logo) {
-    img.src = logo;
-    img.style.display = 'block';
-    txt.style.display = 'none';
-  } else {
-    img.style.display = 'none';
-    txt.style.display = '';
+  if (img && txt) {
+    if (logo) { img.src = logo; img.style.display = 'block'; txt.style.display = 'none'; }
+    else { img.style.display = 'none'; txt.style.display = ''; }
+  }
+  // Pantalla de bloqueo
+  var lockImg = document.getElementById('lock-logo-img');
+  var lockTxt = document.getElementById('lock-logo-txt');
+  if (lockImg && lockTxt) {
+    if (logo) { lockImg.src = logo; lockImg.style.display = 'block'; lockImg.style.filter = 'brightness(0) invert(1)'; lockTxt.style.display = 'none'; }
+    else { lockImg.style.display = 'none'; lockTxt.style.display = ''; }
   }
 }
 
@@ -9087,16 +9132,6 @@ function NAV_ajustes() {
       NAV_area('terminos_servicio', 'Un punto por línea', c.terminos_servicio ||
         'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.\nEl precio corresponde al mes de la sesión y queda fijo desde el apartado.\nLas fotos se entregan en formato digital de alta resolución.\nVanessa Velasco conserva los derechos de autor de las imágenes.') +
       '<p class="nav-hint">Cada línea = un punto con viñeta en el recibo y PDF.</p>') +
-
-    NAV_acord('marca', '🖼 Marca',
-      '<p class="nav-hint" style="margin-bottom:12px">El logo aparecerá en el encabezado de la app, el brochure de disponibilidad y el PDF del recibo.</p>' +
-      '<div id="nav-logo-preview" style="margin-bottom:12px;min-height:60px;display:flex;align-items:center;justify-content:center;background:var(--beige-light);border-radius:8px;padding:12px">' +
-        (localStorage.getItem('vvs_logo') ? '<img src="'+localStorage.getItem('vvs_logo')+'" style="max-height:60px;max-width:200px;object-fit:contain">' : '<span style="font-size:12px;color:var(--text-muted)">Sin logo — se muestra el nombre de texto</span>') +
-      '</div>' +
-      '<div style="display:flex;gap:8px">' +
-      '<label class="nav-btn" style="cursor:pointer;margin:0;display:inline-block">Subir logo<input type="file" accept="image/*" style="display:none" onchange="NAV_subirLogo(this)"></label>' +
-      (localStorage.getItem('vvs_logo') ? '<button class="nav-btn" style="color:#854f0b" onclick="NAV_quitarLogo()">Quitar logo</button>' : '') +
-      '</div>') +
 
     '<button class="nav-btn nav-save" id="nav-s-btn" onclick="NAV_guardarAjustes()">' +
     'Guardar cambios</button>' +
