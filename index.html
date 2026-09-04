@@ -1497,7 +1497,7 @@
     <div class="modal-label">Hora</div>
     <input type="time" id="edit-hora" class="modal-input"/>
     <div class="modal-label">Teléfono WhatsApp</div>
-    <input type="tel" id="edit-telefono" class="modal-input" inputmode="tel" placeholder="10 dígitos"/>
+    <input type="tel" id="edit-telefono" class="modal-input" inputmode="tel" placeholder="10 dígitos" onblur="NAV_normalizarTelInput(this)"/>
     <div class="modal-label">Dirección del evento (opcional)</div>
     <input type="text" id="edit-direccion" class="modal-input" placeholder="Calle, colonia, ciudad..."/>
     <div class="modal-label">Correo electrónico</div>
@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.96';
+var APP_VERSION = 'v4.97';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2042,6 +2042,19 @@ function normalizarTel(raw) {
   // Quitar 1 inicial si viene con 11 dígitos (ej: 13312345678)
   if (digits.length === 11 && digits.startsWith('1')) digits = digits.substring(1);
   return digits;
+}
+
+/** Normaliza y formatea el teléfono en un input al salir del campo */
+function NAV_normalizarTelInput(input) {
+  var raw = String(input.value || '').trim();
+  if (!raw) return;
+  // Detectar si es número extranjero (empieza con + y no es +52)
+  if (raw.startsWith('+') && !raw.startsWith('+52')) return;
+  var digits = normalizarTel(raw);
+  // Solo formatear si es un número mexicano de 10 dígitos
+  if (digits.length === 10) {
+    input.value = '+52 ' + digits.substring(0,2) + ' ' + digits.substring(2,6) + ' ' + digits.substring(6);
+  }
 }
 
 function setDefaultFecha() {
@@ -6437,7 +6450,7 @@ function saveSettings() {
         <input id="nav-e-nombre" placeholder="Familia Hernández Ruiz"></label>
       <div class="nav-f2">
         <label class="nav-f"><span>Teléfono</span>
-          <input id="nav-e-tel" inputmode="tel" placeholder="33 1234 5678"></label>
+          <input id="nav-e-tel" inputmode="tel" placeholder="33 1234 5678" onblur="NAV_normalizarTelInput(this)"></label>
         <label class="nav-f"><span>Personas</span>
           <input id="nav-e-personas" inputmode="numeric" value="4" onchange="NAV_editarPrecio()"></label>
       </div>
@@ -6616,7 +6629,7 @@ function saveSettings() {
         <input id="nav-a-nombre" placeholder="Familia Hernández Ruiz"></label>
       <div class="nav-f2">
         <label class="nav-f"><span>Teléfono</span>
-          <input id="nav-a-tel" inputmode="tel" placeholder="33 1234 5678"></label>
+          <input id="nav-a-tel" inputmode="tel" placeholder="33 1234 5678" onblur="NAV_normalizarTelInput(this)"></label>
         <label class="nav-f"><span>Personas</span>
           <input id="nav-a-personas" inputmode="numeric" value="4"></label>
       </div>
