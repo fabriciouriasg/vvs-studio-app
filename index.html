@@ -931,7 +931,7 @@
       <circle cx="11" cy="10.5" r="1.5" fill="#1a1410"/>
       <rect x="3" y="6.5" width="2.5" height="1.5" rx="0.75" fill="#1a1410"/>
     </svg>
-    <div class="header-title">Vanessa Velasco Studio</div>
+    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="max-height:32px;max-width:160px;object-fit:contain;display:none"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
   </div>
   <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px">
     <span id="app-version" style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500"></span>
@@ -1882,7 +1882,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.86';
+var APP_VERSION = 'v4.88';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -2040,7 +2040,8 @@ function setDefaultFecha() {
   document.getElementById('fecha').value = HOY;
   var vEl = document.getElementById('app-version');
   if (vEl) vEl.textContent = APP_VERSION;
-  // Permitir eventos de meses pasados desde mayo 2026 (inicio de operaciones)
+  // Aplicar logo de marca si existe
+  NAV_aplicarLogo();
   var minOperaciones = INICIO_OPS.anio + '-' + String(INICIO_OPS.mes).padStart(2,'0') + '-01';
   const evFecha = document.getElementById('ev-fecha');
   if (evFecha) evFecha.min = minOperaciones;
@@ -5062,7 +5063,7 @@ function buildContratoHTML(ev, textos) {
     '@media print{body{margin:0;padding:10px}@page{margin:0;size:auto}}' +
     '</style></head><body>' +
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">' +
-    '<div><h1>Vanessa Velasco Fotografía Familiar</h1><div class="sub">Recibo de Servicios Fotográficos</div></div>' +
+    (localStorage.getItem('vvs_logo') ? '<div><img src="'+localStorage.getItem('vvs_logo')+'" style="max-height:60px;max-width:200px;object-fit:contain;display:block;margin-bottom:4px"><div class="sub">Recibo de Servicios Fotográficos</div></div>' : '<div><h1>Vanessa Velasco Fotografía Familiar</h1><div class="sub">Recibo de Servicios Fotográficos</div></div>') +
     '<div style="text-align:right"><div class="folio">Folio: ' + (ev.folio||'—') + '</div><div style="font-size:10px;color:#c4ae96">' + fechaHoy + '</div></div>' +
     '</div>' +
 
@@ -7548,8 +7549,20 @@ function NAV_dibujarDisp() {
   /* encabezado */
   x.fillStyle = '#e8ddd0'; x.fillRect(0,0,W,HEAD-24);
   x.textAlign = 'center'; x.fillStyle = '#1a1410';
-  x.font = '500 40px "Cormorant Garamond", Georgia, serif';
-  x.fillText('Vanessa Velasco Studio', W/2, 54);
+  var _logo = localStorage.getItem('vvs_logo');
+  if (_logo) {
+    var _img = new Image();
+    _img.onload = function() {
+      var _maxH = 60, _maxW = 400;
+      var _scale = Math.min(_maxW/_img.width, _maxH/_img.height, 1);
+      var _iw = _img.width*_scale, _ih = _img.height*_scale;
+      x.drawImage(_img, W/2-_iw/2, (HEAD-24)/2-_ih/2, _iw, _ih);
+    };
+    _img.src = _logo;
+  } else {
+    x.font = '500 40px "Cormorant Garamond", Georgia, serif';
+    x.fillText('Vanessa Velasco Studio', W/2, 54);
+  }
   x.font = '500 15px Jost, sans-serif'; x.fillStyle = '#8b7355';
   var titulo = (NAV_D.camp && NAV_D.camp.nombre ? String(NAV_D.camp.nombre).toUpperCase() : 'SESIONES');
   x.fillText(titulo + '  ·  LUGARES DISPONIBLES', W/2, 84);
@@ -7782,6 +7795,55 @@ function NAV_buscarSesion(folio) {
   return null;
 }
  
+/* ── Logo de marca ── */
+function NAV_subirLogo(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 5000000) { NAV_toast('El logo debe pesar menos de 5 MB'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    // Redimensionar a máx 400px de ancho antes de guardar
+    var img = new Image();
+    img.onload = function() {
+      var maxW = 400, maxH = 200;
+      var scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      var w = Math.round(img.width * scale);
+      var h = Math.round(img.height * scale);
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      var ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      var data = cv.toDataURL('image/png');
+      localStorage.setItem('vvs_logo', data);
+      NAV_aplicarLogo();
+      NAV_ajustes();
+      NAV_toast('Logo guardado');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function NAV_quitarLogo() {
+  localStorage.removeItem('vvs_logo');
+  NAV_aplicarLogo();
+  NAV_ajustes();
+  NAV_toast('Logo eliminado');
+}
+function NAV_aplicarLogo() {
+  var logo = localStorage.getItem('vvs_logo');
+  var img = document.getElementById('app-logo-img');
+  var txt = document.getElementById('app-logo-txt');
+  if (!img || !txt) return;
+  if (logo) {
+    img.src = logo;
+    img.style.display = 'block';
+    txt.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    txt.style.display = '';
+  }
+}
+
 function NAV_verSesion(folio) {
   var s = NAV_buscarSesion(folio);
   if (!s) return;
@@ -9025,6 +9087,16 @@ function NAV_ajustes() {
       NAV_area('terminos_servicio', 'Un punto por línea', c.terminos_servicio ||
         'Tolerancia de 10 minutos; el tiempo de retraso se descuenta de la sesión.\nEl precio corresponde al mes de la sesión y queda fijo desde el apartado.\nLas fotos se entregan en formato digital de alta resolución.\nVanessa Velasco conserva los derechos de autor de las imágenes.') +
       '<p class="nav-hint">Cada línea = un punto con viñeta en el recibo y PDF.</p>') +
+
+    NAV_acord('marca', '🖼 Marca',
+      '<p class="nav-hint" style="margin-bottom:12px">El logo aparecerá en el encabezado de la app, el brochure de disponibilidad y el PDF del recibo.</p>' +
+      '<div id="nav-logo-preview" style="margin-bottom:12px;min-height:60px;display:flex;align-items:center;justify-content:center;background:var(--beige-light);border-radius:8px;padding:12px">' +
+        (localStorage.getItem('vvs_logo') ? '<img src="'+localStorage.getItem('vvs_logo')+'" style="max-height:60px;max-width:200px;object-fit:contain">' : '<span style="font-size:12px;color:var(--text-muted)">Sin logo — se muestra el nombre de texto</span>') +
+      '</div>' +
+      '<div style="display:flex;gap:8px">' +
+      '<label class="nav-btn" style="cursor:pointer;margin:0;display:inline-block">Subir logo<input type="file" accept="image/*" style="display:none" onchange="NAV_subirLogo(this)"></label>' +
+      (localStorage.getItem('vvs_logo') ? '<button class="nav-btn" style="color:#854f0b" onclick="NAV_quitarLogo()">Quitar logo</button>' : '') +
+      '</div>') +
 
     '<button class="nav-btn nav-save" id="nav-s-btn" onclick="NAV_guardarAjustes()">' +
     'Guardar cambios</button>' +
