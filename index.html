@@ -28,9 +28,9 @@
     body{font-family:'Jost',sans-serif;background:var(--beige-light);color:var(--text-main);min-height:100vh;overflow:hidden}
 
     /* HEADER */
-    .header{background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);padding:14px 20px 12px;position:fixed;top:0;left:0;right:0;z-index:100}
-    .header-inner{display:flex;align-items:center;justify-content:center;gap:10px;max-width:480px;margin:0 auto}
-    .header-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;letter-spacing:.04em;color:var(--black)}
+    .header{background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);padding:8px 20px;position:fixed;top:0;left:0;right:0;z-index:100;height:56px}
+    .header-inner{display:flex;align-items:center;justify-content:center;gap:10px;max-width:480px;margin:0 auto;height:100%}
+    .header-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;letter-spacing:.04em;color:var(--black);display:flex;align-items:center;height:100%}
 
     /* TAB NAV */
     .tab-nav-wrap{position:fixed;top:52px;left:0;right:0;background:var(--beige-mid);border-bottom:1px solid var(--beige-dark);z-index:99}
@@ -931,7 +931,7 @@
       <circle cx="11" cy="10.5" r="1.5" fill="#1a1410"/>
       <rect x="3" y="6.5" width="2.5" height="1.5" rx="0.75" fill="#1a1410"/>
     </svg>
-    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="max-height:44px;max-width:200px;object-fit:contain;display:none;background:transparent"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
+    <div class="header-title" id="app-header-brand"><img id="app-logo-img" src="" alt="Vanessa Velasco Studio" style="height:100%;max-width:220px;object-fit:contain;display:none;background:transparent"><span id="app-logo-txt">Vanessa Velasco Studio</span></div>
   </div>
   <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:4px">
     <span id="app-version" style="font-size:9px;color:var(--text-muted);opacity:.6;letter-spacing:.04em;font-weight:500"></span>
@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.92';
+var APP_VERSION = 'v4.94';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
