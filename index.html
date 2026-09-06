@@ -964,7 +964,13 @@
     <span class="nav-nm" id="nav-btn-nombre">Navidad 2026</span>
     <span class="nav-ds" id="nav-btn-sub">Cargando…</span>
   </span>
-  <span class="nav-ar">›</span>
+  <span style="display:flex;align-items:center;gap:6px;margin-left:auto">
+    <span id="nav-pro-btn" onclick="event.stopPropagation();NAV_toggleProspectos()" style="position:relative;width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.15);border:0.5px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;cursor:pointer" title="Prospectos">
+      <i class="ti ti-users" style="font-size:14px;color:inherit" aria-hidden="true"></i>
+      <span id="nav-pro-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:#854f0b;color:#faeeda;font-size:8px;font-weight:700;min-width:15px;height:15px;border-radius:999px;padding:0 3px;display:flex;align-items:center;justify-content:center;border:1.5px solid transparent"></span>
+    </span>
+    <span class="nav-ar">›</span>
+  </span>
 </button>
         <div class="section-label">Categoría</div>
         <div class="cat-grid" id="cat-grid"></div>
@@ -1890,7 +1896,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.99';
+var APP_VERSION = 'v4.100';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6861,6 +6867,8 @@ function NAV_abrir() {
   document.getElementById('nav-ov').scrollTop = 0;
   if (!NAV_cargado) { NAV_recargar(); NAV_cargado = true; }
   else { NAV_tablero(); setTimeout(NAV_checkPagosComprometidos, 400); }
+  // Cargar prospectos siempre al abrir
+  setTimeout(NAV_cargarProspectos, 300);
 }
 function NAV_cerrar() {
   document.getElementById('nav-ov').classList.remove('nav-open');
@@ -6989,6 +6997,164 @@ function NAV_tcBottomSheet(folio) {
     '</div>' +
     '</div>';
   document.body.appendChild(div);
+}
+
+/* ── Prospectos ── */
+var NAV_prospectos = [];
+var NAV_proPanel = false;
+
+function NAV_cargarProspectos() {
+  NAV_post('NAV_getProspectos', { id_campania: NAV_ID })
+    .then(function(r) {
+      if (r && r.ok) {
+        NAV_prospectos = r.prospectos || [];
+        NAV_pintarProBadge();
+        if (NAV_proPanel) NAV_pintarProPanel();
+      }
+    }).catch(function(){});
+}
+
+function NAV_pintarProBadge() {
+  var badge = document.getElementById('nav-pro-badge');
+  if (!badge) return;
+  var n = NAV_prospectos.filter(function(p){ return String(p.estado) !== 'Convertido'; }).length;
+  if (n > 0) {
+    badge.textContent = n;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function NAV_toggleProspectos() {
+  NAV_proPanel = !NAV_proPanel;
+  var el = document.getElementById('nav-pro-panel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'nav-pro-panel';
+    var btn = document.getElementById('nav-btn');
+    if (btn && btn.parentNode) btn.parentNode.insertBefore(el, btn.nextSibling);
+  }
+  if (NAV_proPanel) {
+    NAV_pintarProPanel();
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function NAV_pintarProPanel() {
+  var el = document.getElementById('nav-pro-panel');
+  if (!el) return;
+  var activos = NAV_prospectos.filter(function(p){ return String(p.estado) !== 'Convertido'; });
+  var h = '<div style="background:var(--white,#fff);border:0.5px solid var(--beige-dark,#d9cbb8);border-radius:10px;margin-top:6px;overflow:hidden">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:0.5px solid var(--beige-dark,#d9cbb8)">';
+  h += '<div style="font-size:12px;font-weight:500">Prospectos <span style="font-size:10px;color:var(--text-muted);font-weight:400">· '+activos.length+' activos</span></div>';
+  h += '<button onclick="NAV_abrirFormProspecto(null)" style="font-size:11px;font-weight:500;padding:4px 10px;border-radius:6px;background:var(--black,#1a1410);color:white;border:none;cursor:pointer">+ Agregar</button>';
+  h += '</div>';
+
+  if (activos.length === 0) {
+    h += '<div style="padding:14px 12px;font-size:12px;color:var(--text-muted);text-align:center">Sin prospectos activos</div>';
+  } else {
+    activos.forEach(function(p) {
+      var tel = String(p.telefono || '').replace(/^'+/, '');
+      var waUrl = 'https://wa.me/' + tel.replace(/\D/g, '');
+      var estadoColor = p.estado === 'Contactado' ? '#185fa5' : '#854f0b';
+      var estadoBg   = p.estado === 'Contactado' ? '#e6f1fb' : '#faeeda';
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:0.5px solid var(--beige-mid,#e8ddd0)">';
+      h += '<div style="flex:1;min-width:0">';
+      h += '<div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+NAV_esc(p.nombre)+'</div>';
+      h += '<div style="font-size:11px;color:var(--text-muted)">'+NAV_esc(p.origen||'')+(p.fecha_tentativa?' · '+NAV_fechaCorta(p.fecha_tentativa):'')+'</div>';
+      h += '</div>';
+      h += '<span style="font-size:9px;font-weight:500;padding:2px 7px;border-radius:999px;background:'+estadoBg+';color:'+estadoColor+';white-space:nowrap">'+NAV_esc(p.estado||'Pendiente')+'</span>';
+      h += '<button onclick="NAV_proConvertir(\''+p.id_prospecto+'\')" style="font-size:10px;font-weight:500;padding:3px 7px;border-radius:5px;background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark);color:var(--text-main);cursor:pointer;white-space:nowrap">Apartar</button>';
+      h += '<a href="'+waUrl+'" target="_blank" style="font-size:17px;text-decoration:none;line-height:1" title="WhatsApp">💬</a>';
+      h += '<button onclick="NAV_proEliminar(\''+p.id_prospecto+'\')" style="font-size:13px;background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0" title="Eliminar">✕</button>';
+      h += '</div>';
+    });
+  }
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function NAV_abrirFormProspecto(pro) {
+  var prev = document.getElementById('nav-pro-form');
+  if (prev) prev.remove();
+  var ov = document.createElement('div');
+  ov.id = 'nav-pro-form';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10060;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = '<div style="background:var(--white,#fff);border-radius:14px;width:min(400px,94vw);overflow:hidden">' +
+    '<div style="background:var(--beige-mid,#ede8e0);border-bottom:0.5px solid var(--beige-dark);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">' +
+      '<div style="font-size:14px;font-weight:500">'+(pro?'Editar prospecto':'Nuevo prospecto')+'</div>' +
+      '<button onclick="document.getElementById(\'nav-pro-form\').remove()" style="font-size:20px;background:none;border:none;cursor:pointer;color:var(--text-muted)">✕</button>' +
+    '</div>' +
+    '<div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">' +
+      '<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Nombre *</div>' +
+        '<input id="npf-nombre" placeholder="Sofía Martínez" value="'+(pro?NAV_esc(pro.nombre):'')+'" style="width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--beige-dark);border-radius:7px"></div>' +
+      '<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Teléfono</div>' +
+        '<input id="npf-tel" placeholder="+52 33 1234 5678" value="'+(pro?NAV_esc(String(pro.telefono||'').replace(/^'+/,'')):'')+'" inputmode="tel" onblur="NAV_normalizarTelInput(this)" style="width:100%;font-size:13px;padding:7px 10px;border:0.5px solid var(--beige-dark);border-radius:7px"></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<div style="flex:1"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Origen</div>' +
+          '<select id="npf-origen" style="width:100%;font-size:13px;padding:7px 8px;border:0.5px solid var(--beige-dark);border-radius:7px">' +
+            '<option value="WhatsApp"'+(pro&&pro.origen==='WhatsApp'?' selected':'')+'>WhatsApp</option>' +
+            '<option value="Instagram"'+(pro&&pro.origen==='Instagram'?' selected':'')+'>Instagram</option>' +
+            '<option value="Referida"'+(pro&&pro.origen==='Referida'?' selected':'')+'>Referida</option>' +
+            '<option value="Otro"'+(pro&&pro.origen==='Otro'?' selected':'')+'>Otro</option>' +
+          '</select></div>' +
+        '<div style="flex:1"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Fecha tentativa</div>' +
+          '<input id="npf-fecha" type="date" value="'+(pro&&pro.fecha_tentativa?pro.fecha_tentativa:'')+'" style="width:100%;font-size:13px;padding:7px 8px;border:0.5px solid var(--beige-dark);border-radius:7px"></div>' +
+      '</div>' +
+      '<div id="npf-err" style="font-size:12px;color:#a32d2d"></div>' +
+      '<button onclick="NAV_proGuardar(\''+(pro?pro.id_prospecto:'')+'\''+')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--black,#1a1410);color:white;font-size:13px;font-weight:500;cursor:pointer">Guardar</button>' +
+    '</div></div>';
+  document.body.appendChild(ov);
+}
+
+function NAV_proGuardar(idPro) {
+  var nombre = document.getElementById('npf-nombre').value.trim();
+  if (!nombre) { document.getElementById('npf-err').textContent = 'El nombre es obligatorio'; return; }
+  var datos = {
+    id_campania: NAV_ID,
+    nombre: nombre,
+    telefono: document.getElementById('npf-tel').value.trim(),
+    origen: document.getElementById('npf-origen').value,
+    fecha_tentativa: document.getElementById('npf-fecha').value,
+    estado: 'Pendiente'
+  };
+  if (idPro) datos.id_prospecto = idPro;
+  NAV_post('NAV_guardarProspecto', datos)
+    .then(function(r) {
+      if (r && r.ok) {
+        document.getElementById('nav-pro-form').remove();
+        NAV_cargarProspectos();
+        NAV_toast('Prospecto guardado');
+      } else {
+        document.getElementById('npf-err').textContent = 'Error: ' + ((r&&r.error)||'');
+      }
+    }).catch(function(){ document.getElementById('npf-err').textContent = 'Sin conexión'; });
+}
+
+function NAV_proEliminar(id) {
+  if (!confirm('¿Eliminar este prospecto?')) return;
+  NAV_post('NAV_eliminarProspecto', { id_prospecto: id })
+    .then(function(r) {
+      if (r && r.ok) { NAV_cargarProspectos(); NAV_toast('Prospecto eliminado'); }
+      else NAV_toast('Error: ' + ((r&&r.error)||''));
+    }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+
+function NAV_proConvertir(id) {
+  var pro = NAV_prospectos.find(function(p){ return p.id_prospecto === id; });
+  if (!pro) return;
+  // Abrir formulario de alta pre-llenado
+  NAV_abrirCapa('nav-alta');
+  setTimeout(function() {
+    var tel = String(pro.telefono||'').replace(/^'+/, '');
+    if (document.getElementById('nav-a-nombre')) document.getElementById('nav-a-nombre').value = pro.nombre || '';
+    if (document.getElementById('nav-a-tel')) document.getElementById('nav-a-tel').value = tel;
+    if (document.getElementById('nav-a-fecha') && pro.fecha_tentativa) document.getElementById('nav-a-fecha').value = pro.fecha_tentativa;
+    // Guardar id del prospecto para marcarlo como convertido al apartar
+    window._navProConvirtiendo = id;
+  }, 200);
 }
 
 /* ── Panel del día de sesiones ── */
@@ -9046,6 +9212,12 @@ function NAV_altaGuardar() {
       msg += ' · comisión ' + NAV_money(res.pago.comision);
     NAV_toast(msg);
     NAV_cerrarCapa('nav-alta');
+    // Si venía de convertir un prospecto, marcarlo como Convertido
+    if (window._navProConvirtiendo) {
+      NAV_post('NAV_guardarProspecto', { id_prospecto: window._navProConvirtiendo, id_campania: NAV_ID, estado: 'Convertido' })
+        .then(function(){ NAV_cargarProspectos(); });
+      window._navProConvirtiendo = null;
+    }
     NAV_recargar().then(function(){
       NAV_verSesion(res.folio);
     });
