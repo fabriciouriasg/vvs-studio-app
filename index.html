@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.97';
+var APP_VERSION = 'v4.98';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6985,6 +6985,195 @@ function NAV_tcBottomSheet(folio) {
   document.body.appendChild(div);
 }
 
+/* ── Panel del día de sesiones ── */
+function NAV_pintarDiaPanel(sesiones, el) {
+  var hoy = NAV_hoyISO();
+  var panelKey = 'nav_dia_cerrado_' + hoy;
+  var h = '<div style="margin:12px 16px 0;background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark,#d9cbb8);border-radius:12px;overflow:hidden">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--beige-mid,#ede8e0);border-bottom:0.5px solid var(--beige-dark,#d9cbb8)">';
+  h += '<div><div style="font-size:13px;font-weight:500">📸 Día de sesiones</div>';
+  h += '<div style="font-size:11px;color:var(--text-muted)">' + sesiones.length + ' sesión' + (sesiones.length>1?'es':'')+' programada'+(sesiones.length>1?'s':'') + ' hoy</div></div>';
+  h += '<button onclick="localStorage.setItem(\''+panelKey+'\',\'1\');NAV_tablero()" style="font-size:18px;background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0 4px">✕</button>';
+  h += '</div>';
+  sesiones.sort(function(a,b){ return (a.hora||'') < (b.hora||'') ? -1 : 1; });
+  sesiones.forEach(function(s) {
+    var saldoTotal = NAV_n(s.total) - NAV_n(s.anticipo) - NAV_n(s.saldo_pagado);
+    var tienePendiente = saldoTotal > 0 && String(s.saldo_pendiente_confirmado) !== 'SI';
+    var liquidada = saldoTotal <= 0 || String(s.saldo_pendiente_confirmado) === 'SI';
+    var color = liquidada ? '#27500A' : (tienePendiente && s.saldo_pendiente_motivo ? '#854f0b' : '#185fa5');
+    var bg    = liquidada ? '#eaf3de'  : (tienePendiente && s.saldo_pendiente_motivo ? '#faeeda' : '#e6f1fb');
+    var estado = liquidada ? 'Liquidada' : (s.saldo_pendiente_motivo ? 'Saldo pendiente' : 'Pendiente registrar');
+    h += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:0.5px solid var(--beige-dark,#d9cbb8)">';
+    h += '<span style="font-size:11px;font-weight:600;color:#185fa5;min-width:34px">'+(s.hora||'—')+'</span>';
+    h += '<div style="flex:1"><div style="font-size:13px;font-weight:500">'+NAV_esc(s.cliente)+'</div>';
+    h += '<div style="font-size:11px;color:var(--text-muted)">'+NAV_esc(NAV_paqNombre(s.id_paquete))+'</div></div>';
+    h += '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;background:'+bg+';color:'+color+'">'+estado+'</span>';
+    h += '<button onclick="NAV_abrirRegistroDia(\''+s.folio+'\')" style="font-size:11px;font-weight:500;padding:4px 10px;border-radius:6px;background:var(--black,#1a1410);color:white;border:none;cursor:pointer">'+( liquidada?'Ver':'Registrar')+'</button>';
+    h += '</div>';
+  });
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function NAV_abrirRegistroDia(folio) {
+  var s = NAV_buscarSesion(folio);
+  if (!s) return;
+  var saldoTotal = Math.max(0, NAV_n(s.total) - NAV_n(s.anticipo) - NAV_n(s.saldo_pagado));
+  var liquidada  = saldoTotal <= 0 || String(s.saldo_pendiente_confirmado) === 'SI';
+
+  // Cargar extras configurados en la campaña (Campania_Precios tipo='extra')
+  var preciosExtra = (NAV_D.precios||[]).filter(function(p){ return String(p.tipo) === 'extra'; });
+
+  var prev = document.getElementById('nav-dia-reg');
+  if (prev) prev.remove();
+  var ov = document.createElement('div');
+  ov.id = 'nav-dia-reg';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10050;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px 0';
+
+  var extrasHTML = preciosExtra.map(function(p, i) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--beige-mid,#e8ddd0)" id="ndr-ex-row-'+i+'">' +
+      '<span style="font-size:12px;flex:1">'+NAV_esc(p.referencia||p.concepto||'')+'</span>' +
+      '<input type="number" min="0" value="0" id="ndr-ex-cant-'+i+'" onchange="NAV_drCalc()" style="width:36px;font-size:12px;text-align:center;padding:3px;border:0.5px solid var(--beige-dark);border-radius:4px">' +
+      '<span style="font-size:11px;color:var(--text-muted);width:56px;text-align:right">$'+NAV_n(p.precio).toLocaleString()+'</span>' +
+      '<select id="ndr-ex-cob-'+i+'" style="font-size:11px;padding:2px 4px;border:0.5px solid var(--beige-dark);border-radius:4px">' +
+        '<option value="SI">Cobrado</option><option value="NO">Pendiente</option>' +
+      '</select>' +
+    '</div>';
+  }).join('');
+
+  ov.innerHTML = '<div style="background:var(--white,#fff);border-radius:16px;width:min(420px,94vw);overflow:hidden">' +
+    '<div style="background:var(--beige-mid,#ede8e0);border-bottom:0.5px solid var(--beige-dark);padding:12px 16px;display:flex;align-items:center;justify-content:space-between">' +
+      '<div><div style="font-size:14px;font-weight:500">'+NAV_esc(s.cliente)+'</div>' +
+      '<div style="font-size:11px;color:var(--text-muted)">'+s.folio+' · '+NAV_esc(NAV_paqNombre(s.id_paquete))+' · '+(s.hora||'')+'</div></div>' +
+      '<button onclick="document.getElementById(\'nav-dia-reg\').remove()" style="font-size:20px;background:none;border:none;cursor:pointer;color:var(--text-muted)">✕</button>' +
+    '</div>' +
+    '<div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">' +
+
+    // Saldo
+    '<div style="background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark);border-radius:10px;overflow:hidden">' +
+      '<div style="padding:9px 12px;font-size:13px;font-weight:500;border-bottom:0.5px solid var(--beige-dark);display:flex;justify-content:space-between">' +
+        '<span>Saldo pendiente</span><span>$'+saldoTotal.toLocaleString()+'</span></div>' +
+      '<div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">' +
+        (liquidada
+          ? '<div style="font-size:12px;color:#27500A">✓ Liquidada</div>'
+          : '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;min-width:90px;color:var(--text-muted)">Forma de pago</span>' +
+            '<select id="ndr-forma" style="flex:1;font-size:12px;padding:5px;border:0.5px solid var(--beige-dark);border-radius:6px">' +
+              '<option>Efectivo</option><option>Transferencia</option><option>Tarjeta · Mercado Pago</option>' +
+            '</select></div>' +
+            '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;min-width:90px;color:var(--text-muted)">Monto recibido</span>' +
+            '<input type="number" id="ndr-monto" value="'+saldoTotal+'" onchange="NAV_drCalc()" style="flex:1;font-size:12px;padding:5px;border:0.5px solid var(--beige-dark);border-radius:6px;text-align:right"></div>' +
+            '<div id="ndr-motivo-wrap" style="display:none;flex-direction:column;gap:6px">' +
+              '<span style="font-size:11px;color:var(--text-muted)">Motivo del pendiente</span>' +
+              '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+                ['Falló tarjeta','Olvidó efectivo','Acordamos después','Otro'].map(function(m){
+                  return '<button type="button" onclick="NAV_drChip(this,\'ndr-motivo-txt\')" style="font-size:11px;padding:3px 8px;border-radius:999px;border:0.5px solid var(--beige-dark);background:var(--beige-light);cursor:pointer">'+m+'</button>';
+                }).join('') +
+              '</div>' +
+              '<input id="ndr-motivo-txt" placeholder="Motivo..." style="font-size:12px;padding:5px 8px;border:0.5px solid var(--beige-dark);border-radius:6px">' +
+            '</div>') +
+      '</div></div>' +
+
+    // Extras
+    (preciosExtra.length > 0
+      ? '<div style="background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark);border-radius:10px;overflow:hidden">' +
+          '<div style="padding:9px 12px;font-size:13px;font-weight:500;border-bottom:0.5px solid var(--beige-dark)">Extras de la sesión</div>' +
+          '<div style="padding:8px 12px">' + extrasHTML + '</div>' +
+        '</div>'
+      : '') +
+
+    // Resumen
+    '<div id="ndr-resumen" style="background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark);border-radius:10px;padding:10px 12px">' +
+      '<div style="font-size:12px;font-weight:500;margin-bottom:6px">Resumen</div>' +
+      '<div id="ndr-resumen-body" style="font-size:12px;color:var(--text-muted)">—</div>' +
+    '</div>' +
+
+    '<button onclick="NAV_drGuardar(\''+folio+'\','+JSON.stringify(preciosExtra)+')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--black,#1a1410);color:white;font-size:13px;font-weight:500;cursor:pointer">Guardar</button>' +
+    '<button onclick="document.getElementById(\'nav-dia-reg\').remove()" style="width:100%;padding:9px;border-radius:8px;border:0.5px solid var(--beige-dark);background:transparent;font-size:13px;cursor:pointer">Cancelar</button>' +
+    '</div></div>';
+
+  document.body.appendChild(ov);
+  NAV_drCalc();
+}
+
+function NAV_drChip(btn, targetId) {
+  document.getElementById(targetId).value = btn.textContent;
+}
+
+function NAV_drCalc() {
+  var montoEl = document.getElementById('ndr-monto');
+  var motivoWrap = document.getElementById('ndr-motivo-wrap');
+  var resumenEl = document.getElementById('ndr-resumen-body');
+  if (!montoEl || !resumenEl) return;
+
+  var saldoEl = montoEl.closest ? montoEl.closest('div') : null;
+  var monto = NAV_n(montoEl.value);
+  var saldoMax = NAV_n(montoEl.getAttribute('max') || montoEl.value);
+  var pendienteSaldo = Math.max(0, saldoMax - monto);
+
+  if (motivoWrap) motivoWrap.style.display = pendienteSaldo > 0 ? 'flex' : 'none';
+
+  // Calcular extras
+  var totalExtrasCob = 0, totalExtrasPend = 0;
+  var i = 0;
+  while (document.getElementById('ndr-ex-cant-'+i)) {
+    var cant = NAV_n(document.getElementById('ndr-ex-cant-'+i).value);
+    var cobrado = document.getElementById('ndr-ex-cob-'+i).value === 'SI';
+    // precio viene del precioExtra — buscarlo en el row
+    var priceEl = document.querySelector('#ndr-ex-row-'+i+' span:nth-child(3)');
+    var precio = priceEl ? NAV_n(priceEl.textContent.replace(/[$,]/g,'')) : 0;
+    var subtotal = cant * precio;
+    if (cobrado) totalExtrasCob += subtotal;
+    else totalExtrasPend += subtotal;
+    i++;
+  }
+
+  var html = '';
+  if (monto > 0) html += '<div style="display:flex;justify-content:space-between"><span>Saldo cobrado</span><span>$'+monto.toLocaleString()+'</span></div>';
+  if (pendienteSaldo > 0) html += '<div style="display:flex;justify-content:space-between"><span style="color:#854f0b">Saldo pendiente</span><span style="color:#854f0b">$'+pendienteSaldo.toLocaleString()+'</span></div>';
+  if (totalExtrasCob > 0) html += '<div style="display:flex;justify-content:space-between"><span>Extras cobrados</span><span>$'+totalExtrasCob.toLocaleString()+'</span></div>';
+  if (totalExtrasPend > 0) html += '<div style="display:flex;justify-content:space-between"><span style="color:#854f0b">Extras pendientes</span><span style="color:#854f0b">$'+totalExtrasPend.toLocaleString()+'</span></div>';
+  var total = monto + totalExtrasCob;
+  html += '<div style="display:flex;justify-content:space-between;font-weight:500;margin-top:6px;padding-top:6px;border-top:0.5px solid var(--beige-dark)"><span>Total recibido hoy</span><span>$'+total.toLocaleString()+'</span></div>';
+  resumenEl.innerHTML = html || '—';
+}
+
+function NAV_drGuardar(folio, preciosExtra) {
+  var montoEl = document.getElementById('ndr-monto');
+  var formaEl = document.getElementById('ndr-forma');
+  var motivoEl = document.getElementById('ndr-motivo-txt');
+  var monto = montoEl ? NAV_n(montoEl.value) : 0;
+  var forma = formaEl ? formaEl.value : '';
+  var motivo = motivoEl ? motivoEl.value.trim() : '';
+
+  var extras = [];
+  preciosExtra.forEach(function(p, i) {
+    var cantEl = document.getElementById('ndr-ex-cant-'+i);
+    var cobEl  = document.getElementById('ndr-ex-cob-'+i);
+    if (!cantEl) return;
+    var cant = NAV_n(cantEl.value);
+    if (cant <= 0) return;
+    extras.push({
+      concepto: p.referencia || p.concepto || '',
+      cantidad: cant,
+      precio_unitario: NAV_n(p.precio),
+      cobrado: cobEl ? cobEl.value : 'SI',
+      entrega_tipo: p.entrega_tipo || 'con_galeria'
+    });
+  });
+
+  var payload = { folio: folio, monto_cobrado: monto, forma_pago: forma, motivo_pendiente: motivo, extras: extras };
+  NAV_post('NAV_registrarDiaSesion', payload)
+    .then(function(r) {
+      if (r && r.ok) {
+        document.getElementById('nav-dia-reg').remove();
+        NAV_recargar().then(function(){ NAV_tablero(); if(KNV_state.visible) KNV_render(); });
+        NAV_toast('Registro guardado');
+      } else {
+        NAV_toast('Error: ' + ((r&&r.error)||''));
+      }
+    }).catch(function(){ NAV_toast('Sin conexión'); });
+}
+
 function NAV_tablero() {
   if (!NAV_D.camp) return;
   var navidad2 = NAV_D.camp.fecha_fin
@@ -6997,6 +7186,29 @@ function NAV_tablero() {
   var pend = act.filter(function(s){ return NAV_n(s.fase) < 6; }).length;
   document.getElementById('nav-dl-s').textContent =
     pend ? 'Faltan ' + pend + ' sesiones por entregar' : 'Todo entregado';
+
+  // Panel del día: verificar si hay sesiones hoy
+  var hoy = NAV_hoyISO();
+  var sesionesHoy = act.filter(function(s){ return s.fecha_sesion === hoy; });
+  var panelKey = 'nav_dia_cerrado_' + hoy;
+  var panelCerrado = localStorage.getItem(panelKey) === '1';
+  var panelEl = document.getElementById('nav-dia-panel');
+  if (!panelEl) {
+    panelEl = document.createElement('div');
+    panelEl.id = 'nav-dia-panel';
+    var tableroEl = document.getElementById('nav-p-tab');
+    if (tableroEl) tableroEl.insertBefore(panelEl, tableroEl.firstChild);
+  }
+  if (sesionesHoy.length > 0 && !panelCerrado) {
+    NAV_pintarDiaPanel(sesionesHoy, panelEl);
+  } else if (sesionesHoy.length > 0 && panelCerrado) {
+    panelEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 16px 0">' +
+      '<span style="font-size:12px;color:var(--text-muted)">📸 ' + sesionesHoy.length + ' sesión' + (sesionesHoy.length>1?'es':'') + ' hoy</span>' +
+      '<button onclick="localStorage.removeItem(\''+panelKey+'\');NAV_tablero()" style="font-size:11px;color:var(--text-accent,#185fa5);background:none;border:none;cursor:pointer;padding:0">Ver panel</button>' +
+      '</div>';
+  } else {
+    panelEl.innerHTML = '';
+  }
  
   var h = '';
   for (var f=1; f<=6; f++) {
@@ -9993,6 +10205,21 @@ function KNV_showCardMenu(folio, colId, session, anchor) {
       sub: hasWA ? 'Genera WA y avanza fase' : '',
       action: function() {
         var faseMap = {apartada:2,confirmada:3,realizada:4,preseleccion:5,edicion:6,entregada:7};
+        // Candado: verificar saldo pendiente o extras con_galeria pendientes
+        if (colId === 'edicion') {
+          var s = (NAV_D.sesiones||[]).find(function(x){ return x.folio === folio; });
+          var saldoTotal = s ? Math.max(0, NAV_n(s.total) - NAV_n(s.anticipo) - NAV_n(s.saldo_pagado)) : 0;
+          var tieneSaldoPend = saldoTotal > 0 && String((s||{}).saldo_pendiente_confirmado) !== 'SI';
+          var extrasConGaleriaPend = (NAV_D.sesiones_extras||[]).filter(function(e){
+            return e.folio === folio && String(e.entrega_tipo) === 'con_galeria' && NAV_n(e.monto_cobrado) < (NAV_n(e.cantidad)*NAV_n(e.precio_unitario));
+          }).length > 0;
+          if (tieneSaldoPend || extrasConGaleriaPend) {
+            var msg = '⚠ ' + (tieneSaldoPend ? 'Saldo pendiente de cobro. ' : '') +
+              (extrasConGaleriaPend ? 'Hay extras pendientes de cobro. ' : '') +
+              '¿Avanzar de todas formas?';
+            if (!confirm(msg)) return;
+          }
+        }
         if (hasWA) {
           NAV_avanzarConWA(folio, waMap[colId], faseMap[colId]);
         } else {
