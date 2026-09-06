@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.98';
+var APP_VERSION = 'v4.99';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6649,6 +6649,12 @@ function saveSettings() {
     <div class="nav-card">
       <label class="nav-f"><span>Paquete</span>
         <select id="nav-a-paquete" onchange="NAV_altaPrecio()"></select></label>
+      <label class="nav-f"><span>Preventa</span>
+        <select id="nav-a-preventa" onchange="NAV_altaPrecio()">
+          <option value="">Sin preventa</option>
+          <option value="P1">Preventa 1</option>
+          <option value="P2">Preventa 2</option>
+        </select></label>
       <div class="nav-f2">
         <label class="nav-f"><span>Personas extra a cobrar</span>
           <select id="nav-a-extra" onchange="NAV_altaPrecio()">
@@ -8952,32 +8958,36 @@ function NAV_altaPrecio() {
   var idPaq = document.getElementById('nav-a-paquete').value;
   var extra = NAV_n(document.getElementById('nav-a-extra').value);
   var c = NAV_D.camp;
- 
+
   var base = idPaq ? NAV_altaPrecioBase(idPaq, fecha) : 0;
   if (idPaq && !base) {
     cont.innerHTML = '<div class="nav-note">◷ No hay precio configurado para ese paquete en ' +
       'el mes de la sesión. Revisa la hoja Campania_Precios.</div>';
     return;
   }
-  var pre = NAV_enPreventa();
-  var desc = pre ? NAV_n(c.preventa_descuento) : 0;
+
+  // Selector de preventa
+  var prevSel = document.getElementById('nav-a-preventa');
+  var prevVal = prevSel ? prevSel.value : '';
+  var desc = 0;
+  var descLabel = '';
+  if (prevVal === 'P1' && c) { desc = NAV_n(c.preventa_descuento); descLabel = 'Preventa 1'; }
+  if (prevVal === 'P2' && c) { desc = NAV_n(c.preventa2_descuento); descLabel = 'Preventa 2'; }
+
   var mExtra = extra * NAV_n(c.costo_persona_extra);
   var total = base - desc + mExtra;
   var mes = NAV_MESES[parseInt(String(fecha).substring(5,7),10)-1];
- 
+
   cont.innerHTML =
     '<div class="nav-row"><span class="nav-lb">Paquete · '+mes+'</span>' +
     '<span class="nav-vl">'+NAV_money(base)+'</span></div>' +
-    (pre ? '<div class="nav-row"><span class="nav-lb">Preventa</span>' +
+    (desc ? '<div class="nav-row"><span class="nav-lb">'+descLabel+'</span>' +
       '<span class="nav-vl nav-g">−'+NAV_money(desc)+'</span></div>' : '') +
     (mExtra ? '<div class="nav-row"><span class="nav-lb">Personas extra · '+extra+'</span>' +
       '<span class="nav-vl">'+NAV_money(mExtra)+'</span></div>' : '') +
     '<div class="nav-sep"></div>' +
     '<div class="nav-row"><span class="nav-lb">Total</span>' +
-    '<span class="nav-vl" style="font-size:17px">'+NAV_money(total)+'</span></div>' +
-    (pre ? '<div class="nav-ok2">Preventa activa · el descuento se aplica solo.</div>'
-         : '<p class="nav-hint">Fuera de la ventana de preventa. El precio queda congelado ' +
-           'al apartar, aunque después se reagende.</p>');
+    '<span class="nav-vl" style="font-size:17px">'+NAV_money(total)+'</span></div>';
 }
  
 /** Guarda la sesión y, si hay monto, registra el anticipo. */
@@ -9003,7 +9013,8 @@ function NAV_altaGuardar() {
     fecha_sesion: fecha,
     hora: hora,
     origen: document.getElementById('nav-a-origen').value,
-    pago_comprometido: document.getElementById('nav-a-compromiso').value
+    pago_comprometido: document.getElementById('nav-a-compromiso').value,
+    es_preventa: document.getElementById('nav-a-preventa') ? (document.getElementById('nav-a-preventa').value || 'NO') : 'NO'
   };
  
   var anticipo = parseFloat(document.getElementById('nav-a-anticipo').value) || 0;
@@ -9363,10 +9374,12 @@ function NAV_ajustes() {
       NAV_campo('preventa_inicio', 'Abre', String(c.preventa_inicio||'').replace(' ','T'), 'datetime-local') +
       NAV_campo('preventa_fin', 'Cierra', String(c.preventa_fin||'').replace(' ','T'), 'datetime-local') +
       '</div><div class="nav-f2">' +
-      NAV_campo('preventa_descuento', 'Descuento', NAV_n(c.preventa_descuento)) +
-      NAV_campo('anticipo_monto', 'Anticipo', NAV_n(c.anticipo_monto)) + '</div>' +
+      NAV_campo('preventa_descuento', 'Descuento P1', NAV_n(c.preventa_descuento)) +
+      NAV_campo('preventa2_descuento', 'Descuento P2', NAV_n(c.preventa2_descuento)) + '</div>' +
       '<div class="nav-f2">' +
-      NAV_campo('costo_persona_extra', 'Persona extra', NAV_n(c.costo_persona_extra)) +
+      NAV_campo('anticipo_monto', 'Anticipo', NAV_n(c.anticipo_monto)) +
+      NAV_campo('costo_persona_extra', 'Persona extra', NAV_n(c.costo_persona_extra)) + '</div>' +
+      '<div class="nav-f2">' +
       NAV_campo('promo_reel_limite', 'Reels (primeras N)', NAV_n(c.promo_reel_limite)) +
       '</div>') +
 
@@ -9452,7 +9465,7 @@ function NAV_guardarAjustes() {
   var datos = {};
   ['nombre','fecha_inicio','fecha_fin','fecha_entrega_max','meta_sesiones','estado',
    'hora_am_inicio','hora_am_fin','hora_pm_inicio','hora_pm_fin','slot_min','cupo_dia',
-   'dias_semana','preventa_descuento','anticipo_monto','costo_persona_extra',
+   'dias_semana','preventa_descuento','preventa2_descuento','anticipo_monto','costo_persona_extra',
    'promo_reel_limite','mp_pct','mp_fija','mp_iva','brochure_url','brochure2_url','encuesta_url',
    'galeria_plataforma','msg_apartado','msg_brochure','msg_confirma','msg_presel',
    'msg_entrega','msg_encuesta',
