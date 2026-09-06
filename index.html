@@ -1890,7 +1890,7 @@ const MES_ACTUAL_IDX = _hoy.getMonth(); // 0-based
 const MES_ACTUAL_NOMBRE = NOMBRES_MESES[MES_ACTUAL_IDX];
 const ANIO_ACTUAL = _hoy.getFullYear();
 // ── VERSIÓN DE LA APP — cambiar SOLO aquí en cada deploy ──
-var APP_VERSION = 'v4.102';
+var APP_VERSION = 'v4.103';
 // ── REGLA DE ANTICIPOS ──
 // Un pago solo es 'Anticipos' si el evento es de un mes FUTURO al mes del pago.
 // Mismo mes o mes pasado → categoría real del evento. Sin fecha → anticipo (se
@@ -6289,8 +6289,8 @@ function saveSettings() {
           <div class="nav-tx"><b id="nav-dl-t">Días para la entrega</b>
             <span id="nav-dl-s"></span></div>
         </div>
-        <div id="nav-pro-btn" onclick="NAV_toggleProspectos()" style="position:relative;width:32px;height:32px;border-radius:8px;background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark,#d9cbb8);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0" title="Prospectos">
-          <i class="ti ti-users" style="font-size:15px;color:var(--text-muted)" aria-hidden="true"></i>
+        <div id="nav-pro-btn" onclick="NAV_toggleProspectos()" style="position:relative;width:32px;height:32px;border-radius:8px;background:var(--beige-light,#f5f0ea);border:0.5px solid var(--beige-dark,#d9cbb8);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:15px" title="Prospectos">
+          👥
           <span id="nav-pro-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:#854f0b;color:#faeeda;font-size:8px;font-weight:700;min-width:15px;height:15px;border-radius:999px;padding:0 3px;align-items:center;justify-content:center;border:1.5px solid var(--beige-light,#f5f0ea)"></span>
         </div>
       </div>
